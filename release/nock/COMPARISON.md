@@ -7,7 +7,9 @@ memory table of `M + 2L` rows for `M` noun nodes and `L` memory records, 395 fie
 trace width in all and 175 degree-4 transition gates, at 121 bits of security. The paper reports
 no per-program measurements and Nockchain's prover is not a stand-alone command line, so the
 comparison here is analytic, from the paper's row accounting against skinock's measured rows.
-A live run on the same programs is the paper's M6 proper.
+`ZORP-RUN.md` adds one measured native point (count-up `dec` at 7 on the released prover,
+section "The live run" below); a live run on all three programs with a verifying memory table is
+the paper's M6 proper.
 
 ## Rows per Nock step
 
@@ -38,17 +40,25 @@ estimated few hundred compute rows plus memory in NockVMROM.
   counts above drop about 5.5× (`README.md`), and the loop of `++dec` collapses entirely under
   a transported `dec` jet, which is the number that would close most of the gap on loops.
 
-## Why the live run is not here
+## The live run (`ZORP-RUN.md`)
 
 Checked 2026-11-04 in `~/Code/zorp/nockchain-official`: the released prover
 (`hoon/common/nock-prover.hoon` over `hoon/common/stark/prover.hoon`) takes a
-`prover-input` whose versions `%0` and `%1` are the mining puzzle (a block header digest, a
-nonce and a proof-of-work length), not a `[subject formula]` pair; the NockVM tables of the
-paper live under `hoon/common/v2/table/prover/{compute,memory}.hoon` and are reached only
-through that puzzle. Proving the programs here natively would need a Hoon harness that feeds
-an arbitrary computation to those tables, plus `hoonc` and the `nockapp` runtime with
-`zkvm-jetpack` built from source (`make build-hoonc`). That is a separate engineering task,
-the paper's M6 proper, and it is not part of this artifact.
+`prover-input` that is the mining puzzle (a block header digest, a nonce and a proof-of-work
+length), not a `[subject formula]` pair, but the door underneath it
+(`generate-proof:prove-door`) proves whatever `fink:fock` traced, so a short Hoon probe
+compiled with the checkout's `honk` and fired with `kick` runs the native prover on count-up
+`dec` at 7. `ZORP-RUN.md` has the run. The measured native rows for that program are 106
+compute rows (one per evaluation node; 105 nodes once opcode 9, which the released
+interpreter does not implement, is desugared by the spec's macro) and 35 memory rows,
+padded to 128 and 64, a 74,655-byte proof in about 1.9 s at 946 MB, against 29,591 and
+262,144 rows here. That is the measured form of the two-to-three orders of magnitude
+estimated above: 230× on compute rows. Two caveats from the run: the native proof is at 50
+bits of security (`security-level=_50`) against 100 here, and it does not verify, because
+the released memory table only records fetches against the initial subject (every loop
+changes the subject); the puzzle itself, pushed through the same harness, verifies. The
+analytic comparison above stands as the comparison of designs; the measured compute rows
+confirm its native side.
 
 ## Caveats
 
