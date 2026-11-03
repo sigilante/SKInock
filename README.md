@@ -105,5 +105,37 @@ product is the oracle's. The interpreter fallback
   crash on a cell, `eq_spec` and `eq_tisN` (lean-nock's `tisN`), `ifn_*`, `app_form`, and
   `pull_tagged` for axis pulls. Axioms: `propext`, `Quot.sound`, and `Classical.choice` where
   `omega` enters; no `sorry`, no `native_decide`.
+- `Nock2Ski/Compile.lean` (M2): `nockToSki : Noun → Term`, the compiler, mirroring
+  `compile.py`'s `formula` over autocons and opcodes 0–11 (12 and malformed shapes are
+  `Err`; `nockToSki_malformed`, with `malformed = Malformed` against lean-nock); the λs
+  `compile.py` writes are bracket abstraction (`absN`) over closed subterms; `encLit` is
+  `lit`, a `Form` with its compiled code on every formula-shaped literal; `axisPath`, the
+  digits of an axis, equals `Front.axisSteps`. One deliberate difference: opcode 10 forces
+  the tree before the patch, lean-nock's (and Vere's) order; `compile.py` and `nock.py`
+  do the patch first, which differs only in a crash-versus-divergence race.
+- `Nock2Ski/Enc.lean` (M2): `Enc n e`, the encoding relation: an atom as `encNoun`, a cell
+  as `Cell` of encodings or as `Form` of them with its own code `nockToSki n`. `encNoun n`
+  (no code, the hidden subject) and `encLit n` (the runtime's literal) are both `Enc n`.
+  Every M1 spec restated over `Enc` (`force_enc`, `eq_enc`, `app_enc`, …; five more `eqn`
+  runs for the `Form` combinations), lean-nock's `fasO` and `haxO` as walks along
+  `axisPath` (`fasO_axisPath`, `haxO_axisPath`), and the tagged pull over `Enc` (`pick_enc`).
+- `Nock2Ski/Embed.lean` (M2): the simulation, one induction on `NockEval` over all
+  constructors. `embed_crash : NockEval s f .exit → Enc s es → nockToSki f ⬝ es ↠ Err`.
+  `embed_value : NockEval s f (.val p) → Enc s es → (∃ ep, Enc p ep ∧ nockToSki f ⬝ es ↠ ep)
+  ∨ nockToSki f ⬝ es ↠ Err`. The second disjunct is exact: opcodes 2 and 9 on a formula
+  that reached them as a plain `Cell` (assembled by autocons or edit, or read from a
+  code-free subject) hit M1's `app`, which crashes where the Python runtime falls back to
+  `nockI`. So the SKI term never returns a wrong value and never diverges where Nock
+  returns a value (`embed_value_noCrash` is the strong form under "does not crash"), and
+  it crashes exactly where Nock crashes. `compiled f s = nockToSki f ⬝ encLit s`.
+  Axioms as M1; no `sorry`.
+- `bench/NormCheck.lean`, `lake exe normcheck`: the 63 reference tests and the M2 programs
+  (the spec's count-up `dec`, Hoon's `++dec` on a gate in the subject and on one pushed by
+  `[1 …]`) through `nockToSki`, read back by probing at fresh variables, against the
+  reference results and a small evaluator in lean-nock's order: 63/63 and 6/6. A gate in
+  `scripts/lean-check.sh`. Hoon's `dec 5` is 11,664 head contractions (aviary measured
+  14,116 with the read-out, copy mode).
 - Not yet pinned: the interpreter fallback (`nockI` and friends), which is mutually
   recursive with `app`; lean-ski's front end does not tie mutual recursion (Python's does).
+  This is what the `Err` disjunct of `embed_value` stands for; pinning `nockI` and proving
+  its spec would close it to the strong form on all of Nock.

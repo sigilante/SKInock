@@ -23,9 +23,19 @@ Started 2026-11-03. Open question C5 of `../OPEN-QUESTIONS.md`. Companion paper:
   SKIjack's output through lean-ski's front end (`compileDecls`, since `compileFile` refuses
   the `noun` type's shape). Known limit for M2: Front does not tie mutual recursion, so the
   interpreter fallback is not pinned; either extend Front or state `nockI` separately.
-- **In progress**: for formulas built from data (§2.3's
-  dynamic case); Lean M1 (`Nock2Ski/Noun.lean`, `Prims.lean`); Avon jets for `inc` and `eq`
-  with the Avon agent (terms pinned in `terms/`).
+- **M2 done** (`Nock2Ski/Compile.lean`, `Enc.lean`, `Embed.lean`, `bench/NormCheck.lean`):
+  `nockToSki` over autocons and opcodes 0–11; `lake exe normcheck` runs the 63 reference
+  tests and the two `dec` programs through it, 63/63 and 6/6; `embed_crash` closed for every
+  `NockEval` constructor; `embed_value` closed in the form "an encoding of the value, or
+  `Err`", the `Err` disjunct being exactly opcode 2/9 on a code-free formula (M1's `app`
+  has no `nockI`). The statement is over an encoding relation `Enc` with code optional on
+  formula-shaped cells, since the product's term is not a function of the noun (`[1 [0 1]]`
+  returns a `Form`). Opcode 10 takes lean-nock's order (tree, then patch); `compile.py` and
+  `nock.py` have the patch first and should be changed. Remaining for the strong
+  `embed_value` on all of Nock: pin `nockI` (needs Front to tie mutual recursion) and prove
+  `app` with the fallback simulates `NockEval`; or M3's `fragment_static`, under which the
+  `Err` disjunct cannot arise.
+- **In progress**: Avon jets for `inc` and `eq` with the Avon agent (terms pinned in `terms/`).
 - **Design change against §2.2**: the embedding is *strict*, not lazy. Nock evaluates every
   subformula to a complete noun, so a lazy embedding would return values where Nock
   crashes (`[7 [0 0] [1 42]]`). Only opcode 6's branches are deferred, which is Nock's own
