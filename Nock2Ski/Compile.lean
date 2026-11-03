@@ -1,4 +1,4 @@
-import Nock2Ski.Prims
+import Nock2Ski.Interp
 import Nock.Eval
 
 open Term
@@ -132,97 +132,8 @@ theorem malformed_eq : malformed = Malformed := by
       | n + 12 => cases t <;> rfl
 
 -- ---------------------------------------------------------------------------
--- Axes
+-- Axes (`axisPath` and `axisPath_eq_axisSteps` are in `Interp.lean`)
 -- ---------------------------------------------------------------------------
-
-/-- The binary digits of an axis below its leading one, `false` the head
-    and `true` the tail, by recursion: `axisPath (2a + b) = axisPath a ++ [b]`
-    for `a ≥ 1`.  Equal to `Front.axisSteps` (`axisPath_eq_axisSteps`). -/
-def axisPath : Nat → List Bool
-  | 0 => []
-  | 1 => []
-  | n + 2 => axisPath ((n + 2) / 2) ++ [(n + 2) % 2 == 1]
-termination_by n => n
-decreasing_by omega
-
-theorem axisPath_zero : axisPath 0 = [] := by simp [axisPath]
-theorem axisPath_one : axisPath 1 = [] := by simp [axisPath]
-theorem axisPath_rec {n : Nat} (h : 2 ≤ n) : axisPath n = axisPath (n / 2) ++ [n % 2 == 1] := by
-  obtain ⟨m, rfl⟩ : ∃ m, n = m + 2 := ⟨n - 2, by omega⟩
-  rw [axisPath]
-
--- `axisPath` and `Front.axisSteps` agree: `Nat.toDigits 2` peels the least
--- significant digit last.
-section AxisSteps
-
-private theorem toDigitsCore_app :
-    ∀ (fuel n : Nat) (ds : List Char),
-      Nat.toDigitsCore 2 fuel n ds = Nat.toDigitsCore 2 fuel n [] ++ ds
-  | 0, _, _ => rfl
-  | fuel + 1, n, ds => by
-    simp only [Nat.toDigitsCore]
-    split
-    · rfl
-    · rw [toDigitsCore_app fuel (n / 2) [Nat.digitChar (n % 2)],
-        toDigitsCore_app fuel (n / 2) (Nat.digitChar (n % 2) :: ds), List.append_assoc]
-      rfl
-
-private theorem toDigitsCore_fuel :
-    ∀ (f₁ f₂ n : Nat) (ds : List Char), n < f₁ → n < f₂ →
-      Nat.toDigitsCore 2 f₁ n ds = Nat.toDigitsCore 2 f₂ n ds
-  | f₁ + 1, f₂ + 1, n, ds, h₁, h₂ => by
-    simp only [Nat.toDigitsCore]
-    split
-    · rfl
-    · rename_i hn
-      exact toDigitsCore_fuel f₁ f₂ (n / 2) _ (by omega) (by omega)
-
-private theorem toDigits_rec {n : Nat} (h : 2 ≤ n) :
-    Nat.toDigits 2 n = Nat.toDigits 2 (n / 2) ++ [Nat.digitChar (n % 2)] := by
-  unfold Nat.toDigits
-  conv => lhs; rw [Nat.toDigitsCore]
-  have hne : ¬ n / 2 = 0 := by omega
-  simp only [hne, ↓reduceIte]
-  rw [toDigitsCore_app n (n / 2),
-    toDigitsCore_fuel n (n / 2 + 1) (n / 2) [] (by omega) (by omega)]
-
-private theorem toDigits_ne_nil (n : Nat) : Nat.toDigits 2 n ≠ [] := by
-  unfold Nat.toDigits Nat.toDigitsCore
-  dsimp only
-  split
-  · simp
-  · rw [toDigitsCore_app]; simp
-
-theorem axisSteps_zero : Front.axisSteps 0 = [] := by decide
-theorem axisSteps_one : Front.axisSteps 1 = [] := by decide
-
-theorem axisSteps_rec {n : Nat} (h : 2 ≤ n) :
-    Front.axisSteps n = Front.axisSteps (n / 2) ++ [n % 2 == 1] := by
-  unfold Front.axisSteps
-  rw [toDigits_rec h]
-  obtain ⟨c, cs, hcs⟩ : ∃ c cs, Nat.toDigits 2 (n / 2) = c :: cs := by
-    cases hd : Nat.toDigits 2 (n / 2) with
-    | nil => exact absurd hd (toDigits_ne_nil (n / 2))
-    | cons c cs => exact ⟨c, cs, rfl⟩
-  rw [hcs]
-  simp only [List.cons_append, List.drop_succ_cons, List.drop_zero, List.map_append,
-    List.map_cons, List.map_nil]
-  congr 2
-  have : n % 2 = 0 ∨ n % 2 = 1 := by omega
-  rcases this with h0 | h1
-  · rw [h0]; rfl
-  · rw [h1]; rfl
-
-theorem axisPath_eq_axisSteps : ∀ n, axisPath n = Front.axisSteps n
-  | 0 => by rw [axisPath_zero, axisSteps_zero]
-  | 1 => by rw [axisPath_one, axisSteps_one]
-  | n + 2 => by
-    rw [axisPath_rec (by omega), axisSteps_rec (by omega),
-      axisPath_eq_axisSteps ((n + 2) / 2)]
-termination_by n => n
-decreasing_by omega
-
-end AxisSteps
 
 /-- The `hd`/`tl` chain along a path, first step innermost, over open terms
     (`pickT` of `Prims.lean` over `Term`). -/

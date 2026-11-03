@@ -8,7 +8,12 @@ import Ski.Fuel
 `norm/tests.json` (63 tests over autocons and opcodes 0–11, transcribed
 below) through `Nock2Ski.compiled` and lean-ski's `runF`, reads the
 product back, and compares it with the reference result; a crash in the
-reference (`result: null`) must come back as `Err`.  A small fuelled
+reference (`result: null`) must come back as `Err`.  A second gate (M3)
+runs the same 63 tests through the interpreter fallback: the formula
+supplied as data beside the subject, both encoded **without code**
+(`encNoun`, so no `Form` carries compiled code), under the formula
+`[2 [0 2] [0 3]]`, whose opcode 2 meets a plain `Cell` and hands it to
+`nockI`.  A small fuelled
 reference evaluator in lean-nock's order (`nockRef`; lean-nock's own
 `nockF` cannot be imported beside `Ski.Basic`, both define a top-level
 `Diverges`) is run on the same triples as a check on the transcription.
@@ -345,7 +350,11 @@ def refOutcome : Option (Option Noun) → Except String (Option Noun)
   | some o => .ok o
   | none => .error "FUEL"
 
-def runOne (i : Nat) (t : String × String × String × Option String) : IO Bool := do
+/-- `[2 [0 2] [0 3]]`: run the formula found at axis 3 on the subject at axis 2. -/
+def interpF : Noun :=
+  .cell (.atom 2) (.cell (.cell (.atom 0) (.atom 2)) (.cell (.atom 0) (.atom 3)))
+
+def runOne (interp : Bool) (i : Nat) (t : String × String × String × Option String) : IO Bool := do
   let (op, s, f, r) := t
   let parsed : Except String (Noun × Noun × Option Noun) := do
     let sn ← parseNoun s
@@ -360,7 +369,8 @@ def runOne (i : Nat) (t : String × String × String × Option String) : IO Bool
     pure false
   | .ok (sn, fn, want) =>
     let count ← IO.mkRef 0
-    let term := compiled fn sn
+    -- the compiled program, or the interpreter on the formula as code-free data
+    let term := if interp then nockToSki interpF ⬝ encNoun (.cell sn fn) else compiled fn sn
     -- lean-ski's `runF` to weak head normal form first (the closed run), then
     -- the behavioural read-out at fresh variables
     let head := match runF FUEL term with
@@ -375,23 +385,30 @@ def runOne (i : Nat) (t : String × String × String × Option String) : IO Bool
     let ok := okSki && okNock
     let gotS := match gotO with | .ok o => showOutcome o | .error e => e
     let nfS := match nf with | .ok o => showOutcome o | .error e => e
-    IO.println s!"{if ok then "ok  " else "FAIL"} #{i} op {op}: *[{s} {f}] = {showOutcome want}; ski {gotS} ({head}, {steps} with the read-out); ref {nfS}"
+    IO.println s!"{if ok then "ok  " else "FAIL"} #{i} op {op}{if interp then " (interpreted)" else ""}: *[{s} {f}] = {showOutcome want}; ski {gotS} ({head}, {steps} with the read-out); ref {nfS}"
     pure ok
 
 def main : IO UInt32 := do
   let mut good := 0
   let mut i := 0
   for t in tests do
-    if ← runOne i t then good := good + 1
+    if ← runOne false i t then good := good + 1
     i := i + 1
   IO.println s!"norm: {good}/{tests.length} agree (the Lean compiler, read back by probing; the reference evaluator)"
   let mut goodP := 0
   let mut j := 0
   for t in programs do
-    if ← runOne j t then goodP := goodP + 1
+    if ← runOne false j t then goodP := goodP + 1
     j := j + 1
   IO.println s!"programs: {goodP}/{programs.length} agree"
-  pure (if good == tests.length && goodP == programs.length then 0 else 1)
+  -- the second gate: the formula as code-free data, run by the interpreter
+  let mut goodI := 0
+  let mut k := 0
+  for t in tests do
+    if ← runOne true k t then goodI := goodI + 1
+    k := k + 1
+  IO.println s!"interp: {goodI}/{tests.length} agree (the interpreter fallback nockI on the formula as data)"
+  pure (if good == tests.length && goodP == programs.length && goodI == tests.length then 0 else 1)
 
 end NormCheck
 

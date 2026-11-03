@@ -106,11 +106,6 @@ theorem ifn_cellT (h t y n : Term) : WSteps (ifnT ⬝ cellT h t ⬝ y ⬝ n) err
   simp only [OTerm.close, close_toO, close_cellO, close_errO] at e
   exact e
 
-theorem app_cellT (h t x : Term) : WSteps (appT ⬝ cellT h t ⬝ x) errT := by
-  have e := run app_cell_run (envR [K, h, t, K, x])
-  simp only [OTerm.close, close_toO, close_cellO, close_errO] at e
-  exact e
-
 -- ---------------------------------------------------------------------------
 -- The primitives over `Enc`
 -- ---------------------------------------------------------------------------
@@ -161,15 +156,16 @@ theorem inc_enc_cell {h t : Noun} {e : Term} (he : Enc (.cell h t) e) : WSteps (
   | form _ _ => exact inc_form _ _ _
 
 /-- `app` on an encoded cell runs its compiled code when it carries one,
-    and crashes otherwise (M1's `app`: no interpreter fallback). -/
+    and otherwise hands the cell to the interpreter `nockI` (M3; M1's `app`
+    crashed there). -/
 theorem app_enc {h t : Noun} {e x : Term} (he : Enc (.cell h t) e) :
-    WSteps (appT ⬝ e ⬝ x) (nockToSki (.cell h t) ⬝ x) ∨ WSteps (appT ⬝ e ⬝ x) errT := by
+    WSteps (appT ⬝ e ⬝ x) (nockToSki (.cell h t) ⬝ x) ∨ WSteps (appT ⬝ e ⬝ x) (nockIT ⬝ x ⬝ e) := by
   cases he with
-  | cell _ _ => exact .inr (app_cellT _ _ _)
+  | cell _ _ => exact .inr (app_cell _ _ _)
   | form _ _ => exact .inl (app_form _ _ _ _)
 
 theorem app_enc_atom {n : Nat} {e x : Term} (he : Enc (.atom n) e) : WSteps (appT ⬝ e ⬝ x) errT := by
-  rw [he.atom_inv]; exact app_noun (.atom n) x
+  rw [he.atom_inv]; exact app_atom _ x
 
 /-- `ifn` on `0`, `1`, and anything else. -/
 theorem ifn_enc_zero {e : Term} (he : Enc (.atom 0) e) (y n : Term) : WSteps (ifnT ⬝ e ⬝ y ⬝ n) y := by

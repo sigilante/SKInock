@@ -37,6 +37,26 @@ Started 2026-11-03. Open question C5 of `../OPEN-QUESTIONS.md`. Companion paper:
   `Err` disjunct cannot arise.
 - **Opcode 12** built as an extension: a resolver over a fact table (`scry`), default crash;
   the interpreter restructured to a single recursive equation so Front can pin it (M3).
+- **M3 done** (`Nock2Ski/Decls.lean`, `InterpDefs.lean` … `Interp.lean`, `InterpEnc.lean`,
+  `Embed.lean`): the interpreter fallback pinned and simulated, `embed_value` strong. Two
+  more edits to `nock.ski` were needed for Front to accept it: the restructure had left the
+  cycle `appI → nockP → nockO → appI` and three direct `nockI` calls in `nockO` (skijack ties
+  such a group with one `Y` over a tuple; Front ties only self-recursion), and the
+  interpreter's opcode 12 evaluated its operands before `scry = Err`, where lean-nock,
+  nock.py and the compiled code crash first (`Malformed`); now `op12 ev s t` is supplied by
+  the compiler, `Err` by default. Every equation is pinned to Front's output (`x_pin`) and
+  its structure kernel-checked (`x_eq`), the terms equal Python's character for character
+  (`terms/*.ski`), and `embed_both` is one induction on `NockEval` for the compiled term and
+  the interpreter together (mutual through `app`/`appI` and `nockI` on a `Form`).
+  `nockI_crash`, `nockI_value`, and `embed_value`/`compiled_value`/`embed_value_encNoun`
+  without the `Err` disjunct. `normcheck`: 63/63, 6/6, and the 63 tests interpreted 63/63.
+  Kernel memory was the constraint: the parse is pinned once against the parsed
+  declarations, each equation's term is defined as the file's (so the two sides of `x_eq`
+  share the kernel's work), and the kernel-heavy theorems are spread over a chain of modules
+  so that each `lean` process stays within about 4 GB.
+- **Remaining** (M3's other items, M4–M7): `embed_diverges` (needs fuel adequacy on both
+  sides); `fragment_static` is now moot for correctness (the fallback is proved) and is a
+  cost statement; the Λ front end; the statement path and the circuit.
 - **In progress**: Avon jets for `inc` and `eq` with the Avon agent (terms pinned in `terms/`).
 - **Design change against §2.2**: the embedding is *strict*, not lazy. Nock evaluates every
   subformula to a complete noun, so a lazy embedding would return values where Nock
@@ -239,7 +259,7 @@ realized across ISAs. It is §8's stretch item; the direct route is enough for t
 | M0 | one toolchain: lean-nock at `v4.28.0`, lean-ski at `v4.31.0`; bump lean-nock, confirm its audit manifest still passes; `skinock` as a Lake package requiring both by path | `lake build` of a module importing `Nock.Eval` and `Ski.Weak` | days |
 | M1 | nouns as the Scott sum; tagged axis pulls; `encNoun`, `decNoun`, opcode 3/4/5 terms with their specs | `pull_tagged`, `inc_spec`, `eq_spec` kernel-checked | 1–2 weeks |
 | M2 | the compiler over opcodes 0–9 on the Hoon-shaped fragment; `embed_value` and `embed_crash` | count-up `dec` and `++dec` run through `runF` to the right outcomes; theorems closed | 3–4 weeks |
-| M3 | `embed_diverges`; `fragment_static` | `countUp_zero_diverges` carried to SKI | 1–2 weeks |
+| M3 | the interpreter fallback pinned and simulated; `embed_value` strong; then `embed_diverges`, `fragment_static` | `nockI_value`, `nockI_crash`; the 63 tests interpreted; `countUp_zero_diverges` carried to SKI | 1–2 weeks |
 | M4 | `nock statement` exe; the verifier's Lean check; the three statements proved on the circuit; rows measured | `release/nock/` with `verify.sh` passing | 2 weeks |
 | M5 | `jet_transport` for `dec` and `add`; jetted proofs; the rows table | the loop collapses; theorem closed | 2–3 weeks |
 | M6 | Zorp comparison; paper draft | numbers in the table; draft to USTJ | 2 weeks |

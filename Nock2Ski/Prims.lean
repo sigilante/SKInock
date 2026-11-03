@@ -1,5 +1,5 @@
 import Nock2Ski.Noun
-import Ski.Front
+import Nock2Ski.Decls
 
 open Term
 open Compose (boolT)
@@ -9,27 +9,29 @@ open BitArith (bl nilT consT consO ttO ffO wnf run)
 # The primitives, read from the compiler's own terms
 
 Milestone M1 of `PLAN.md`, §2.1 and §8: `nock.ski`'s primitives `hd tl cel
-force inc eq app ifn` (and the recursive helpers `incbk eqb eqn` and `loob`)
+force inc eq ifn` (and the recursive helpers `incbk eqb eqn` and `loob`)
 as closed SKI terms, **identical to the terms SKIjack emits**, with their
-specifications over `encNoun` proved by weak reduction.
+specifications over `encNoun` proved by weak reduction.  `app`, M1's
+twelfth equation, now names the interpreter `nockI` and lives in
+`Interp.lean` (M3); its pin and specs are there (`app_cell`, `app_form`).
 
 ## The Front verdict
 
-`nockSrc` is the text of `python/skinock/nock.ski` as committed at
-`91601a3` (the M1 runtime: the three types and twelve equations; the
-interpreter fallback added later is mutually recursive, which SKIjack's
-front end in Lean refuses, and is not M1).  `Front.compileFile` **refuses
-this file** (`compileFile_refuses`): its generation pass `Front.generate`
-(`generate.py`'s `find_object_type`) takes `noun` for an object type,
-because `Cell noun noun` is a constructor with two fields of its own type,
-and then refuses it because `Atom bits` and `Form noun noun noun` beside it
-are not leaves.  skijack's own `find_object_type` raises on the same
-shape; skinock compiles the file with `skijack.compile(src,
-generate_forms=False)`, which skips that pass.  Lexing and parsing succeed,
-so `nockFile` compiles the file the same way: `Front.parseFile` and then
-`Front.compileDecls`, the pipeline of `Front.compileFile` without
-`Front.generate`.  Every term below is pinned to that output by
-`decide +kernel` (`hd_pin`, …, `app_pin`, and the eight constructors), and
+`nockSrc` (`Decls.lean`) is the text of `python/skinock/nock.ski` as
+committed plus the compiler's default for opcode 12.  `Front.compileFile`
+**refuses this file** (`compileFile_refuses`): its generation pass
+`Front.generate` (`generate.py`'s `find_object_type`) takes `noun` for an
+object type, because `Cell noun noun` is a constructor with two fields of
+its own type, and then refuses it because `Atom bits` and `Form noun noun
+noun` beside it are not leaves.  skijack's own `find_object_type` raises
+on the same shape; skinock compiles the file with `skijack.compile(src,
+generate_forms=False)`, which skips that pass.  Lexing and parsing succeed
+(`parse_pin`), so `nockFile` compiles the file the same way:
+`Front.parseFile` and then `Front.compileDecls`, the pipeline of
+`Front.compileFile` without `Front.generate`.  Every term below is pinned
+to that output by `decide +kernel` (`hd_pin`, …, `ifn_pin`, and the eight
+constructors), through `nockFileD`, the compilation of the parsed
+declarations, so that the kernel does not parse the file at each pin;
 `terms/*.ski`, the terms the Python pipeline printed, agree with them
 character for character (`scripts/lean-check.sh` does not re-check this;
 `Front` is the reference).
@@ -63,17 +65,6 @@ namespace Nock2Ski
 -- ---------------------------------------------------------------------------
 -- The source and its compilation
 -- ---------------------------------------------------------------------------
-
-/-- `python/skinock/nock.ski` at commit `91601a3`, as bytes. -/
-def nockSrc : List Nat := [45, 45, 32, 115, 107, 105, 110, 111, 99, 107, 32, 114, 117, 110, 116, 105, 109, 101, 58, 32, 110, 111, 117, 110, 115, 32, 97, 110, 100, 32, 116, 104, 101, 32, 78, 111, 99, 107, 32, 112, 114, 105, 109, 105, 116, 105, 118, 101, 115, 44, 32, 105, 110, 32, 83, 75, 73, 106, 97, 99, 107, 32, 40, 65, 83, 67, 73, 73, 32, 108, 101, 120, 105, 99, 111, 110, 41, 46, 10, 45, 45, 32, 65, 32, 110, 111, 117, 110, 32, 105, 115, 32, 100, 101, 101, 112, 32, 111, 110, 99, 101, 32, 102, 111, 114, 99, 101, 100, 58, 32, 101, 118, 101, 114, 121, 32, 102, 105, 101, 108, 100, 32, 111, 102, 32, 97, 32, 102, 111, 114, 99, 101, 100, 32, 118, 97, 108, 117, 101, 32, 105, 115, 32, 105, 116, 115, 101, 108, 102, 32, 97, 32, 118, 97, 108, 117, 101, 46, 10, 45, 45, 32, 69, 114, 114, 32, 105, 115, 32, 97, 32, 99, 114, 97, 115, 104, 59, 32, 101, 118, 101, 114, 121, 32, 99, 97, 115, 101, 32, 112, 114, 111, 112, 97, 103, 97, 116, 101, 115, 32, 105, 116, 46, 32, 32, 70, 111, 114, 109, 32, 105, 115, 32, 97, 32, 99, 101, 108, 108, 32, 116, 104, 97, 116, 32, 105, 115, 32, 97, 32, 102, 111, 114, 109, 117, 108, 97, 44, 10, 45, 45, 32, 99, 97, 114, 114, 121, 105, 110, 103, 32, 105, 116, 115, 32, 99, 111, 109, 112, 105, 108, 101, 100, 32, 99, 111, 100, 101, 32, 40, 115, 117, 98, 106, 101, 99, 116, 32, 45, 62, 32, 112, 114, 111, 100, 117, 99, 116, 41, 32, 105, 110, 32, 116, 104, 101, 32, 116, 104, 105, 114, 100, 32, 102, 105, 101, 108, 100, 46, 10, 10, 98, 105, 116, 32, 61, 61, 61, 32, 84, 32, 124, 32, 70, 10, 98, 105, 116, 115, 32, 61, 61, 61, 32, 78, 105, 108, 32, 124, 32, 67, 111, 110, 115, 32, 98, 105, 116, 32, 98, 105, 116, 115, 10, 110, 111, 117, 110, 32, 61, 61, 61, 32, 65, 116, 111, 109, 32, 98, 105, 116, 115, 32, 124, 32, 67, 101, 108, 108, 32, 110, 111, 117, 110, 32, 110, 111, 117, 110, 32, 124, 32, 70, 111, 114, 109, 32, 110, 111, 117, 110, 32, 110, 111, 117, 110, 32, 110, 111, 117, 110, 32, 124, 32, 69, 114, 114, 10, 10, 104, 100, 32, 110, 32, 61, 32, 110, 32, 124, 62, 32, 123, 32, 65, 116, 111, 109, 32, 98, 32, 69, 114, 114, 32, 59, 32, 67, 101, 108, 108, 32, 104, 32, 116, 32, 104, 32, 59, 32, 70, 111, 114, 109, 32, 104, 32, 116, 32, 99, 32, 104, 32, 59, 32, 69, 114, 114, 32, 69, 114, 114, 32, 125, 10, 116, 108, 32, 110, 32, 61, 32, 110, 32, 124, 62, 32, 123, 32, 65, 116, 111, 109, 32, 98, 32, 69, 114, 114, 32, 59, 32, 67, 101, 108, 108, 32, 104, 32, 116, 32, 116, 32, 59, 32, 70, 111, 114, 109, 32, 104, 32, 116, 32, 99, 32, 116, 32, 59, 32, 69, 114, 114, 32, 69, 114, 114, 32, 125, 10, 102, 111, 114, 99, 101, 32, 120, 32, 107, 32, 61, 32, 120, 32, 124, 62, 32, 123, 32, 65, 116, 111, 109, 32, 98, 32, 40, 107, 32, 40, 65, 116, 111, 109, 32, 98, 41, 41, 32, 59, 32, 67, 101, 108, 108, 32, 104, 32, 116, 32, 40, 107, 32, 40, 67, 101, 108, 108, 32, 104, 32, 116, 41, 41, 32, 59, 32, 70, 111, 114, 109, 32, 104, 32, 116, 32, 99, 32, 40, 107, 32, 40, 70, 111, 114, 109, 32, 104, 32, 116, 32, 99, 41, 41, 32, 59, 32, 69, 114, 114, 32, 69, 114, 114, 32, 125, 10, 99, 101, 108, 32, 110, 32, 61, 32, 110, 32, 124, 62, 32, 123, 32, 65, 116, 111, 109, 32, 98, 32, 40, 65, 116, 111, 109, 32, 40, 67, 111, 110, 115, 32, 84, 32, 78, 105, 108, 41, 41, 32, 59, 32, 67, 101, 108, 108, 32, 104, 32, 116, 32, 40, 65, 116, 111, 109, 32, 78, 105, 108, 41, 32, 59, 32, 70, 111, 114, 109, 32, 104, 32, 116, 32, 99, 32, 40, 65, 116, 111, 109, 32, 78, 105, 108, 41, 32, 59, 32, 69, 114, 114, 32, 69, 114, 114, 32, 125, 10, 105, 110, 99, 98, 107, 32, 98, 32, 107, 32, 61, 32, 98, 32, 124, 62, 32, 123, 32, 78, 105, 108, 32, 40, 107, 32, 40, 67, 111, 110, 115, 32, 84, 32, 78, 105, 108, 41, 41, 32, 59, 32, 67, 111, 110, 115, 32, 120, 32, 114, 32, 40, 120, 32, 124, 62, 32, 123, 32, 84, 32, 40, 105, 110, 99, 98, 107, 32, 114, 32, 40, 92, 114, 50, 46, 32, 107, 32, 40, 67, 111, 110, 115, 32, 70, 32, 114, 50, 41, 41, 41, 32, 59, 32, 70, 32, 40, 107, 32, 40, 67, 111, 110, 115, 32, 84, 32, 114, 41, 41, 32, 125, 41, 32, 125, 10, 105, 110, 99, 32, 110, 32, 61, 32, 110, 32, 124, 62, 32, 123, 32, 65, 116, 111, 109, 32, 98, 32, 40, 105, 110, 99, 98, 107, 32, 98, 32, 40, 92, 98, 50, 46, 32, 65, 116, 111, 109, 32, 98, 50, 41, 41, 32, 59, 32, 67, 101, 108, 108, 32, 104, 32, 116, 32, 69, 114, 114, 32, 59, 32, 70, 111, 114, 109, 32, 104, 32, 116, 32, 99, 32, 69, 114, 114, 32, 59, 32, 69, 114, 114, 32, 69, 114, 114, 32, 125, 10, 101, 113, 98, 32, 97, 32, 98, 32, 61, 32, 97, 32, 124, 62, 32, 123, 32, 78, 105, 108, 32, 40, 98, 32, 124, 62, 32, 123, 32, 78, 105, 108, 32, 84, 32, 59, 32, 67, 111, 110, 115, 32, 121, 32, 115, 32, 70, 32, 125, 41, 32, 59, 32, 67, 111, 110, 115, 32, 120, 32, 114, 32, 40, 98, 32, 124, 62, 32, 123, 32, 78, 105, 108, 32, 70, 32, 59, 32, 67, 111, 110, 115, 32, 121, 32, 115, 32, 40, 120, 32, 124, 62, 32, 123, 32, 84, 32, 40, 121, 32, 124, 62, 32, 123, 32, 84, 32, 40, 101, 113, 98, 32, 114, 32, 115, 41, 32, 59, 32, 70, 32, 70, 32, 125, 41, 32, 59, 32, 70, 32, 40, 121, 32, 124, 62, 32, 123, 32, 84, 32, 70, 32, 59, 32, 70, 32, 40, 101, 113, 98, 32, 114, 32, 115, 41, 32, 125, 41, 32, 125, 41, 32, 125, 41, 32, 125, 10, 101, 113, 110, 32, 97, 32, 98, 32, 61, 32, 97, 32, 124, 62, 32, 123, 32, 65, 116, 111, 109, 32, 112, 32, 40, 98, 32, 124, 62, 32, 123, 32, 65, 116, 111, 109, 32, 113, 32, 40, 101, 113, 98, 32, 112, 32, 113, 41, 32, 59, 32, 67, 101, 108, 108, 32, 104, 32, 116, 32, 70, 32, 59, 32, 70, 111, 114, 109, 32, 104, 32, 116, 32, 99, 32, 70, 32, 59, 32, 69, 114, 114, 32, 70, 32, 125, 41, 32, 59, 32, 67, 101, 108, 108, 32, 104, 32, 116, 32, 40, 98, 32, 124, 62, 32, 123, 32, 65, 116, 111, 109, 32, 113, 32, 70, 32, 59, 32, 67, 101, 108, 108, 32, 104, 50, 32, 116, 50, 32, 40, 40, 101, 113, 110, 32, 104, 32, 104, 50, 41, 32, 124, 62, 32, 123, 32, 84, 32, 40, 101, 113, 110, 32, 116, 32, 116, 50, 41, 32, 59, 32, 70, 32, 70, 32, 125, 41, 32, 59, 32, 70, 111, 114, 109, 32, 104, 50, 32, 116, 50, 32, 99, 32, 40, 40, 101, 113, 110, 32, 104, 32, 104, 50, 41, 32, 124, 62, 32, 123, 32, 84, 32, 40, 101, 113, 110, 32, 116, 32, 116, 50, 41, 32, 59, 32, 70, 32, 70, 32, 125, 41, 32, 59, 32, 69, 114, 114, 32, 70, 32, 125, 41, 32, 59, 32, 70, 111, 114, 109, 32, 104, 32, 116, 32, 99, 32, 40, 98, 32, 124, 62, 32, 123, 32, 65, 116, 111, 109, 32, 113, 32, 70, 32, 59, 32, 67, 101, 108, 108, 32, 104, 50, 32, 116, 50, 32, 40, 40, 101, 113, 110, 32, 104, 32, 104, 50, 41, 32, 124, 62, 32, 123, 32, 84, 32, 40, 101, 113, 110, 32, 116, 32, 116, 50, 41, 32, 59, 32, 70, 32, 70, 32, 125, 41, 32, 59, 32, 70, 111, 114, 109, 32, 104, 50, 32, 116, 50, 32, 99, 50, 32, 40, 40, 101, 113, 110, 32, 104, 32, 104, 50, 41, 32, 124, 62, 32, 123, 32, 84, 32, 40, 101, 113, 110, 32, 116, 32, 116, 50, 41, 32, 59, 32, 70, 32, 70, 32, 125, 41, 32, 59, 32, 69, 114, 114, 32, 70, 32, 125, 41, 32, 59, 32, 69, 114, 114, 32, 70, 32, 125, 10, 108, 111, 111, 98, 32, 120, 32, 61, 32, 120, 32, 124, 62, 32, 123, 32, 84, 32, 40, 65, 116, 111, 109, 32, 78, 105, 108, 41, 32, 59, 32, 70, 32, 40, 65, 116, 111, 109, 32, 40, 67, 111, 110, 115, 32, 84, 32, 78, 105, 108, 41, 41, 32, 125, 10, 101, 113, 32, 97, 32, 98, 32, 61, 32, 108, 111, 111, 98, 32, 40, 101, 113, 110, 32, 97, 32, 98, 41, 10, 105, 102, 110, 32, 99, 32, 121, 32, 110, 32, 61, 32, 99, 32, 124, 62, 32, 123, 32, 65, 116, 111, 109, 32, 98, 32, 40, 98, 32, 124, 62, 32, 123, 32, 78, 105, 108, 32, 121, 32, 59, 32, 67, 111, 110, 115, 32, 120, 32, 114, 32, 40, 114, 32, 124, 62, 32, 123, 32, 78, 105, 108, 32, 40, 120, 32, 124, 62, 32, 123, 32, 84, 32, 110, 32, 59, 32, 70, 32, 69, 114, 114, 32, 125, 41, 32, 59, 32, 67, 111, 110, 115, 32, 122, 32, 113, 32, 69, 114, 114, 32, 125, 41, 32, 125, 41, 32, 59, 32, 67, 101, 108, 108, 32, 104, 32, 116, 32, 69, 114, 114, 32, 59, 32, 70, 111, 114, 109, 32, 104, 32, 116, 32, 99, 32, 69, 114, 114, 32, 59, 32, 69, 114, 114, 32, 69, 114, 114, 32, 125, 10, 97, 112, 112, 32, 102, 32, 120, 32, 61, 32, 102, 32, 124, 62, 32, 123, 32, 65, 116, 111, 109, 32, 98, 32, 69, 114, 114, 32, 59, 32, 67, 101, 108, 108, 32, 104, 32, 116, 32, 69, 114, 114, 32, 59, 32, 70, 111, 114, 109, 32, 104, 32, 116, 32, 99, 32, 40, 99, 32, 120, 41, 32, 59, 32, 69, 114, 114, 32, 69, 114, 114, 32, 125, 10]
-
-/-- The file compiled as skinock compiles it (`generate_forms=False`):
-    parsed, then every declaration compiled, without the object-type pass. -/
-def nockFile : Option (List (Nm × Term)) :=
-  (Front.parseFile nockSrc).bind fun ds => (Front.compileDecls ds).map (·.1)
-
-/-- The file parses. -/
-theorem nockSrc_parses : (Front.parseFile nockSrc).isSome = true := by decide +kernel
 
 /-- `Front.compileFile` refuses it: `noun` has the object type's shape with
     non-leaf constructors beside the application. -/
@@ -168,12 +159,6 @@ def ifnSrc : Src :=
                                                  ⬝ₛ (sl 6 (sl 7 (g ErrC))))))))
     ⬝ₛ (sl 8 (sl 9 (g ErrC))) ⬝ₛ (sl 10 (sl 11 (sl 12 (g ErrC)))) ⬝ₛ (g ErrC)
 
-/-- `app f x = f |> { Atom b Err ; Cell h t Err ; Form h t c (c x) ; Err Err }`
-    (M1's `app`: a plain cell in formula position is a crash). -/
-def appSrc : Src :=
-  (v 0) ⬝ₛ (sl 2 (g ErrC)) ⬝ₛ (sl 3 (sl 4 (g ErrC))) ⬝ₛ (sl 5 (sl 6 (sl 7 ((v 7) ⬝ₛ (v 1)))))
-    ⬝ₛ (g ErrC)
-
 -- ---------------------------------------------------------------------------
 -- The terms
 -- ---------------------------------------------------------------------------
@@ -209,33 +194,50 @@ def eqGO : OTerm := absN [0, 1] (comp [0, 1] (eqSrc (v 32) (v 33)))
 def eqT : Term := eqGO.close (updC (updC (fun _ => K) 32 loobT) 33 eqnT)
 
 def ifnT : Term := toTerm (compDef [0, 1, 2] ifnSrc)
-def appT : Term := toTerm (compDef [0, 1] appSrc)
 
 -- ---------------------------------------------------------------------------
 -- The terms are the compiler's
 -- ---------------------------------------------------------------------------
 
-theorem T_pin : Front.termOf nockFile (nm! "T") = some TC := by decide +kernel
-theorem F_pin : Front.termOf nockFile (nm! "F") = some FC := by decide +kernel
-theorem Nil_pin : Front.termOf nockFile (nm! "Nil") = some NilC := by decide +kernel
-theorem Cons_pin : Front.termOf nockFile (nm! "Cons") = some ConsC := by decide +kernel
-theorem Atom_pin : Front.termOf nockFile (nm! "Atom") = some AtomC := by decide +kernel
-theorem Cell_pin : Front.termOf nockFile (nm! "Cell") = some CellC := by decide +kernel
-theorem Form_pin : Front.termOf nockFile (nm! "Form") = some FormC := by decide +kernel
-theorem Err_pin : Front.termOf nockFile (nm! "Err") = some ErrC := by decide +kernel
+theorem T_pin : Front.termOf nockFile (nm! "T") = some TC := by
+  rw [nockFile_eq]; decide +kernel
+theorem F_pin : Front.termOf nockFile (nm! "F") = some FC := by
+  rw [nockFile_eq]; decide +kernel
+theorem Nil_pin : Front.termOf nockFile (nm! "Nil") = some NilC := by
+  rw [nockFile_eq]; decide +kernel
+theorem Cons_pin : Front.termOf nockFile (nm! "Cons") = some ConsC := by
+  rw [nockFile_eq]; decide +kernel
+theorem Atom_pin : Front.termOf nockFile (nm! "Atom") = some AtomC := by
+  rw [nockFile_eq]; decide +kernel
+theorem Cell_pin : Front.termOf nockFile (nm! "Cell") = some CellC := by
+  rw [nockFile_eq]; decide +kernel
+theorem Form_pin : Front.termOf nockFile (nm! "Form") = some FormC := by
+  rw [nockFile_eq]; decide +kernel
+theorem Err_pin : Front.termOf nockFile (nm! "Err") = some ErrC := by
+  rw [nockFile_eq]; decide +kernel
 
-theorem hd_pin : Front.termOf nockFile (nm! "hd") = some hdT := by decide +kernel
-theorem tl_pin : Front.termOf nockFile (nm! "tl") = some tlT := by decide +kernel
-theorem force_pin : Front.termOf nockFile (nm! "force") = some forceT := by decide +kernel
-theorem cel_pin : Front.termOf nockFile (nm! "cel") = some celT := by decide +kernel
-theorem incbk_pin : Front.termOf nockFile (nm! "incbk") = some incbkT := by decide +kernel
-theorem inc_pin : Front.termOf nockFile (nm! "inc") = some incT := by decide +kernel
-theorem eqb_pin : Front.termOf nockFile (nm! "eqb") = some eqbT := by decide +kernel
-theorem eqn_pin : Front.termOf nockFile (nm! "eqn") = some eqnT := by decide +kernel
-theorem loob_pin : Front.termOf nockFile (nm! "loob") = some loobT := by decide +kernel
-theorem eq_pin : Front.termOf nockFile (nm! "eq") = some eqT := by decide +kernel
-theorem ifn_pin : Front.termOf nockFile (nm! "ifn") = some ifnT := by decide +kernel
-theorem app_pin : Front.termOf nockFile (nm! "app") = some appT := by decide +kernel
+theorem hd_pin : Front.termOf nockFile (nm! "hd") = some hdT := by
+  rw [nockFile_eq]; decide +kernel
+theorem tl_pin : Front.termOf nockFile (nm! "tl") = some tlT := by
+  rw [nockFile_eq]; decide +kernel
+theorem force_pin : Front.termOf nockFile (nm! "force") = some forceT := by
+  rw [nockFile_eq]; decide +kernel
+theorem cel_pin : Front.termOf nockFile (nm! "cel") = some celT := by
+  rw [nockFile_eq]; decide +kernel
+theorem incbk_pin : Front.termOf nockFile (nm! "incbk") = some incbkT := by
+  rw [nockFile_eq]; decide +kernel
+theorem inc_pin : Front.termOf nockFile (nm! "inc") = some incT := by
+  rw [nockFile_eq]; decide +kernel
+theorem eqb_pin : Front.termOf nockFile (nm! "eqb") = some eqbT := by
+  rw [nockFile_eq]; decide +kernel
+theorem eqn_pin : Front.termOf nockFile (nm! "eqn") = some eqnT := by
+  rw [nockFile_eq]; decide +kernel
+theorem loob_pin : Front.termOf nockFile (nm! "loob") = some loobT := by
+  rw [nockFile_eq]; decide +kernel
+theorem eq_pin : Front.termOf nockFile (nm! "eq") = some eqT := by
+  rw [nockFile_eq]; decide +kernel
+theorem ifn_pin : Front.termOf nockFile (nm! "ifn") = some ifnT := by
+  rw [nockFile_eq]; decide +kernel
 
 -- ---------------------------------------------------------------------------
 -- Curry's Y, as skijack emits it
@@ -716,40 +718,6 @@ theorem ifn_form (h t c y n : Term) : WSteps (ifnT ⬝ formT h t c ⬝ y ⬝ n) 
 
 theorem ifn_err (y n : Term) : WSteps (ifnT ⬝ errT ⬝ y ⬝ n) errT := by
   have e := run ifn_err_run (envR [K, K, y, n])
-  simp only [OTerm.close, close_toO, close_errO] at e
-  exact e
-
--- ---------------------------------------------------------------------------
--- app: a formula applied to a subject
--- ---------------------------------------------------------------------------
-
-theorem app_form_run : wnf 100 (appT.toO ⬝ₒ formO (.var 11) (.var 12) (.var 13) ⬝ₒ .var 14) =
-    .var 13 ⬝ₒ .var 14 := by decide +kernel
-theorem app_atom_run : wnf 100 (appT.toO ⬝ₒ atomO (.var 11) ⬝ₒ .var 14) = errO := by decide +kernel
-theorem app_cell_run : wnf 100 (appT.toO ⬝ₒ cellO (.var 11) (.var 12) ⬝ₒ .var 14) = errO := by
-  decide +kernel
-theorem app_err_run : wnf 100 (appT.toO ⬝ₒ errO ⬝ₒ .var 14) = errO := by decide +kernel
-
-/-- **`app`** runs a `Form`'s code on the subject. -/
-theorem app_form (h t c x : Term) : WSteps (appT ⬝ formT h t c ⬝ x) (c ⬝ x) := by
-  have e := run app_form_run (envR [K, h, t, c, x])
-  simp only [OTerm.close, close_toO, close_formO] at e
-  exact e
-
-/-- **`app`** crashes on a plain noun (M1: no interpreter fallback). -/
-theorem app_noun (n : Noun) (x : Term) : WSteps (appT ⬝ encNoun n ⬝ x) errT := by
-  cases n with
-  | atom m =>
-    have e := run app_atom_run (envR [K, bitsT (bits m), K, K, x])
-    simp only [OTerm.close, close_toO, close_atomO, close_errO] at e
-    exact e
-  | cell h t =>
-    have e := run app_cell_run (envR [K, encNoun h, encNoun t, K, x])
-    simp only [OTerm.close, close_toO, close_cellO, close_errO] at e
-    exact e
-
-theorem app_err (x : Term) : WSteps (appT ⬝ errT ⬝ x) errT := by
-  have e := run app_err_run (envR [K, K, K, K, x])
   simp only [OTerm.close, close_toO, close_errO] at e
   exact e
 

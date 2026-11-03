@@ -155,19 +155,25 @@ class Compiler:
 
 
 def scry_def(c: "Compiler", facts) -> str:
-    """`scry x p = …`: a resolver over a fact table [((ref, path), value)…],
-    compared structurally with `eq`; a miss is a crash (lean-nock's
-    semantics for opcode 12, Vere's outside `+mock`)."""
+    """The interpreter's opcode 12, `op12 ev s t`, and the resolver it
+    consults.  Without a fact table opcode 12 is malformed (lean-nock, Vere
+    outside `+mock`): `op12 ev s t = Err`, the crash before the operands, as
+    `malformed` and the compiled code have it.  With a table
+    [((ref, path), value)…], `op12` forces both operands and `scry x p`
+    looks them up, compared structurally with `eq`; a miss is a crash."""
+    if not facts:
+        return "op12 ev s t = Err"
     body = "Err"
-    for (ref, path), value in reversed(list(facts or [])):
+    for (ref, path), value in reversed(list(facts)):
         body = (f"(ifn (eq x {c.lit(ref)}) (ifn (eq p {c.lit(path)}) {c.lit(value)} {body}) {body})")
-    return f"scry x p = {body}"
+    return "\n".join([f"scry x p = {body}",
+                      "op12 ev s t = cel2 t (\\ref. \\pth. force (ev s ref) (\\x. force (ev s pth) (\\p. scry x p)))"])
 
 
 def program(formula: N.Noun, subject: N.Noun | None = None, code: bool = True,
             scry=None) -> str:
-    """The SKIjack source: the library, the resolver, `run s = …`, and
-    `main := run subj`.  With `code=False` literal cells are plain `Cell`s
+    """The SKIjack source: the library, `op12` (and the resolver), `run s = …`,
+    and `main := run subj`.  With `code=False` literal cells are plain `Cell`s
     (no `Form`), so a formula reaching opcode 2 or 9 from data is interpreted
     by `nockI`.  `scry` is None (opcode 12 crashes) or a fact table
     [((ref, path), value)…] that opcode 12 consults."""

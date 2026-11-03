@@ -1,6 +1,15 @@
 import Nock2Ski.Basic
 import Nock2Ski.Noun
+import Nock2Ski.Decls
 import Nock2Ski.Prims
+import Nock2Ski.InterpDefs
+import Nock2Ski.InterpEq
+import Nock2Ski.InterpEqI
+import Nock2Ski.InterpPins
+import Nock2Ski.InterpPinsE
+import Nock2Ski.InterpRuns
+import Nock2Ski.Interp
 import Nock2Ski.Compile
 import Nock2Ski.Enc
+import Nock2Ski.InterpEnc
 import Nock2Ski.Embed
