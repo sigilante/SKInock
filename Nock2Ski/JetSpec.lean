@@ -1,6 +1,7 @@
 import Nock.Eval
 import Nock.Notation
 
+open Nock
 open Noun
 
 /-!
@@ -10,21 +11,22 @@ lean-nock states a Λ word's leaf contract as `leaf_correct w : NockEval S
 (phi w) (cw w S)` for every subject `S` (`Nock/Comp.lean`): the word's Nock
 formula `phi w` evaluates to exactly what the C model `cw w` returns, a
 value or a crash, on every noun.  lean-ski licenses a data jet by a
-`Contract` and `Implements` (`Ski/DataJet.lean`).  The two cannot meet in
-one Lean module: `Nock.Comp` imports `Nock.Fuel`, whose root-level
-`Diverges` (`Nock/Fuel.lean:678`) clashes with `Ski.Basic`'s
-(`Ski/Basic.lean:136`), so no module that sees `Word`, `phi` or `cw` can see
-`Term`.
+`Contract` and `Implements` (`Ski/DataJet.lean`).
 
-This module is the vocabulary both sides share, as `Nock2Ski/Value.lean` is
-for the probe step: it imports lean-nock's `Nock.Eval` and nothing of
-lean-ski.
+This module is the vocabulary of the transport, as `Nock2Ski/Value.lean`
+is for the probe step: it imports lean-nock's `Nock.Eval` and nothing of
+lean-ski.  (Until lean-nock's `namespace Nock`, its branch
+`namespace-nock`, `Nock.Comp` reached `Nock.Fuel`, whose root-level
+`Diverges` clashed with `Ski.Basic`'s, so no module that saw `Word`, `phi`
+or `cw` could see `Term`, and this module was where the two sides met
+through one constant.  Now `Nock2Ski/JetTransport.lean` imports
+`Nock2Ski/JetWord.lean` directly and the instances are unconditional.)
 
 - `Leaf f c`: the formula `f` evaluates on every subject to the total model
   `c`'s outcome, lean-nock's leaf-correctness shape.  `Nock2Ski/JetWord.lean`
-  (lean-nock only) proves it for the words from `leaf_correct`;
-  `Nock2Ski/JetTransport.lean` (lean-nock's `Nock.Eval` and lean-ski) takes
-  it as the hypothesis of `jet_transport`.
+  proves it for the words from `leaf_correct`; `Nock2Ski/JetTransport.lean`
+  takes it as the hypothesis of `jet_transport` and composes the two in
+  `dec_transport`, `add_transport`.
 - `decF`, `addF`: the Nock formulas of the Λ words `dec` and `add`, `phi .dec`
   and `phi .add` written out (lean-nock's Table C: the guarded count-up
   decrement lifted to a stack word, and the guarded inc-loop over a pair);

@@ -1,5 +1,6 @@
 import Nock2Ski.Pred
 
+open Nock
 open Term
 open Compose (boolT pairT)
 open BitArith (val)
@@ -34,10 +35,11 @@ value on the filled skeleton makes the verifier accept the bits.
 bits shows the atoms (below `2^w` each) on whose cell the compiled formula
 is `eqn`-equal to `p`'s encoding, hence any Nock value on that subject is
 `p` and Nock does not crash on it (`nock_pred_sound_val`,
-`nock_pred_sound_crash`, over any subject).  As in M4c, the join to
-lean-ski's `Circuit.predExport_sound` is read across the two environments;
-Nock's termination on the hidden subject is M4e's (`Nock2Ski/Converse.lean`,
-`nock_predS_sound_nock`, `nock_pred2_sound_nock`).
+`nock_pred_sound_crash`, over any subject).  Nock's termination on the
+hidden subject is M4e's (`Nock2Ski/Converse.lean`, `nock_predS_sound_nock`,
+`nock_pred2_sound_nock`), and the join to lean-ski's
+`Circuit.predExport_sound` is `Nock2Ski/Circuit.lean`'s `predS_proof_nock`,
+`pred2_proof_nock`.
 -/
 
 namespace Nock2Ski

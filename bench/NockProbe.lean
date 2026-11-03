@@ -3,6 +3,8 @@ import Ski.JetTable
 import Ski.ProbeText
 import Nock2Ski.NounText
 
+open Nock
+
 /-!
 # nockprobe: the public product as a probe plan, and the probe table checked
 

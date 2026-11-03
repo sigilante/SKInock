@@ -2,23 +2,23 @@ import Nock.Comp
 import Nock.Mock
 import Nock2Ski.JetSpec
 
+open Nock
 open Noun
 
 /-!
 # The Λ words' leaf contracts, in the shared vocabulary (M5, the Nock side)
 
-This module imports lean-nock only (`Nock.Comp` reaches `Nock.Fuel`, which
-cannot be imported beside `Ski.Basic`; `Nock2Ski/JetSpec.lean`).  It reads
+This module imports lean-nock only (`Nock.Comp`, `Nock.Mock`).  It reads
 lean-nock's leaf proofs off as `Leaf` statements about the formulas and
 models `JetSpec.lean` writes out, which `Nock2Ski/JetTransport.lean`
-consumes on the lean-ski side:
+imports and composes with `jet_transport`:
 
 - `leaf_word w : Leaf (phi w) (cw w)` is `leaf_correct w` itself;
 - `decF_eq`, `addF_eq`: the formulas of `JetSpec.lean` are `phi .dec` and
   `phi .add` (`rfl`); `decC_eq`, `addC_eq`: the models are `cw .dec` and
   `cw .add` (by cases on the subject);
-- `leaf_dec : Leaf decF decC` and `leaf_add : Leaf addF addC`, the hypotheses
-  of `JetTransport.lean`'s `dec_transport` and `add_transport`.
+- `leaf_dec : Leaf decF decC` and `leaf_add : Leaf addF addC`, which
+  `JetTransport.lean`'s `dec_transport` and `add_transport` compose in.
 
 lean-nock's three-valued contract (`Nock/Mock.lean`): `word_jet_sound w :
 ThreeValued (phi w) (wordJet w)`, the C model as a jet that returns or
@@ -51,12 +51,12 @@ theorem addC_eq : ∀ S, addC S = cw .add S
   | cell (atom _) (cell (cell _ _) _) => rfl
   | cell (atom _) (cell (atom _) _) => rfl
 
-/-- **Table C's `dec`, as the hypothesis of `dec_transport`.** -/
+/-- **Table C's `dec`, in the shape `dec_transport` composes in.** -/
 theorem leaf_dec : Leaf decF decC := fun S => by
   rw [decF_eq, decC_eq]
   exact leaf_correct .dec S
 
-/-- **Table C's `add`, as the hypothesis of `add_transport`.** -/
+/-- **Table C's `add`, in the shape `add_transport` composes in.** -/
 theorem leaf_add : Leaf addF addC := fun S => by
   rw [addF_eq, addC_eq]
   exact leaf_correct .add S

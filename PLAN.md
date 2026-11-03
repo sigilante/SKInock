@@ -11,8 +11,25 @@ Started 2026-11-03. Open question C5 of `../OPEN-QUESTIONS.md`. Companion paper:
   aviary and on Avon. Hoon's compiled `++dec` runs: about 220 contractions per Nock step,
   3,000 DAG nodes after hash-consing literals and formula bodies (the first version
   duplicated code per nesting level and reached 1.1 M atoms).
-- **M0 done**: lean-nock builds on Lean 4.31.0 on its `lean-4.31` branch (four edits, all
-  six gates pass, uncommitted there); skinock's Lake package requires both by path.
+- **M0 done**: lean-nock builds on Lean 4.31.0 (merged to its master); skinock's Lake
+  package requires both by path.
+- **One environment** (2026-11-04, lean-nock branch `namespace-nock`): every lean-nock
+  declaration is under `namespace Nock` (`Nock.Outcome`, `Nock.Diverges`, `Nock.Term`,
+  `Nock.Word`, …; nothing re-exported), so `Nock.Fuel`, `Nock.Comp`, `Nock.Mock`,
+  `Nock.HoonOne` import beside `Ski.Basic`, `Ski.Words` and `Ski.Circuit`. skinock's modules
+  `open Nock`; the joins below that were read across two Lean environments are now
+  theorems: `Nock2Ski/Circuit.lean` (`probe_proof_nock`, `probe_table_nock`,
+  `pred_proof_nock`, `predS_proof_nock`, `pred2_proof_nock`: lean-ski's
+  `Circuit.probeExport_sound_tree` and `Circuit.predExport_sound` composed with
+  `probe_value`/`probe_decodes_nock` and `nock_pred*_sound_nock`), `JetTransport.lean`
+  (`dec_transport`, `add_transport` unconditional, `JetWord` imported), and
+  `Nock2Ski/PredNock.lean` (the released statements' completeness from lean-nock's
+  `countUp_correct`, and from `nockF_sound` on `decide +kernel` for the Hoon rows: the
+  benchmark's `++dec` and `++add` batteries differ from lean-nock's `decBat` in the `%fast`
+  clue and from `addBat` in the context layout, so `dec_correct`/`add_correct` do not
+  compose). `Value.lean`, `JetSpec.lean` and `Pred.lean`'s `boolsT` remain as the
+  vocabularies the light and heavy modules share; `PredText.lean`'s copies of
+  `ComposedText` remain (tooling, byte-checked by ski-air).
 - **Measured** (§7 item 1, first numbers): 150–270 contractions per Nock step on aviary's
   copy mode, 110–170 on Avon's share mode, across dec, add, factorial, fibonacci, ackermann
   and bigslot; Avon runs dec 10,000 (16.8 M contractions) in 0.3 s from the `dag` form.
@@ -109,10 +126,10 @@ Started 2026-11-03. Open question C5 of `../OPEN-QUESTIONS.md`. Companion paper:
   check. Count-up `dec` at hidden 7 → 6: 42,221 rows, CPU 2^16, memory 2^17, 5.3 s, 762 KB
   proof, verified in 1 s; Hoon's `++dec` with the sample from the subject, hidden 12 → 11:
   101,927 rows, 2^17, 2^18, 10.0 s, 818 KB (the shared verifier 63,223 cells). Found: the
-  two libraries cannot be imported together (`Outcome` in `Ski/Words.lean:157` and
+  two libraries could not be imported together (`Outcome` in `Ski/Words.lean:157` and
   `Nock/Eval.lean:62`; `Diverges` in `Nock/Fuel.lean:678` and `Ski/Basic.lean:136`), so the
-  composition with `Circuit.predExport_sound` is by inspection and `boolsT`, `predStmt`,
-  `publicTextC` are copied; a namespace in either repository would close it.
+  composition with `Circuit.predExport_sound` was by inspection and `boolsT`, `predStmt`,
+  `publicTextC` copied; lean-nock's `namespace Nock` closed it (`pred_proof_nock`, above).
 - **M4d done** (`Nock2Ski/PredSkel.lean`, `bench/NockPred.lean`, `release/nock/hidden/`,
   2026-11-04): a **cell-shaped** hidden subject. The subject is a public skeleton `Skel`
   (`hole w` a hidden atom of `w` bits, `lit n` a public noun, `cell l r`); the circuit holds
@@ -168,8 +185,8 @@ Started 2026-11-03. Open question C5 of `../OPEN-QUESTIONS.md`. Companion paper:
   : DecV t.toO (nounV p) → ValueIs t p`; `probe_sound`/`probe_check` from lean-ski's
   theorems; and on the Nock side `probe_decodes_nock : ValueIs (compiled f s) p → NockEval
   s f (.val p)` (`_shared` too) from `embed_outcome`, `probe_complete_nock` for atom
-  products. The join is read across the two environments through `Value.lean`'s `ValueIs`
-  (one constant both sides import; nothing copied). `lake exe nockprobe plan|term|jets|
+  products. The join was read across the two environments through `Value.lean`'s `ValueIs`
+  (one constant both sides import; nothing copied); now `probe_proof_nock`, above. `lake exe nockprobe plan|term|jets|
   check`; Avon's `witness --plan` (its plan reader is generic) ran the segments for
   `countup_dec_7` (6: 8 segments, 12,099 contractions, 29,829 rows) and `hoon_dec_12` (11:
   10 segments, 33,165, 82,203), and Lean's `Air.checkPA` accepts both tables (and the runs
@@ -208,10 +225,10 @@ Started 2026-11-03. Open question C5 of `../OPEN-QUESTIONS.md`. Companion paper:
   two-valued, divergence has no encoding and no row (`embed_diverges`), and for the words it
   does not occur (`word_crash_total`), so `Leaf` is the whole contract; `formContract f` on
   `Dom f = {S // ∃ o, NockEval S f o}` with Nock's outcome as spec, `jet_transport_dom` with no
-  hypothesis, is the restriction to the domain. The join: `Nock.Comp` reaches `Nock.Fuel`
-  (root `Diverges`) and cannot be imported beside `Ski.Basic`, but `Ski.DataJet` can beside
-  `Nock.Eval`; `JetSpec.lean` (lean-nock only) is the shared vocabulary, `Leaf decF decC` one
-  constant, as `Value.lean` joins the probe step. Not built, by the user's hold: the circuit
+  hypothesis, is the restriction to the domain. The join, when `Nock.Comp` could not be
+  imported beside `Ski.Basic`: `JetSpec.lean` (lean-nock only) as the shared vocabulary,
+  `Leaf decF decC` one constant, as `Value.lean` joined the probe step; now `dec_transport`
+  is unconditional (above). Not built, by the user's hold: the circuit
   of the transported `dec` data jet (lean-ski's data-jet path needs a precompile computing
   `spec`), and any Avon C jet. **Jetted proofs** with lean-ski's existing supercombinator
   jets (code jets of SKIlark's templates matched in the Nock terms: 9,259 roots in the

@@ -1,6 +1,7 @@
 import Nock2Ski.Converse
 import Nock2Ski.Value
 
+open Nock
 open Term
 
 /-!
@@ -31,15 +32,14 @@ This module carries `ValueIs` to Nock:
   (an atom's encoding is `encNoun`'s, `Enc.atom_inv`; a cell product's
   term may be a `Form`, which no probe tree reads, see `ProbeTree.lean`).
 
-**The join is read across two Lean environments**, as M4c's (`README.md`,
-"Proofs"): `Ski.ProbeTree` reaches `Ski.Words`, whose root-level `Outcome`
-(`Ski/Words.lean:157`) clashes with lean-nock's (`Nock/Eval.lean:62`), so
-`Nock2Ski/ProbeTree.lean` (lean-ski's `DecV`, `AcceptsP`, `checkPA`) and
-this module (`NockEval`) cannot be imported together.  They meet in
-`Nock2Ski/Value.lean`, which both import: `ValueIs` is one constant, the
-conclusion of `probe_sound`/`probe_check` there and the hypothesis of
-`probe_decodes_nock` here; `encNoun` and `WSteps` likewise for
-completeness.  Nothing is copied.
+**The join** is `Nock2Ski/Circuit.lean`: `probe_proof_nock` composes
+lean-ski's `Circuit.probeExport_sound_tree` with `probe_value`
+(`Nock2Ski/ProbeTree.lean`) and `probe_decodes_nock`, and
+`probe_table_nock` the checker's `probe_check` with it.  `ValueIs`
+(`Nock2Ski/Value.lean`) remains the hand-off between the two modules, which
+each import one side only.  (Until lean-nock's `namespace Nock` (its branch `namespace-nock`)
+`Ski.ProbeTree` reached `Ski.Words`, whose root-level `Outcome` clashed with
+lean-nock's, and the composition was read across two Lean environments.)
 
 So an accepted probe table for `nounPlan p` on a row's term is a proof of
 `NockEval s f (.val p)` with `p` a public input of the proof (its plan),

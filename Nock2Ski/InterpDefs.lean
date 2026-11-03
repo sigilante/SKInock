@@ -1,5 +1,6 @@
 import Nock2Ski.Prims
 
+open Nock
 open Term
 open Compose (boolT)
 open BitArith (bl nilT consT consO ttO ffO wnf run)

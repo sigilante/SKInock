@@ -3,6 +3,7 @@ import Ski.Converse
 import Ski.Realize
 import Nock2Ski.Value
 
+open Nock
 open Term Probe
 open BitArith (consO pairO nilT consT bl)
 
@@ -54,8 +55,9 @@ has when its term is a `Cell` (`probe_complete`: `WSteps t (encNoun p)`).
   roots gives `ValueIs t p`, by `air_probe_sound`; `probe_check`: the same
   of `Air.checkPA`, the checker over arrays (`lake exe nockprobe check`).
 
-`ValueIs` is the hand-off to `Nock2Ski/Probe.lean`, which cannot be
-imported here (it needs `NockEval`; see `Nock2Ski/Value.lean`).
+`ValueIs` is the hand-off to `Nock2Ski/Probe.lean`, which carries it to
+`NockEval`; `Nock2Ski/Circuit.lean` imports both and composes them with
+lean-ski's `Circuit.probeExport_sound_tree` (`probe_proof_nock`).
 -/
 
 set_option linter.unusedSectionVars false

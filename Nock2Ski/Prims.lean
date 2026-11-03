@@ -1,6 +1,7 @@
 import Nock2Ski.Noun
 import Nock2Ski.Decls
 
+open Nock
 open Term
 open Compose (boolT)
 open BitArith (bl nilT consT consO ttO ffO wnf run)

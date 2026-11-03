@@ -1,6 +1,8 @@
 import Nock.Eval
 import Ski.Weak
 
+open Nock
+
 /-!
 # Nock2Ski: the join
 

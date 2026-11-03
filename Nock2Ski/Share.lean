@@ -1,6 +1,7 @@
 import Nock2Ski.Embed
 import Std.Data.HashMap
 
+open Nock
 open Term
 
 /-!

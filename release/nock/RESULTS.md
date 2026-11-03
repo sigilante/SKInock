@@ -147,11 +147,16 @@ statement is complete: `nock_pred_complete` gives the acceptance from
 `NockEval (.atom n) f (.val p)` and `n < 2^k`; lean-nock's `countUp_correct
 6` is the hypothesis for the first statement, and `HoonOne.dec_correct 11
 ctx` with the formula's opcode 8, 10 and 9 steps around the battery for
-the second (not composed in Lean here, since `Nock.Fuel` clashes with
-`Ski.Basic` as below).  The join to
-lean-ski's `Circuit.predExport_sound` is read across the two environments:
-`Ski.Predicate` cannot be imported beside lean-nock (both define a
-root-level `Outcome`; `Ski/Words.lean:157`, `Nock/Eval.lean:62`).
+the second (not composed in Lean at release time, since `Nock.Fuel`
+clashed with `Ski.Basic` as below).  The join to lean-ski's
+`Circuit.predExport_sound` was read across the two environments:
+`Ski.Predicate` could not be imported beside lean-nock (both defined a
+root-level `Outcome`; `Ski/Words.lean:157`, `Nock/Eval.lean:62`).  Since
+lean-nock's `namespace Nock` both are theorems: `Nock2Ski/Circuit.lean`'s
+`pred_proof_nock` and `Nock2Ski/PredNock.lean`'s
+`countup_hidden_7_complete`, `hoon_dec_hidden_12_complete` (the latter by
+the kernel's run of `nockF`, since the benchmark's battery is not
+lean-nock's `decBat`; `README.md`).
 
 ## Cell-shaped hidden subjects: the public skeleton (M4d, 2026-11-04)
 
@@ -236,8 +241,9 @@ accepts for `nounPlan p` on a term proves the term's value is `p`
 (`ValueIs`); `Nock2Ski/Probe.lean` proves `probe_decodes_nock : ValueIs
 (compiled f s) p → NockEval s f (.val p)` (and for `share`) from
 `embed_outcome`.  `README.md`, "The product as a public value", has the
-chain; the join is read across the two Lean environments through
-`Nock2Ski/Value.lean`.
+chain; the join was read across the two Lean environments through
+`Nock2Ski/Value.lean`, and is `Nock2Ski/Circuit.lean`'s `probe_proof_nock`
+since lean-nock's `namespace Nock`.
 
 `produce.sh probe` (`probe/`): for each row whose product is a noun, `lake
 exe nockprobe plan PRODUCT` writes the plan (`NAME.plan`), `nockprobe jets`

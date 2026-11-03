@@ -8,7 +8,11 @@
 # M4e's converse is classical by contraposition, `Classical.choice` proper);
 # the pins (`decide +kernel`) use `propext`, through `parse_pin`'s derived
 # `DecidableEq` of the parsed declarations.  The build runs the
-# kernel-heavy modules one at a time; each stays within about 4 GB.
+# kernel-heavy modules one at a time; each stays within about 4 GB.  The
+# whole package is one Lean environment since lean-nock's `namespace Nock`
+# (its branch `namespace-nock`): Nock2Ski.Circuit composes lean-ski's circuit
+# theorems with the simulation, Nock2Ski.PredNock the released statements
+# with lean-nock's runs.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export PATH="$HOME/.elan/bin:$PATH"
@@ -40,14 +44,13 @@ while IFS=$'\t' read -r name subject product skel logr logm formula; do
     lake exe nockpred --check "$name" "$formula" "$product" "$skel" < "release/nock/hidden/$name/public.txt" 2> /dev/null
     lake exe nockpred --run "$name" "$formula" "$product" "$subject" "$skel" 2> /dev/null
 done < release/nock/hidden/programs.txt
-# M4f gate: the probe step.  Nock2Ski.ProbeTree is on lean-ski's side of the
-# two environments (it imports Ski.AirProbe, so not Nock2Ski's root), built
-# here with nockprobe; each released probe table (release/nock/probe, Avon's
-# `witness --plan` for Lean's plan of the product) is accepted by lean-ski's
-# Air.checkPA for the plan Lean recomputes from the product (`probe_check`,
-# then `probe_decodes_nock`), and the plan file is that plan, the tree file
-# the tree words ski-air's probe commands take (M4g)
-lake build Nock2Ski.ProbeTree nockprobe
+# M4f gate: the probe step.  Each released probe table (release/nock/probe,
+# Avon's `witness --plan` for Lean's plan of the product) is accepted by
+# lean-ski's Air.checkPA for the plan Lean recomputes from the product
+# (`probe_check`, then `probe_decodes_nock`: `probe_table_nock` in
+# Nock2Ski.Circuit), and the plan file is that plan, the tree file the tree
+# words ski-air's probe commands take (M4g)
+lake build nockprobe
 tmp="$(mktemp -d)"; trap 'command rm -rf "$tmp"' EXIT
 while IFS=$'\t' read -r name subject product form formula; do
     [ "$product" != crash ] || continue
@@ -56,15 +59,11 @@ while IFS=$'\t' read -r name subject product form formula; do
     gunzip -c "release/nock/probe/$name.probe.table.gz" > "$tmp/$name.probe.table"
     lake exe nockprobe check release/nock/corpus.txt "$name" "$tmp/$name.probe.table" "$product" | sed "s|$tmp/||"
 done < release/nock/programs.txt
-# M5 gate: jet transport.  Nock2Ski.JetWord is on lean-nock's side (it imports
-# Nock.Comp, which reaches Nock.Fuel, whose root `Diverges` clashes with
-# Ski.Basic's), built here on its own; Nock2Ski.JetTransport is in the root.
-# Each row's jet file (release/nock/jets, lean-ski's licensed template roots
+# M5 gate: jet transport.  Each row's jet file (release/nock/jets, lean-ski's licensed template roots
 # in the Nock term) recomputes from the corpus term, and lean-ski's
 # Air.checkJA accepts the released jetted witness table bound to its row
 # (`nockprobe check-jets`: `Air.checkJA_sound`, `Air.air_sound_jet`, then
 # `embed_outcome`)
-lake build Nock2Ski.JetWord
 while IFS=$'\t' read -r name subject product form formula; do
     lake exe nockprobe term release/nock/corpus.txt "$name" > "$tmp/$name.term"
     lake exe nockprobe jets "$tmp/$name.term" 2> /dev/null | cmp - "release/nock/jets/$name.jets"
@@ -205,11 +204,7 @@ import Nock2Ski
 #print axioms Nock2Ski.addContract_respects
 #print axioms Nock2Ski.jet_transport_dom
 #print axioms Nock2Ski.formContract_respects
-LEAN
-lake env lean "$tmp/Axioms.lean"
-# M5: the Nock side of the join (Nock.Comp cannot be imported beside Ski.Basic)
-cat > "$tmp/AxiomsWord.lean" <<'LEAN'
-import Nock2Ski.JetWord
+-- M5: the lean-nock side, composed in (JetWord)
 #print axioms Nock2Ski.leaf_word
 #print axioms Nock2Ski.decF_eq
 #print axioms Nock2Ski.decC_eq
@@ -218,11 +213,7 @@ import Nock2Ski.JetWord
 #print axioms Nock2Ski.leaf_total
 #print axioms Nock2Ski.dec_three_valued
 #print axioms Nock2Ski.add_three_valued
-LEAN
-lake env lean "$tmp/AxiomsWord.lean"
-# M4f: lean-ski's side of the join (Ski.AirProbe cannot be imported beside Nock.Eval)
-cat > "$tmp/AxiomsProbe.lean" <<'LEAN'
-import Nock2Ski.ProbeTree
+-- M4f: lean-ski's side (ProbeTree)
 #print axioms Nock2Ski.decV_encNoun
 #print axioms Nock2Ski.probe_complete
 #print axioms Nock2Ski.encS_unique
@@ -230,5 +221,30 @@ import Nock2Ski.ProbeTree
 #print axioms Nock2Ski.probe_value
 #print axioms Nock2Ski.probe_sound
 #print axioms Nock2Ski.probe_check
+-- The joins composed (Circuit): accepted proofs and tables as Nock claims
+#print axioms Nock2Ski.boolsT_eq
+#print axioms Nock2Ski.probe_proof_nock
+#print axioms Nock2Ski.probe_proof_nock_shared
+#print axioms Nock2Ski.probe_table_nock
+#print axioms Nock2Ski.probe_table_nock_shared
+#print axioms Nock2Ski.pred_proof_nock
+#print axioms Nock2Ski.predS_proof_nock
+#print axioms Nock2Ski.pred2_proof_nock
+-- The released programs from lean-nock's runs (PredNock)
+#print axioms Nock2Ski.countUpF_eq
+#print axioms Nock2Ski.countUp_7
+#print axioms Nock2Ski.countup_hidden_7_complete
+#print axioms Nock2Ski.countup_dec_7_probe
+#print axioms Nock2Ski.hoonDecBat_parts
+#print axioms Nock2Ski.hoonDecHidden_eval
+#print axioms Nock2Ski.hoon_dec_hidden_12_complete
+#print axioms Nock2Ski.hoonDec12_eval
+#print axioms Nock2Ski.hoonDec0_crash
+#print axioms Nock2Ski.hoon_dec_12_probe
+#print axioms Nock2Ski.hoon_dec_0_crash
+#print axioms Nock2Ski.hoonAdd_3_4
+#print axioms Nock2Ski.hoonAdd_6_57
+#print axioms Nock2Ski.hoon_add_hidden_3_4_complete
+#print axioms Nock2Ski.hoon_add_hidden_6_57_complete
 LEAN
-lake env lean "$tmp/AxiomsProbe.lean"
+lake env lean "$tmp/Axioms.lean"

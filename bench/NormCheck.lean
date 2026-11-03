@@ -2,6 +2,8 @@ import Nock2Ski.Compile
 import Ski.Fuel
 import Nock2Ski.NounText
 
+open Nock
+
 /-!
 # normcheck: the reference tests through the Lean compiler
 
@@ -15,9 +17,10 @@ supplied as data beside the subject, both encoded **without code**
 (`encNoun`, so no `Form` carries compiled code), under the formula
 `[2 [0 2] [0 3]]`, whose opcode 2 meets a plain `Cell` and hands it to
 `nockI`.  A small fuelled
-reference evaluator in lean-nock's order (`nockRef`; lean-nock's own
-`nockF` cannot be imported beside `Ski.Basic`, both define a top-level
-`Diverges`) is run on the same triples as a check on the transcription.
+reference evaluator in lean-nock's order (`nockRef`, written when
+lean-nock's own `nockF` could not be imported beside `Ski.Basic`, both
+defining a root-level `Diverges`; since lean-nock's `namespace Nock` (its branch `namespace-nock`) it could be `Nock.nockF`) is run on the same triples as a check on the
+transcription.
 
 The product is read behaviourally, as `python/skinock/run.py` reads it:
 the term is applied to one fresh variable per constructor of the noun sum

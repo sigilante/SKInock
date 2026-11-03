@@ -2,6 +2,8 @@ import Nock2Ski.Share
 import Ski.Fuel
 import Nock2Ski.NounText
 
+open Nock
+
 /-!
 # nockstatement: a Nock program as a corpus row for lean-ski's circuit
 

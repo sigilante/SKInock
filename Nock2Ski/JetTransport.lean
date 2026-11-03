@@ -1,7 +1,8 @@
 import Nock2Ski.Converse
-import Nock2Ski.JetSpec
+import Nock2Ski.JetWord
 import Ski.DataJet
 
+open Nock
 open Term DataJet
 
 /-!
@@ -54,12 +55,14 @@ subjects on which Nock has an outcome (`Dom f`), takes that outcome as the
 specification, and `jet_transport_dom` implements it with no hypothesis,
 `embed_outcome` supplying the value.
 
-**The two environments.**  `Word`, `phi` and `cw` live in `Nock.Comp`, which
-cannot be imported here (`JetSpec.lean`).  The instances `dec_transport`
-and `add_transport` take the hypotheses `Leaf decF decC` and `Leaf addF
-addC`, which `Nock2Ski/JetWord.lean` proves from `leaf_correct` on the
-lean-nock side: one constant each, both modules import `JetSpec.lean`,
-nothing copied, as `Value.lean` joins the probe step.
+**The instances.**  `dec_transport : Implements decContract (jetT decF)`
+and `add_transport` are `jet_transport` at `Nock2Ski/JetWord.lean`'s
+`leaf_dec` and `leaf_add`, lean-nock's `leaf_correct .dec` and `.add` in
+the shape `Leaf decF decC` (`Nock2Ski/JetSpec.lean`).  Before lean-nock's
+`namespace Nock` (its branch `namespace-nock`) `Nock.Comp` could not be
+imported beside `Ski.Basic` and the instances took `Leaf decF decC` as a
+hypothesis discharged in another module; now `JetWord.lean` is imported
+here and the instances are unconditional.
 -/
 
 namespace Nock2Ski
@@ -242,14 +245,15 @@ def decContract : Contract Noun Outcome := nounContract decC
 /-- The data-jet contract of the Λ word `add`: `spec := cw .add` (`addC`). -/
 def addContract : Contract Noun Outcome := nounContract addC
 
-/-- **`dec` transports.**  The hypothesis is `Nock2Ski/JetWord.lean`'s
-    `leaf_dec`, lean-nock's `leaf_correct .dec` in the shared vocabulary. -/
-theorem dec_transport (h : Leaf decF decC) : Implements decContract (jetT decF) :=
-  jet_transport h
+/-- **`dec` transports**: `jet_transport` at `Nock2Ski/JetWord.lean`'s
+    `leaf_dec`, lean-nock's `leaf_correct .dec` (`decF = phi .dec`,
+    `decC = cw .dec`). -/
+theorem dec_transport : Implements decContract (jetT decF) :=
+  jet_transport leaf_dec
 
-/-- **`add` transports.**  The hypothesis is `JetWord.lean`'s `leaf_add`. -/
-theorem add_transport (h : Leaf addF addC) : Implements addContract (jetT addF) :=
-  jet_transport h
+/-- **`add` transports**: `jet_transport` at `JetWord.lean`'s `leaf_add`. -/
+theorem add_transport : Implements addContract (jetT addF) :=
+  jet_transport leaf_add
 
 theorem decContract_respects : decContract.Respects := nounContract_respects decC
 theorem addContract_respects : addContract.Respects := nounContract_respects addC

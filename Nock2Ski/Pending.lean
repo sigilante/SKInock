@@ -1,13 +1,15 @@
 import Nock2Ski.Basic
 
+open Nock
+
 /-!
 # Pending Nock runs: a derivation cut off after `n` steps
 
 Milestone M4e of `PLAN.md`.  lean-nock's `Nock.Fuel` has the fuel
-interpreter `nockF` and its completeness, but cannot be imported beside
-lean-ski (`Nock.Fuel`'s root-level `Diverges` clashes with
-`Ski.Basic`'s), so the partial run is stated here as an inductive
-relation over `NockEval` alone.
+interpreter `nockF` and its completeness; the partial run is stated here as
+an inductive relation over `NockEval` alone (when it was written `Nock.Fuel`
+could not be imported beside lean-ski, its root-level `Diverges` clashing
+with `Ski.Basic`'s; since lean-nock's `namespace Nock` (its branch `namespace-nock`) it can).
 
 `Pending n s f`: the evaluation of `f` on `s` is still running after `n`
 costed steps.  Its constructors mirror the premises of `NockEval`'s

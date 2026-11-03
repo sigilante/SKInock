@@ -1,6 +1,7 @@
 import Nock2Ski.Interp
 import Nock.Eval
 
+open Nock
 open Term
 
 /-!

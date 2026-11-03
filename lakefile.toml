@@ -2,8 +2,9 @@ name = "skinock"
 version = "0.1.0"
 defaultTargets = ["Nock2Ski"]
 
-# Both dependencies are required by path (PLAN.md §8, M0). lean-nock is on the
-# `lean-4.31` branch so that all three packages share one toolchain.
+# Both dependencies are required by path (PLAN.md §8, M0). lean-nock is on its
+# `namespace-nock` branch (Lean 4.31.0, and every declaration under
+# `namespace Nock`, so that its modules import beside lean-ski's).
 [[require]]
 name = "Ski"
 path = "../lean-ski"

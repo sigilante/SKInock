@@ -327,16 +327,26 @@ jets licensed by theorems. A live run of the same programs on both provers is fu
   `scripts/lean-check.sh` runs the plan, the tree and the check on the released tables as
   its M4f gate.
 
+- `Nock2Ski/Circuit.lean`, `Nock2Ski/PredNock.lean` (after lean-nock's `namespace Nock` (branch `namespace-nock`)): the joins as
+  theorems. `Circuit` imports lean-ski's `Ski.Circuit.ProbeRows` and `Ski.Circuit.CompPred`
+  beside the simulation: `probe_proof_nock`, `probe_table_nock` (an accepted probe proof or
+  table is `*[s f] = p`), `pred_proof_nock`, `predS_proof_nock`, `pred2_proof_nock` (an
+  accepted predicate proof shows the hidden subject with `*[s f] = p`). `PredNock` imports
+  `Nock.Comp` and `Nock.HoonOne`: the five released programs' runs from lean-nock
+  (`countUp_correct`; the Hoon rows by `nockF_sound` on `decide +kernel`, since the
+  benchmark's batteries are not lean-nock's), and the released statements' completeness and
+  the probe tables' makeability as their instances.
+
 - `Nock2Ski/JetSpec.lean`, `Nock2Ski/JetWord.lean`, `Nock2Ski/JetTransport.lean` (M5): jet
   transport, PLAN §3. `JetSpec` (lean-nock only) is the shared vocabulary: `Leaf f c := ∀ S,
   NockEval S f (c S)`, lean-nock's leaf-correctness shape for a formula against a total C
   model, and the words `dec` and `add` written out (`decF`, `addF`, `decC`, `addC`).
-  `JetWord` (lean-nock only: `Nock.Comp` reaches `Nock.Fuel`, whose root `Diverges` clashes
-  with `Ski.Basic`'s) proves `leaf_dec : Leaf decF decC`, `leaf_add` from `leaf_correct`,
-  and `decF_eq : decF = phi .dec` by `rfl`. `JetTransport` (lean-nock's `Nock.Eval` beside
-  lean-ski's `Ski.DataJet`, which coexist) proves `jet_transport : Leaf f c → Implements
-  (nounContract c) (jetT f)`, the data-jet contract with `spec := c`, its instances
-  `dec_transport`, `add_transport`, `Contract.Respects` by `encNoun_inj`, the corollaries
+  `JetWord` (lean-nock's `Nock.Comp`, `Nock.Mock`) proves `leaf_dec : Leaf decF decC`,
+  `leaf_add` from `leaf_correct`, and `decF_eq : decF = phi .dec` by `rfl`. `JetTransport`
+  (importing `JetWord` beside lean-ski's `Ski.DataJet`) proves `jet_transport : Leaf f c →
+  Implements (nounContract c) (jetT f)`, the data-jet contract with `spec := c`, its
+  unconditional instances `dec_transport`, `add_transport` (`jet_transport leaf_dec`),
+  `Contract.Respects` by `encNoun_inj`, the corollaries
   `jet_close`/`jet_real` of `JSteps.close`/`real_of_jet`, and the code-dropping copy
   `toCellT` (`toCell_enc : Enc p ep → toCellT ⬝ ep ↠ encNoun p`). Below, "Jet transport".
 
@@ -430,12 +440,15 @@ product's encoding is `encNoun p`'s. What is proved (`Nock2Ski/Pred.lean`):
 - **Completeness**, `nock_pred_complete : 0 < k → n < 2^k → NockEval (.atom n) f (.val p)
   → Eval (nockPredV f k ⬝ encNoun p ⬝ boolsT (bitsK k n)) K`: from `nockPredV_beta`
   (`share_red` and `absN_beta_close`), `toBitsT_red` with `trim_bitsK`,
-  `embed_value_encNoun` and `eq_enc`'s `eqn_enc`. lean-nock's `countUp_correct 6` is the hypothesis for the
-  first statement; for the second, `HoonOne.dec_correct 11 ctx` is the battery's run on the
-  core with sample 12, and the formula's opcode 8, 10 and 9 steps around it are three
-  `NockEval` constructors (neither is composed in Lean here: `Nock.Comp` and `Nock.HoonOne`
-  import `Nock.Fuel`, which clashes with `Ski.Basic`, below); `nockpred --run` shows the
-  acceptance in the clear (17,141 and 41,249 contractions).
+  `embed_value_encNoun` and `eq_enc`'s `eqn_enc`. The released statements are instances
+  (`Nock2Ski/PredNock.lean`): `countup_hidden_7_complete` from lean-nock's `countUp_correct
+  6` (the released text is `countUp` by `rfl`), and `hoon_dec_hidden_12_complete` from
+  `hoonDecHidden_eval`, lean-nock's fuel interpreter run by the kernel (`nockF_sound` on
+  `decide +kernel`). lean-nock's `dec_correct` does not compose into the second: the
+  benchmark's `++dec` battery is lean-nock's `decBat_guardBody` under a *different* `%fast`
+  clue formula (`hoonDecBat_parts`), and `dec_correct`/`dec_loop_inv` are stated on `decBat`
+  itself. `nockpred --run` shows the acceptance in the clear (17,141 and 41,249
+  contractions).
 - **Soundness**, `nock_pred_sound : 0 < k → bs.length = k → Eval (nockPredV f k ⬝ encNoun
   p ⬝ boolsT bs) K → ∃ n, n < 2^k ∧ WSteps (eqn ⬝ (nockToSki f ⬝ encNoun (.atom n)) ⬝
   encNoun p) K ∧ (∀ q, NockEval (.atom n) f (.val q) → q = p) ∧ ¬ NockEval (.atom n) f
@@ -454,17 +467,16 @@ product's encoding is `encNoun p`'s. What is proved (`Nock2Ski/Pred.lean`):
   NockEval (.atom n) f (.val p)`. Until M4e the converse simulation (a SKI value implies a
   Nock value) was open and the reading was "`*[n f]` is `p` if it is anything, and it is
   not a crash".
-- **The join is read across two Lean environments.** `Ski.Predicate` and
-  `Ski.Circuit.CompPred` cannot be imported beside lean-nock: `Ski.Composed` reaches
-  `Ski.Words` (through `Ski.AirProbe`, `Ski.ProbeTree`, `Ski.Decode`), whose root-level
-  `inductive Outcome` (`Ski/Words.lean:157`) clashes with lean-nock's `Outcome`
-  (`Nock/Eval.lean:62`); and `Nock.Fuel`'s `Diverges` (`Nock/Fuel.lean:678`) with
-  `Ski.Basic`'s (`Ski/Basic.lean:136`). So `boolsT` in `Pred.lean` is a copy of
-  `CompM.boolsT`, `PredText.lean` copies the statement's rendering (checked against the
-  original at every use by ski-air), and `nock_pred_sound`'s hypothesis is
-  `predExport_sound`'s conclusion by inspection, not by one `obtain`. Namespacing either
-  library's `Outcome` (and `Diverges`) would close it; neither repository is modified
-  here. Zero knowledge is lean-ski's `comp_zk`, for any composed statement.
+- **The join is one theorem** (`Nock2Ski/Circuit.lean`): `pred_proof_nock : 0 < k →
+  sameAirsB Rs (predAirs (nockPredV f k) (encNoun p) k W) = true → AcceptedP Rs ts → ∃ n,
+  n < 2^k ∧ NockEval (.atom n) f (.val p)`, lean-ski's `Circuit.predExport_sound` composed
+  with `nock_pred_sound_nock` (one `obtain`; `boolsT` in `Pred.lean` is `CompM.boolsT`
+  restated, `boolsT_eq`). Until lean-nock's `namespace Nock` (branch `namespace-nock`) the two libraries could not be imported
+  together (`Ski.Composed` reaches `Ski.Words`, whose root-level `Outcome` clashed with
+  lean-nock's; `Nock.Fuel`'s `Diverges` with `Ski.Basic`'s) and the join was read by
+  inspection across two Lean environments. `PredText.lean` still copies the statement's
+  rendering (tooling, checked against the original at every use by ski-air). Zero
+  knowledge is lean-ski's `comp_zk`, for any composed statement.
 
 ### Cell-shaped hidden subjects (`release/nock/hidden/`, M4d)
 
@@ -503,8 +515,12 @@ count everywhere (`8` means `?8`) and the M4c files are unchanged. What is prove
   bs) f (.val p) → Eval (nockPredS f sk ⬝ encNoun p ⬝ boolsT bs) K`, and its instance
   `nock_pred2_complete : 0 < k → a < 2^k → b < 2^k → NockEval [a b] f (.val p) → Eval
   (nockPred2V f k ⬝ encNoun p ⬝ boolsT (bitsK k a ++ bitsK k b)) K` (`pairSkel_fill`:
-  the two halves of the witness are `a` and `b`). `nockpred --run` shows the acceptance
-  in the clear (38,189 and 91,007 contractions).
+  the two halves of the witness are `a` and `b`). The released statements are its
+  instances `hoon_add_hidden_3_4_complete`, `hoon_add_hidden_6_57_complete`
+  (`Nock2Ski/PredNock.lean`), from `hoonAdd_3_4`, `hoonAdd_6_57`: lean-nock's fuel
+  interpreter run by the kernel (the benchmark's `++add` is not lean-nock's `addBat`, so
+  `add_correct` does not apply). `nockpred --run` shows the acceptance in the clear (38,189
+  and 91,007 contractions).
 - **Soundness**, `nock_predS_sound : sk.ok → bs.length = sk.width → Eval (nockPredS f sk ⬝
   encNoun p ⬝ boolsT bs) K → WSteps (eqn ⬝ (nockToSki f ⬝ encNoun (sk.fill bs)) ⬝ encNoun
   p) K ∧ (∀ q, NockEval (sk.fill bs) f (.val q) → q = p) ∧ ¬ NockEval (sk.fill bs) f
@@ -536,8 +552,8 @@ the Nock claim conditionally ("`*[n f]` is `p` if it is anything"). M4e proves i
   NockEval s f o)`, lean-ski's `Diverges`. The three-valued contract is now exact in both
   directions, on all of Nock 4K.
 - **The argument** is by contraposition through a measure on each side, not through the
-  fuel interpreters (lean-nock's `Nock.Fuel` cannot be imported beside `Ski.Basic`, and
-  nothing of it is needed: `Nock.Eval` suffices). On the Nock side, `Pending n s f`
+  fuel interpreters (nothing of lean-nock's `Nock.Fuel` is needed: `Nock.Eval` suffices).
+  On the Nock side, `Pending n s f`
   (`Nock2Ski/Pending.lean`) is a derivation cut off after `n` costed steps: an inductive
   over `NockEval` whose constructors mirror `NockEval`'s premises, one operand pending and
   the earlier operands (in lean-nock's order) with values; every constructor costs one
@@ -614,12 +630,17 @@ M4f gives the tree of our encoding and proves what an accepted table says of Noc
   state encodes Nock's value or is `Err` for its crash; `ValueIs` rules out `Err` and names
   the value. **So an accepted probe table for the plan of `p` on a row's term is a proof of
   `*[s f] = p` with `p` a public input of the proof.**
-- **The join is read across two environments**, as M4c's: `Ski.AirProbe` reaches
-  `Ski.Words`, whose root-level `Outcome` (`Ski/Words.lean:157`) clashes with lean-nock's
-  (`Nock/Eval.lean:62`), so `ProbeTree.lean` (`DecV`, `AcceptsP`, `checkPA`) and
-  `Probe.lean` (`NockEval`) cannot be imported together. They meet in
-  `Nock2Ski/Value.lean`, which both import: `ValueIs` is one constant, the conclusion of
-  `probe_check` and the hypothesis of `probe_decodes_nock`. Nothing is copied.
+- **The join is one theorem** (`Nock2Ski/Circuit.lean`): `probe_proof_nock`, lean-ski's
+  `Circuit.probeExport_sound_tree` (below, M4g) composed with `probe_value` and
+  `probe_decodes_nock`, concluding `NockEval s f (.val p)` from an accepted proof against
+  `probeAirs (compiled f s) roots jets (planOf (nounV p) 0)`; and `probe_table_nock`, the
+  same of a table `Air.checkPA` accepts, through `probe_check`. `ProbeTree.lean` and
+  `Probe.lean` still each import one side, meeting in `Nock2Ski/Value.lean`'s `ValueIs`
+  (until lean-nock's `namespace Nock` (branch `namespace-nock`) they could not be imported together, `Ski.AirProbe` reaching
+  `Ski.Words`, whose root-level `Outcome` clashed with lean-nock's, and the join was read
+  across two environments). The prover's side is `countup_dec_7_probe`, `hoon_dec_12_probe`
+  (`Nock2Ski/PredNock.lean`): the released rows' terms reach the products' encodings, from
+  lean-nock's runs through `probe_complete_nock`.
 - **A `Form` product has no tree.** A cell product's term may be a `Form` (constructor 2,
   three fields, the third its compiled code, `Enc.form`): probing the code would run the
   formula on markers, and a plan gives every field a tree (`Seg.arity = ch.length`,
@@ -729,15 +750,12 @@ Axioms: `propext`, `Classical.choice`, `Quot.sound` on the lean-ski side; `prope
   there as the specification (`Classical.choose`), and `jet_transport_dom f : Implements
   (formContract f) (jetT f)` holds with no hypothesis (`formContract_respects` too). That is
   "use `Implements` only on inputs where `NockEval` yields an outcome".
-- **The two environments.** `Word`, `phi`, `cw` live in `Nock.Comp`, which imports `Nock.Fuel`
-  (root `Diverges`, `Nock/Fuel.lean:678`) and cannot be imported beside `Ski.Basic`
-  (`Ski/Basic.lean:136`); `Ski.DataJet`, on the other hand, does coexist with `Nock.Eval`. So
-  `JetWord.lean` imports lean-nock only and `JetTransport.lean` both libraries, and they meet
-  in `JetSpec.lean` (lean-nock only): `Leaf decF decC` is one constant, the conclusion of
-  `leaf_dec` and the hypothesis of `dec_transport`, as `ValueIs` joins the probe step. Nothing
-  is copied; the formulas are lean-nock's by `rfl`. (Determinism of `NockEval` is in
-  `Nock.Fuel` too, so the agreement of `formContract f` with a total model on `Dom f` is not
-  stated here.)
+- **One environment.** `JetTransport.lean` imports `JetWord.lean` (lean-nock's `Nock.Comp`,
+  `Nock.Mock`) beside `Ski.DataJet`, so `dec_transport` is `jet_transport leaf_dec` with no
+  hypothesis; the formulas are lean-nock's by `rfl`. (Until lean-nock's `namespace Nock` (branch `namespace-nock`) `Nock.Comp`
+  reached `Nock.Fuel`, whose root `Diverges` clashed with `Ski.Basic`'s, and the instances
+  took `Leaf decF decC` as a hypothesis discharged in `JetWord.lean`, the two meeting in
+  `JetSpec.lean`'s one constant.)
 - **What is not built.** The transported `dec` data jet has no circuit: lean-ski's data-jet
   path needs a precompile that computes `spec` (its own `Ski/DataJet.lean` says so of
   Poseidon2), and building one for `cw .dec` is held by the user. Nor is an Avon C jet for
@@ -785,6 +803,8 @@ constant is the data jet's, not built (above). `release/nock/RESULTS.md` has ski
   form, has the head of that encoding: `Cell`-, `Atom`- or `Err`-headed as the product is
   (`jetExport_sound` + `jet_run_shape` + `embed_outcome`). The product as a public value is the
   probe step's (M4f); the jetted probe runs were measured there and are not released as proofs.
-- **The join is read across the two environments** as before: `jetExport_sound` and
-  `Air.checkJA_sound` are lean-ski's (`Ski.Circuit`, `Ski.AirJet` reach `Ski.Words`);
-  `embed_outcome` is `Nock2Ski.Converse`'s; `Eval t v'` is the shared constant.
+- **The join is read across the two modules**: `jetExport_sound` and `Air.checkJA_sound`
+  are lean-ski's (`Ski.Circuit`, `Ski.AirJet`); `embed_outcome` is `Nock2Ski.Converse`'s;
+  `Eval t v'` is the shared constant. Both import together now (`Nock2Ski/Circuit.lean`
+  imports `Ski.Circuit.ProbeRows`); the composition is not written out, since the jetted
+  rows are not released as probe proofs.

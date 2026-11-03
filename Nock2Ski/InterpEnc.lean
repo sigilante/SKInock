@@ -1,5 +1,6 @@
 import Nock2Ski.Enc
 
+open Nock
 open Term
 open Compose (boolT)
 

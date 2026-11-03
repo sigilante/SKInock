@@ -1,5 +1,6 @@
 import Nock2Ski.Share
 
+open Nock
 open Term
 open Compose (boolT pairT)
 open BitArith (nilT consT val)
@@ -44,17 +45,15 @@ simulation (SKI value ⇒ Nock value), `embed_terminates` of
 `Nock2Ski/Converse.lean` (M4e); with it, `nock_pred_sound_nock` there
 states the accepted proof as the Nock claim `NockEval (.atom n) f (.val p)`.
 
-**The join to the circuit is by hand.**  lean-ski's `Ski.Predicate` and
-`Ski.Circuit.CompPred` cannot be imported beside lean-nock: `Ski.Composed`
-reaches `Ski.Words` (through `Ski.AirProbe`, `Ski.ProbeTree`,
-`Ski.Decode`), whose root-level `inductive Outcome` (`Ski/Words.lean:157`)
-clashes with lean-nock's root-level `Outcome` (`Nock/Eval.lean:62`), so
-Lean refuses the import (`Outcome.val.inj` defined twice).  `boolsT` below
-is therefore a copy of `CompM.boolsT`, character for character, and
-`nock_pred_sound`'s hypothesis is the conclusion of `predExport_sound` at
-`V = nockPredV f k`, `x = encNoun p`, `n = k`, read across the two
-environments; the composition is one `obtain` once either library moves
-its `Outcome` into a namespace.
+**The join to the circuit** is `Nock2Ski/Circuit.lean`'s `pred_proof_nock`:
+lean-ski's `Circuit.predExport_sound` composed with `nock_pred_sound_nock`
+(`Nock2Ski/Converse.lean`).  `boolsT` below is lean-ski's `CompM.boolsT`
+restated (`Circuit.lean`'s `boolsT_eq`), so that this module imports
+lean-ski's `Ski.Weak` side only; the released statements' completeness
+from lean-nock's runs is `Nock2Ski/PredNock.lean`.  (Until lean-nock's `namespace Nock` (its branch `namespace-nock`)
+`Ski.Predicate` could not be imported beside lean-nock, `Ski.Composed`
+reaching `Ski.Words`, whose root-level `Outcome` clashed with lean-nock's,
+and the composition was read across two Lean environments.)
 -/
 
 namespace Nock2Ski

@@ -1,5 +1,7 @@
 import Nock.Basic
 
+open Nock
+
 /-!
 # Nouns in `[a b c]` notation
 

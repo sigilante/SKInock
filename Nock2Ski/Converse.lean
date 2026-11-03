@@ -2,6 +2,7 @@ import Nock2Ski.Head
 import Nock2Ski.Pending
 import Nock2Ski.PredSkel
 
+open Nock
 open Term
 
 /-!
@@ -40,8 +41,9 @@ compiled term normalizes in `N` steps, Nock cannot be pending at `N + 1`,
 hence has an outcome.
 
 Nothing of `Nock.Fuel` is needed: `Pending` is stated over `NockEval`
-alone, so the root-name clash (`Diverges`, `Outcome`) does not arise,
-and the statements use lean-ski's `Diverges` directly.
+alone, and the statements use lean-ski's `Diverges` directly (lean-nock's
+is `Nock.Diverges` since its `namespace Nock`; `embed_diverges`'s right-hand
+side is its unfolding).
 -/
 
 namespace Nock2Ski

@@ -1,6 +1,7 @@
 import Nock2Ski.Pred
 import Ski.Statement
 
+open Nock
 open Term Compose Stmt Mach
 
 /-!
@@ -16,8 +17,10 @@ These are copies of lean-ski's definitions (`Ski/Composed.lean`:
 `BT.nleaves`, `pairO`, `encO`, `addStmts`, `cHeap`, `cMachine`;
 `Ski/Predicate.lean`: `combBT`, `predStmt`; `Ski/ComposedText.lean`:
 `termText`, `cellText`, `publicTextC`, `defaultLog`, `logOK`,
-`privateOK`), since those modules cannot be imported beside lean-nock
-(`Nock2Ski/Pred.lean`: the `Outcome` clash).  The text they render is
+`privateOK`).  They were copied when those modules could not be imported
+beside lean-nock (before lean-nock's `namespace Nock` (its branch `namespace-nock`)); they can
+be now (`Nock2Ski/Circuit.lean` imports `Ski.Circuit.CompPred`), and
+replacing them is left, since `nockpred` is tooling whose bytes are
 checked against the originals at every use: ski-air pipes the bytes of
 `public.txt` to `lake exe composed statement -` in lean-ski before it
 proves or verifies, and refuses anything that is not exactly

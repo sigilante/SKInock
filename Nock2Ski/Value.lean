@@ -1,5 +1,6 @@
 import Nock2Ski.Noun
 
+open Nock
 open Term
 
 /-!
@@ -8,13 +9,16 @@ open Term
 The probe circuit (lean-ski, `Ski/AirProbe.lean`) reads a term by applying
 it to marker atoms constructor by constructor; what it certifies is a
 **probe tree** (`Probe.V`), and `Nock2Ski/ProbeTree.lean` gives the tree of
-a noun's encoding.  The theorem that joins the circuit to Nock has to be
-read across two Lean environments: lean-ski's `Ski.ProbeTree` reaches
-`Ski.Words`, whose root-level `Outcome` clashes with lean-nock's
-(`Ski/Words.lean:157`, `Nock/Eval.lean:62`), so no module imports both
-`Probe.DecV` and `NockEval`.  This module is the vocabulary both sides
-share: it imports `Nock2Ski.Noun` (lean-nock's `Nock.Basic` and lean-ski's
-`Ski.Compile`, which coexist) and nothing of either `Eval`.
+a noun's encoding.  This module is the vocabulary the two sides share: it
+imports `Nock2Ski.Noun` (lean-nock's `Nock.Basic` and lean-ski's
+`Ski.Compile`) and nothing of either `Eval`, so `Nock2Ski/ProbeTree.lean`
+(the circuit's reading) and `Nock2Ski/Probe.lean` (the Nock claim) each
+need only their own side.  (Until lean-nock's `namespace Nock` (its branch `namespace-nock`) the two
+could not be imported together, lean-ski's `Ski.ProbeTree` reaching
+`Ski.Words`, whose root-level `Outcome` clashed with lean-nock's, and
+`ValueIs` was where the join was read across two Lean environments; now
+`Nock2Ski/Circuit.lean` imports both and composes them,
+`probe_proof_nock`.)
 
 - `EncS n e`: `e` has the **shape** of an encoding of `n`: an atom as
   `encNoun`, a cell as `Cell` of shapes of its halves or as `Form` of them

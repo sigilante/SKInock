@@ -2,6 +2,7 @@ import Ski.BitArith
 import Ski.Compile
 import Nock.Basic
 
+open Nock
 open Term
 open Compose (boolT)
 open BitArith (bl nilT consT consO pairO ttO ffO val wnf run)

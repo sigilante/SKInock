@@ -1,5 +1,6 @@
 import Nock2Ski.InterpEnc
 
+open Nock
 open Term
 
 /-!
@@ -20,9 +21,8 @@ of determinism and of lean-ski's `par_step_le`:
 - if `t ⬝ a` normalizes, `t` does, in no more steps (`hlen_app`).
 
 These are lean-ski's `StepsN.tail`, `StepsN.wtail`, `StepsN.app_left`
-(`Ski/Converse.lean`), copied here because that module reaches
-`Ski.Words`, whose root-level `Outcome` cannot be imported beside
-lean-nock's.
+(`Ski/Converse.lean`), copied here when that module, which reaches
+`Ski.Words`, could not be imported beside lean-nock (before lean-nock's `namespace Nock` (its branch `namespace-nock`)); it can be now.
 
 ## Strictness from the primitives' head reductions
 

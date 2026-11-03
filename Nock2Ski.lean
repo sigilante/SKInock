@@ -22,5 +22,9 @@ import Nock2Ski.Pending
 import Nock2Ski.Converse
 import Nock2Ski.Value
 import Nock2Ski.Probe
+import Nock2Ski.ProbeTree
 import Nock2Ski.JetSpec
+import Nock2Ski.JetWord
 import Nock2Ski.JetTransport
+import Nock2Ski.PredNock
+import Nock2Ski.Circuit

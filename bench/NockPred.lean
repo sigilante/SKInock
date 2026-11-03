@@ -3,6 +3,8 @@ import Nock2Ski.PredSkel
 import Nock2Ski.NounText
 import Ski.Fuel
 
+open Nock
+
 /-!
 # nockpred: a Nock program over a hidden subject as a predicate statement
 
