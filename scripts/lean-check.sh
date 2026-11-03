@@ -56,6 +56,21 @@ while IFS=$'\t' read -r name subject product form formula; do
     gunzip -c "release/nock/probe/$name.probe.table.gz" > "$tmp/$name.probe.table"
     lake exe nockprobe check release/nock/corpus.txt "$name" "$tmp/$name.probe.table" "$product" | sed "s|$tmp/||"
 done < release/nock/programs.txt
+# M5 gate: jet transport.  Nock2Ski.JetWord is on lean-nock's side (it imports
+# Nock.Comp, which reaches Nock.Fuel, whose root `Diverges` clashes with
+# Ski.Basic's), built here on its own; Nock2Ski.JetTransport is in the root.
+# Each row's jet file (release/nock/jets, lean-ski's licensed template roots
+# in the Nock term) recomputes from the corpus term, and lean-ski's
+# Air.checkJA accepts the released jetted witness table bound to its row
+# (`nockprobe check-jets`: `Air.checkJA_sound`, `Air.air_sound_jet`, then
+# `embed_outcome`)
+lake build Nock2Ski.JetWord
+while IFS=$'\t' read -r name subject product form formula; do
+    lake exe nockprobe term release/nock/corpus.txt "$name" > "$tmp/$name.term"
+    lake exe nockprobe jets "$tmp/$name.term" 2> /dev/null | cmp - "release/nock/jets/$name.jets"
+    gunzip -c "release/nock/jets/$name.jetted.table.gz" > "$tmp/$name.jetted.table"
+    lake exe nockprobe check-jets release/nock/corpus.txt "$name" "$tmp/$name.jetted.table" | sed "s|$tmp/||"
+done < release/nock/programs.txt
 cat > "$tmp/Axioms.lean" <<'LEAN'
 import Nock2Ski
 #print axioms Nock2Ski.m0_join
@@ -176,8 +191,35 @@ import Nock2Ski
 #print axioms Nock2Ski.probe_decodes_nock_shared
 #print axioms Nock2Ski.probe_complete_nock
 #print axioms Nock2Ski.probe_complete_nock_shared
+-- M5: jet transport, the lean-ski side of the join (Ski.DataJet beside Nock.Eval)
+#print axioms Nock2Ski.toCell_enc
+#print axioms Nock2Ski.toCell_err
+#print axioms Nock2Ski.encNoun_inj
+#print axioms Nock2Ski.jet_transport
+#print axioms Nock2Ski.nounContract_respects
+#print axioms Nock2Ski.jet_close
+#print axioms Nock2Ski.jet_real
+#print axioms Nock2Ski.dec_transport
+#print axioms Nock2Ski.add_transport
+#print axioms Nock2Ski.decContract_respects
+#print axioms Nock2Ski.addContract_respects
+#print axioms Nock2Ski.jet_transport_dom
+#print axioms Nock2Ski.formContract_respects
 LEAN
 lake env lean "$tmp/Axioms.lean"
+# M5: the Nock side of the join (Nock.Comp cannot be imported beside Ski.Basic)
+cat > "$tmp/AxiomsWord.lean" <<'LEAN'
+import Nock2Ski.JetWord
+#print axioms Nock2Ski.leaf_word
+#print axioms Nock2Ski.decF_eq
+#print axioms Nock2Ski.decC_eq
+#print axioms Nock2Ski.leaf_dec
+#print axioms Nock2Ski.leaf_add
+#print axioms Nock2Ski.leaf_total
+#print axioms Nock2Ski.dec_three_valued
+#print axioms Nock2Ski.add_three_valued
+LEAN
+lake env lean "$tmp/AxiomsWord.lean"
 # M4f: lean-ski's side of the join (Ski.AirProbe cannot be imported beside Nock.Eval)
 cat > "$tmp/AxiomsProbe.lean" <<'LEAN'
 import Nock2Ski.ProbeTree

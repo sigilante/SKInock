@@ -192,6 +192,37 @@ Started 2026-11-03. Open question C5 of `../OPEN-QUESTIONS.md`. Companion paper:
   accepts them for the tree of the product and refuses the product + 1, the cell, a changed
   byte, the other row. The accepted proof instantiates `probe_sound` through
   `probeExport_sound_tree` and `probe_value`; `probe_decodes_nock` gives `*[s f] = p`.
+- **M5 done, the theorem and the jetted proofs; the `dec` data-jet circuit held**
+  (`Nock2Ski/JetSpec.lean`, `JetWord.lean`, `JetTransport.lean`, `bench/NockProbe.lean`
+  `check-jets`, `release/nock/jets/`, 2026-11-04). §3.1's `jet_transport : Leaf f c →
+  Implements (nounContract c) (jetT f)`: for a formula `f` with a total model `c` (`Leaf f c
+  := ∀ S, NockEval S f (c S)`, lean-nock's leaf-correctness shape), the lean-ski data-jet
+  contract `⟨encNoun, encOut, c⟩` (a value as `encNoun`, the crash as `Err`) is implemented
+  by `jetT f = λx. toCell (nockToSki f x)`, from `embed_value` and `embed_crash`;
+  `nounContract_respects` by `encNoun_inj`; `jet_close`, `jet_real` (`JSteps.close`,
+  `real_of_jet`): a verifier accepting under the jet accepts with `jetT f` in its place.
+  Instances `dec_transport`, `add_transport` from `leaf_dec`, `leaf_add` (`JetWord.lean`,
+  from lean-nock's `leaf_correct`; `decF = phi .dec` by `rfl`). `toCellT` copies a noun's term
+  code-free (`toCell_enc`), the wrapper M4f named; needed because `Enc` is a relation (a cell
+  may be a `Form`) and `encO` a function. Two-valued against three-valued: `cw` is total and
+  two-valued, divergence has no encoding and no row (`embed_diverges`), and for the words it
+  does not occur (`word_crash_total`), so `Leaf` is the whole contract; `formContract f` on
+  `Dom f = {S // ∃ o, NockEval S f o}` with Nock's outcome as spec, `jet_transport_dom` with no
+  hypothesis, is the restriction to the domain. The join: `Nock.Comp` reaches `Nock.Fuel`
+  (root `Diverges`) and cannot be imported beside `Ski.Basic`, but `Ski.DataJet` can beside
+  `Nock.Eval`; `JetSpec.lean` (lean-nock only) is the shared vocabulary, `Leaf decF decC` one
+  constant, as `Value.lean` joins the probe step. Not built, by the user's hold: the circuit
+  of the transported `dec` data jet (lean-ski's data-jet path needs a precompile computing
+  `spec`), and any Avon C jet. **Jetted proofs** with lean-ski's existing supercombinator
+  jets (code jets of SKIlark's templates matched in the Nock terms: 9,259 roots in the
+  count-up term, 4,146 in Hoon's): `ski-air jets-measure` (Avon's `witness --jet-table`
+  writes the same table), `nockprobe check-jets` (`Air.checkJA` bound to the row), `ski-air
+  jet-prove`/`jet-verify`, as lean-ski's sumto stage. `countup_dec_7`: 29,591 → 17,716 rows
+  (683 instantiations; 12,004 → 6,270 contractions), proved 1.96 s, verified 1.2 s, 553 KB;
+  `hoon_dec_12`: 81,895 → 52,084 (1,939; 33,043 → 18,420), 1.42 s, 0.7 s, 503 KB;
+  `hoon_dec_0`: 11,364 → 10,275 (164; 4,606 → 3,960), 0.91 s, 0.7 s; prover under 420 MB. The chain:
+  `Circuit.jetExport_sound` + `jet_run_shape` + `embed_outcome`. The loop does not collapse
+  (§8's gate for M5 named the data jet): rows fall 36–40%, proportional to the count still.
 - **Remaining** (M3's other items, M4–M7): `fragment_static` is moot for correctness (the
   fallback is proved) and is a cost statement; the Λ front end; the statement path and the
   circuit.
@@ -330,7 +361,10 @@ in for the jet. Transport:
 - `jet_transport`: if `w` is a Λ word with Nock compilation `Λ_N w` and C model `cw`, then
   `nockToSki (Λ_N w)` implements the lean-ski contract whose `spec` is `cw` on encoded nouns.
   So the data jet for `w` is licensed in lean-ski by lean-nock's leaf proof plus `embed_value`,
-  with no new proof of the function.
+  with no new proof of the function. (M5: proved as `jet_transport : Leaf f c → Implements
+  (nounContract c) (jetT f)` with `jetT f = λx. toCell (nockToSki f x)`, the output copied
+  code-free since `Enc` is a relation; `Λ_N w` is lean-nock's `phi w`, the word's formula,
+  `cw w` its model; `Nock2Ski/JetTransport.lean`, README "Jet transport".)
 - The converse, for SKI templates that are images of Nock batteries, is a corollary of
   `fragment_static` plus `inst_sound_g`.
 - Divergence: lean-ski's jet rows cannot run where the term diverges (a jet that bails there
@@ -411,7 +445,7 @@ realized across ISAs. It is §8's stretch item; the direct route is enough for t
 | M2 | the compiler over opcodes 0–9 on the Hoon-shaped fragment; `embed_value` and `embed_crash` | count-up `dec` and `++dec` run through `runF` to the right outcomes; theorems closed | 3–4 weeks |
 | M3 | the interpreter fallback pinned and simulated; `embed_value` strong; then `embed_diverges`, `fragment_static` | `nockI_value`, `nockI_crash`; the 63 tests interpreted; `countUp_zero_diverges` carried to SKI | 1–2 weeks |
 | M4 | `nock statement` exe; the verifier's Lean check; the three statements proved on the circuit; rows measured (M4a done: `nockstatement`, count-up `dec` proved on the base circuit; M4b: sharing, Hoon's `++dec`; M4c: hidden subjects on the composed predicate circuit, `nockpred`; M4d: cell-shaped hidden subjects, `add` over two hidden atoms; M4e: the converse simulation, `embed_terminates`, the hidden-subject statements as Nock claims; M4f: the product as a public value, `nounV`, `probe_decodes_nock`, probe tables Lean-checked; M4g: the probe tables proved, ski-air taking the tree as its outcome words on lean-ski's `probe-plan-file` branch) | `release/nock/` with `verify.sh` passing | 2 weeks |
-| M5 | `jet_transport` for `dec` and `add`; jetted proofs; the rows table | the loop collapses; theorem closed | 2–3 weeks |
+| M5 | `jet_transport` for `dec` and `add`; jetted proofs; the rows table (done 2026-11-04: `jet_transport`, `dec_transport`, `add_transport` closed, `Nock2Ski/JetTransport.lean`; jetted proofs with lean-ski's existing template jets, `release/nock/jets/`, rows −36–40%; the transported `dec` data jet's circuit, which would collapse the loop, is held) | the loop collapses; theorem closed | 2–3 weeks |
 | M6 | Zorp comparison; paper draft | numbers in the table; draft to USTJ | 2 weeks |
 | M7 (stretch) | Λ → SKIlark front end, co-derivation across ISAs | `composition` shared | open |
 

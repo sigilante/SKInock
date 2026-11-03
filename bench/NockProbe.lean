@@ -38,6 +38,16 @@ compute the plan from the theorem's own tree and run lean-ski's checker.
   `Air.checkPA` must accept it for `nounPlan p` with the term's roots and
   jets.  `ACCEPT` means `Nock2Ski.probe_check`: the term's value is `p`
   (`ValueIs`), hence `probe_decodes_nock`: `*[s f] = p`.  Exit 1 otherwise.
+- `nockprobe check-jets CORPUS NAME TABLE` checks a **jetted** witness table
+  (M5; the format of `lake exe jets check`: ski-air's `jets-measure` or
+  Avon's `witness --jet-table`, rows that step or instantiate a licensed
+  template root): the table's term must be the corpus row's, and
+  `Air.checkJA` must accept it with the term's own roots and jets
+  (`JetTable.jetTable`).  `ACCEPT` means lean-ski's `Air.checkJA_sound`,
+  so `Air.AcceptsJ` with licensed roots and `Air.air_sound_jet`: the table
+  ends on a weak head normal form `v` that the row's term evaluates to up to
+  weak reduction (`Mach.jet_run_eval`) and with `v`'s head and arity
+  (`jet_run_shape`); `embed_outcome` then reads `v` as Nock's outcome.
 -/
 
 open Term Nock2Ski Nock2Ski.NounText Air JetTable Mach
@@ -198,8 +208,29 @@ def check (corpus name table product : String) : IO UInt32 := do
       die s!"REJECT {table}: not a probe table of {name} for {showNoun p}"
   | _, _ => die s!"MALFORMED {table}"
 
+/-- A jetted witness table, bound to the row: `Air.checkJA` with the
+    term's roots and jets (`check-jets`). -/
+def checkJets (corpus name table : String) : IO UInt32 := do
+  let rowText ← match ← rowOf corpus name with
+    | .error e => return ← die e
+    | .ok t => pure t
+  let text ← IO.FS.readFile table
+  let ls := (text.splitOn "\n").filter (fun l => !l.trimAscii.toString.isEmpty)
+  match parseTable ls with
+  | some (t, A, rows) =>
+    if (ls.headD "").trimAscii.toString != rowText then
+      return ← die s!"REJECT {table}: its term is not the term of {name}"
+    let m := load t
+    let (roots, js) := jetTable m.heap allTemplates
+    if checkJA A m roots js rows then
+      IO.println s!"ACCEPT {table}: a jetted run of the term of {name} ({rows.length} rows, {A.size} cells, {roots.length} roots, {js.length} jets)"
+      pure 0
+    else
+      die s!"REJECT {table}: not a jetted run of {name} with its jet table"
+  | none => die s!"MALFORMED {table}"
+
 def usage : String :=
-  "usage: nockprobe plan PRODUCT\n       nockprobe tree PRODUCT\n       nockprobe term CORPUS NAME\n       nockprobe jets TERMFILE\n       nockprobe check CORPUS NAME TABLE PRODUCT"
+  "usage: nockprobe plan PRODUCT\n       nockprobe tree PRODUCT\n       nockprobe term CORPUS NAME\n       nockprobe jets TERMFILE\n       nockprobe check CORPUS NAME TABLE PRODUCT\n       nockprobe check-jets CORPUS NAME TABLE"
 
 def main (args : List String) : IO UInt32 := do
   match args with
@@ -208,6 +239,7 @@ def main (args : List String) : IO UInt32 := do
   | ["term", corpus, name] => term corpus name
   | ["jets", file] => jets file
   | ["check", corpus, name, table, product] => check corpus name table product
+  | ["check-jets", corpus, name, table] => checkJets corpus name table
   | _ => die usage 2
 
 end NockProbe

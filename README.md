@@ -322,7 +322,20 @@ jets licensed by theorems. A live run of the same programs on both provers is fu
   `scripts/lean-check.sh` runs the plan, the tree and the check on the released tables as
   its M4f gate.
 
-## Proofs (`release/nock/`, M4a, M4b, M4c, M4d, M4e, M4f, M4g)
+- `Nock2Ski/JetSpec.lean`, `Nock2Ski/JetWord.lean`, `Nock2Ski/JetTransport.lean` (M5): jet
+  transport, PLAN §3. `JetSpec` (lean-nock only) is the shared vocabulary: `Leaf f c := ∀ S,
+  NockEval S f (c S)`, lean-nock's leaf-correctness shape for a formula against a total C
+  model, and the words `dec` and `add` written out (`decF`, `addF`, `decC`, `addC`).
+  `JetWord` (lean-nock only: `Nock.Comp` reaches `Nock.Fuel`, whose root `Diverges` clashes
+  with `Ski.Basic`'s) proves `leaf_dec : Leaf decF decC`, `leaf_add` from `leaf_correct`,
+  and `decF_eq : decF = phi .dec` by `rfl`. `JetTransport` (lean-nock's `Nock.Eval` beside
+  lean-ski's `Ski.DataJet`, which coexist) proves `jet_transport : Leaf f c → Implements
+  (nounContract c) (jetT f)`, the data-jet contract with `spec := c`, its instances
+  `dec_transport`, `add_transport`, `Contract.Respects` by `encNoun_inj`, the corollaries
+  `jet_close`/`jet_real` of `JSteps.close`/`real_of_jet`, and the code-dropping copy
+  `toCellT` (`toCell_enc : Enc p ep → toCellT ⬝ ep ↠ encNoun p`). Below, "Jet transport".
+
+## Proofs (`release/nock/`, M4a, M4b, M4c, M4d, M4e, M4f, M4g; M5 below)
 
 Three Nock programs proved on lean-ski's circuit, with no Nock circuit, as corpus rows of
 lean-ski's base circuit (`ski-air CORPUS OUTDIR`): the spec's count-up `dec` at subject 7,
@@ -651,3 +664,122 @@ p)`, which `probe_value` makes `ValueIs t p`, the conclusion `probe_sound` draws
 `Air.air_probe_sound` for the checker's `AcceptsP`; and `probe_decodes_nock`
 (`Nock2Ski/Probe.lean`) gives the Nock claim, `*[s f] = p`, with `p` read from the public
 tree. `release/nock/RESULTS.md` has the numbers and the refusals.
+
+## Jet transport (M5)
+
+PLAN §3's theorem, and the jetted proofs the existing machinery gives. What is a theorem and
+what is not built is said plainly in each paragraph; nothing new was jetted (no Avon C jet, no
+lean-ski data-jet circuit), by the user's hold.
+
+**The two contracts.** lean-nock licenses a jet for a Λ word `w` by `leaf_correct w : ∀ S,
+NockEval S (phi w) (cw w S)` (`Nock/Comp.lean`): the word's Nock formula evaluates on every
+subject to exactly the C model's outcome, a value or a crash; `word_jet_sound w : ThreeValued
+(phi w) (wordJet w)` (`Nock/Mock.lean`) is the model as a jet meeting the three-valued contract.
+lean-ski licenses a data jet (`Ski/DataJet.lean`) by a `Contract α β` (`encI : α → Term`,
+`encO : β → Term`, `spec : α → β`) and `Implements c P := ∀ x, P ⬝ encI x ↠ encO (spec x)`; then
+`JSteps.close` lets any implementation stand in for the jet and `real_of_jet` says a verifier
+that accepts under the jet realizes its atom with the implementation closed in.
+
+**The theorem** (`Nock2Ski/JetTransport.lean`). For a formula `f : Noun` and a total model
+`c : Noun → Outcome` with `Leaf f c := ∀ S, NockEval S f (c S)` (`Nock2Ski/JetSpec.lean`):
+
+    nounContract c : Contract Noun Outcome := ⟨encNoun, encOut, c⟩        encOut (.val p) = encNoun p,  encOut .exit = errT
+    jetT f := S ⬝ (K ⬝ toCellT) ⬝ nockToSki f                               λx. toCell (nockToSki f x)
+    jet_transport : Leaf f c → Implements (nounContract c) (jetT f)
+    nounContract_respects c : (nounContract c).Respects                     from encNoun_inj
+    jet_close : Leaf f c → σ j = jetT f → JSteps (nounContract c) j t u → WSteps (t.close σ) (u.close σ)
+    jet_real  : Leaf f c → σ j = jetT f → JSteps (nounContract c) j (V ⬝ₒ x ⬝ₒ r) K → Real (.atom (V.close σ) x) r
+
+The proof is `embed_value` and `embed_crash` on `encNoun S` (`jet_step`): a value's term is an
+encoding `ep` with `Enc p ep`, a crash's is `Err`. The instances are Table C's words,
+`decContract := nounContract decC`, `addContract := nounContract addC`:
+
+    dec_transport : Leaf decF decC → Implements decContract (jetT decF)        decF = phi .dec,  decC = cw .dec
+    add_transport : Leaf addF addC → Implements addContract (jetT addF)        addF = phi .add,  addC = cw .add
+
+with the hypotheses `leaf_dec : Leaf decF decC` and `leaf_add` proved in
+`Nock2Ski/JetWord.lean` from `leaf_correct .dec` and `leaf_correct .add` (`decF_eq`, `addF_eq`
+by `rfl`; `decC_eq`, `addC_eq` by cases on the subject). So the data jet for `dec` is licensed
+in lean-ski by lean-nock's leaf proof plus the embedding, with no new proof of the function.
+Axioms: `propext`, `Classical.choice`, `Quot.sound` on the lean-ski side; `propext`,
+`Quot.sound` on the lean-nock side.
+
+- **Why `toCell`, and why the implementation is not `nockToSki f` bare.** `embed_value`'s
+  encoding is a relation: a cell's term may be a `Form` carrying its compiled code (a battery
+  pushed by `[1 …]`), and a `Form` does not reduce to a `Cell`; a `Contract`'s `encO` is a
+  function. `toCellT = Y toCellG` copies a noun's term constructor by constructor, dropping
+  code: `toCell_enc : Enc p ep → toCellT ⬝ ep ↠ encNoun p` (induction on `Enc`, the three
+  continuations β-reduced by `absN_beta_close`, the constructors by `AtomC_red`, `CellC_red`),
+  `toCell_err : toCellT ⬝ errT ↠ errT`. It is the `toCell` wrapper the probe section names as
+  not done; `jetT f` is the compiled formula followed by it, two contractions.
+- **Two outcomes against three.** lean-ski's `Contract` is total: `spec x` exists for every
+  `x : α`. lean-nock's `cw w` is total too, and two-valued; its contract's third value,
+  divergence, is the absence of a `NockEval` derivation, has no encoding, and no term
+  implements it: `embed_diverges` says the compiled term diverges exactly where Nock has no
+  outcome, so no row of any circuit ends there. For the Λ words divergence does not occur
+  (`word_crash_total`, by the guards Λ emits), which is what `Leaf f c` states: `c` is the
+  whole contract, and `leaf_total : Leaf f c → ∀ S, ∃ o, NockEval S f o`. For a formula that
+  does diverge somewhere no total `c` satisfies `Leaf f c`; `formContract f : Contract (Dom f)
+  Outcome` restricts the domain to `Dom f = {S // ∃ o, NockEval S f o}`, takes Nock's outcome
+  there as the specification (`Classical.choose`), and `jet_transport_dom f : Implements
+  (formContract f) (jetT f)` holds with no hypothesis (`formContract_respects` too). That is
+  "use `Implements` only on inputs where `NockEval` yields an outcome".
+- **The two environments.** `Word`, `phi`, `cw` live in `Nock.Comp`, which imports `Nock.Fuel`
+  (root `Diverges`, `Nock/Fuel.lean:678`) and cannot be imported beside `Ski.Basic`
+  (`Ski/Basic.lean:136`); `Ski.DataJet`, on the other hand, does coexist with `Nock.Eval`. So
+  `JetWord.lean` imports lean-nock only and `JetTransport.lean` both libraries, and they meet
+  in `JetSpec.lean` (lean-nock only): `Leaf decF decC` is one constant, the conclusion of
+  `leaf_dec` and the hypothesis of `dec_transport`, as `ValueIs` joins the probe step. Nothing
+  is copied; the formulas are lean-nock's by `rfl`. (Determinism of `NockEval` is in
+  `Nock.Fuel` too, so the agreement of `formContract f` with a total model on `Dom f` is not
+  stated here.)
+- **What is not built.** The transported `dec` data jet has no circuit: lean-ski's data-jet
+  path needs a precompile that computes `spec` (its own `Ski/DataJet.lean` says so of
+  Poseidon2), and building one for `cw .dec` is held by the user. Nor is an Avon C jet for
+  `dec` made. `jet_transport` licenses the row: whatever circuit computes `cw .dec` on
+  `encNoun` may stand in for `jetT decF`, and a proof accepted under it is a proof about the
+  Nock formula. PLAN §3.2's limit stands: the transported jet says nothing about steps.
+
+**Jetted proofs with the existing machinery** (`release/nock/jets/`, `produce.sh jets`,
+`verify.sh` step 6). lean-ski's supercombinator jets (`Ski/Inst.lean`, `Ski/JetTable.lean`,
+`Ski/AirJet.lean`, `Ski/Circuit/JetSound.lean`) license **code jets**: SKIlark's compiler
+templates, generic bracket-abstraction shapes, matched inside the loaded term
+(`JetTable.jetTable` over `allTemplates`), and an instantiation row that writes a template's
+body for its arguments in one step in place of the β-chain. The Nock terms are bracket
+abstraction too, so the tables match them: 9,259 licensed roots in the count-up term, 4,146 in
+Hoon's `++dec`, 4,139 in the crash row (`NAME.jets`, the same files as `probe/`). `ski-air
+jets-measure` runs each row with the roots instantiated and writes the jetted witness (Avon's
+`witness --jet-table` writes the same bytes, compared when Avon is present), `nockprobe
+check-jets` accepts it bound to the row (lean-ski's `Air.checkJA`), `ski-air jet-prove` proves
+it and `jet-verify` checks the proof against the corpus row and the jet file after Lean's
+`jets statement-stdin` check of the file (`Air.rootsOKB`):
+
+| row | plain rows | jetted rows | instantiations | contractions plain → jetted | CPU / POP / INSTW | prove s | verify s | proof |
+|---|--:|--:|--:|--:|---|--:|--:|--:|
+| `countup_dec_7` | 29,591 | 17,716 | 683 | 12,004 → 6,270 | 2^15 / 2^12 / 2^9 | 1.96 | 1.2 | 553 KB |
+| `hoon_dec_12` | 81,895 | 52,084 | 1,939 | 33,043 → 18,420 | 2^16 / 2^13 / 2^10 | 1.42 | 0.7 | 503 KB |
+| `hoon_dec_0` | 11,364 | 10,275 | 164 | 4,606 → 3,960 | 2^14 / 2^9 / 2^6 | 0.91 | 0.7 | 505 KB |
+
+The rows fall by 40% and 36% on the two public rows (the crash row, mostly the sharing βs, by
+10%); the proofs are proved in 0.9–2.0 s and verified in 0.7–1.2 s, the prover under 420 MB.
+These are the generic templates, not a jet for `dec`: the loop runs, every contraction of the
+`dec` body is paid, and the rows are proportional to the count; the collapse of the loop to a
+constant is the data jet's, not built (above). `release/nock/RESULTS.md` has ski-air's lines.
+
+- **What an accepted jetted proof says**: `Circuit.jetExport_sound` (lean-ski,
+  `Ski/Circuit/JetSound.lean`): a proof Plonky3 accepts against AIRs matching `jetAirs t roots
+  jets` for the row's term `t`, with `rootsOKB` (which `jets statement` checked) and
+  `jetFitB`, is a run of the AIR with instantiation rows (`Air.AcceptsJ`), and by
+  `Air.air_sound_jet` it ends on a weak head normal form `v` with `∃ v', Eval t v' ∧ WSteps v'
+  v` (`Mach.jet_run_eval`: an instantiation is a weak reduction, `inst_sound_g`) and `∃ v',
+  Eval t v' ∧ chead v' = chead v` (`jet_run_shape`). `Eval t v'` is the hypothesis of
+  `embed_outcome` through `compiled_terminates`/`shared_terminates` and
+  `compiled_value_eval`/`shared_value_eval`/`shared_crash_eval` (`Nock2Ski/Converse.lean`,
+  `Share.lean`): `v'` weakly reduces to an encoding of Nock's product or to `Err` for its
+  crash, and Nock does one or the other. So `v`, a weak reduct of `v'` and a weak head normal
+  form, has the head of that encoding: `Cell`-, `Atom`- or `Err`-headed as the product is
+  (`jetExport_sound` + `jet_run_shape` + `embed_outcome`). The product as a public value is the
+  probe step's (M4f); the jetted probe runs were measured there and are not released as proofs.
+- **The join is read across the two environments** as before: `jetExport_sound` and
+  `Air.checkJA_sound` are lean-ski's (`Ski.Circuit`, `Ski.AirJet` reach `Ski.Words`);
+  `embed_outcome` is `Nock2Ski.Converse`'s; `Eval t v'` is the shared constant.

@@ -22,3 +22,5 @@ import Nock2Ski.Pending
 import Nock2Ski.Converse
 import Nock2Ski.Value
 import Nock2Ski.Probe
+import Nock2Ski.JetSpec
+import Nock2Ski.JetTransport

@@ -68,16 +68,34 @@
 #      (`circuit compare-probe`): `Circuit.probeExport_sound_tree`, then
 #      `probe_value` and `probe_decodes_nock`.
 #
-# Stages: `release/nock/produce.sh [STAGE…]` of rows, prove, hidden, probe;
-# all by default.  One job at a time.
+#   6. The jetted rows (M5, release/nock/jets): each row proved with
+#      lean-ski's EXISTING supercombinator-jet machinery, no new jet built.
+#      `lake exe nockprobe jets` writes the row's jet file (as in 5:
+#      lean-ski's `JetTable.jetTable` over `allTemplates`, the SKIlark
+#      template roots it licenses inside the Nock term); `ski-air
+#      jets-measure TERM JETS TABLE` runs the term with those roots
+#      instantiated and writes the jetted witness table (Avon's `witness
+#      --jet-table` writes the same bytes; compared when Avon is present),
+#      printing the plain and jetted row counts; `nockprobe check-jets`
+#      accepts it bound to the row (lean-ski's `Air.checkJA`, so
+#      `Air.checkJA_sound`, `Air.air_sound_jet`); `ski-air jet-prove`
+#      proves it (`NAME.jetted.proof`) and `jet-verify` checks the proof
+#      against the corpus row and the jet file, Lean checking the jet file
+#      first (`lake exe jets statement-stdin`): `Circuit.jetExport_sound`,
+#      then `jet_run_shape` and `embed_outcome` (README, "Jet transport").
+#      The transported `dec` DATA jet of Nock2Ski/JetTransport.lean has no
+#      circuit here (held); these are code jets of generic subterms.
+#
+# Stages: `release/nock/produce.sh [STAGE…]` of rows, prove, hidden, probe,
+# jets; all by default.  One job at a time.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 LEAN_SKI=${LEAN_SKI:-../lean-ski}
 R=release/nock
-STAGES=" ${*:-rows prove hidden probe} "
+STAGES=" ${*:-rows prove hidden probe jets} "
 want() { case "$STAGES" in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 for st in $STAGES; do
-    case " rows prove hidden probe " in *" $st "*) ;; *) echo "no stage $st" >&2; exit 2 ;; esac
+    case " rows prove hidden probe jets " in *" $st "*) ;; *) echo "no stage $st" >&2; exit 2 ;; esac
 done
 tmp=$(mktemp -d)
 trap '/bin/rm -rf "$tmp"' EXIT
@@ -160,5 +178,38 @@ while IFS=$'\t' read -r name subject product form formula; do
     # shellcheck disable=SC2046
     "$A" probe-verify "$R/corpus.txt" "$P" "$name" "$P/$name.probe.proof" $(cat "$P/$name.tree") \
         | sed "s/^/$name: probe-verify: /; s/ decodes to tree [0-9 ]*(/ decodes to the tree of $product (/" | tee -a "$P/results.txt"
+done < "$R/programs.txt"
+fi
+
+if want jets; then
+echo "--- Lean + ski-air: the rows jetted with lean-ski's licensed template roots (M5)"
+lake build nockprobe > /dev/null
+AVON=${AVON:-$HOME/avon/build/avon}
+J=$R/jets
+mkdir -p "$J"
+: > "$J/results.txt"
+while IFS=$'\t' read -r name subject product form formula; do
+    [ -n "$name" ] || continue
+    lake exe nockprobe term "$R/corpus.txt" "$name" > "$tmp/$name.term"
+    lake exe nockprobe jets "$tmp/$name.term" > "$J/$name.jets" 2> "$tmp/jets.err"
+    echo "$name: jet file: $(sed 's/.*: //' "$tmp/jets.err")" | tee -a "$J/results.txt"
+    # the jetted witness: ski-air's own run with the licensed roots instantiated;
+    # it proves and verifies it in-process too, and prints the plain run beside it
+    "$A" jets-measure "$tmp/$name.term" "$J/$name.jets" "$tmp/$name.jetted.table" \
+        | sed "s/^/$name: jets-measure: /" | tee -a "$J/results.txt"
+    gzip -9 -c "$tmp/$name.jetted.table" > "$J/$name.jetted.table.gz"
+    if [ -x "$AVON" ]; then
+        "$AVON" witness --jet-table="$J/$name.jets" "$tmp/$name.term" > "$tmp/$name.avon.table" 2> "$tmp/avon.err"
+        if cmp -s "$tmp/$name.avon.table" "$tmp/$name.jetted.table"; then
+            echo "$name: avon witness --jet-table writes the same table ($(tail -n 1 "$tmp/avon.err"))" | tee -a "$J/results.txt"
+        else
+            echo "$name: avon witness --jet-table differs from ski-air's table" | tee -a "$J/results.txt"; exit 1
+        fi
+    fi
+    lake exe nockprobe check-jets "$R/corpus.txt" "$name" "$tmp/$name.jetted.table" | sed "s|$tmp/||" | tee -a "$J/results.txt"
+    "$A" jet-prove "$tmp/$name.term" "$J/$name.jets" "$tmp/$name.jetted.table" "$J/$name.jetted.proof" \
+        | sed "s/^/$name: jet-prove: /" | tee -a "$J/results.txt"
+    "$A" jet-verify "$R/corpus.txt" "$J" "$name" "$J/$name.jetted.proof" \
+        | sed "s/^/$name: jet-verify: /" | tee -a "$J/results.txt"
 done < "$R/programs.txt"
 fi

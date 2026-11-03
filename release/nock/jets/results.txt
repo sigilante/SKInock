@@ -1,0 +1,21 @@
+countup_dec_7: jet file: 9259 roots, 24 jets
+countup_dec_7: jets-measure: plain 29591 rows, 175296 cells; jetted 17716 rows, 162491 cells, 683 instantiations; padded CPU 32768, POP 4096, INSTW 512
+countup_dec_7: jets-measure: jetted: proved in 1.95 s, verified in 1.189 s
+countup_dec_7: avon witness --jet-table writes the same table (contractions 6270 rows 17716 cells 162491 loaded 139920 insts 683)
+ACCEPT countup_dec_7.jetted.table: a jetted run of the term of countup_dec_7 (32768 rows, 262144 cells, 9259 roots, 24 jets)
+countup_dec_7: jet-prove: proved 32768 rows (683 instantiations), 262144 memory cells, in 1.95 s; proof 553128 bytes -> release/nock/jets/countup_dec_7.jetted.proof
+countup_dec_7: jet-verify: VERIFIED countup_dec_7: the proof checks against its term and Lean's jet table (1.171 s)
+hoon_dec_12: jet file: 4146 roots, 26 jets
+hoon_dec_12: jets-measure: plain 81895 rows, 157396 cells; jetted 52084 rows, 125598 cells, 1939 instantiations; padded CPU 65536, POP 8192, INSTW 1024
+hoon_dec_12: jets-measure: jetted: proved in 1.43 s, verified in 0.701 s
+hoon_dec_12: avon witness --jet-table writes the same table (contractions 18420 rows 52084 cells 125598 loaded 60218 insts 1939)
+ACCEPT hoon_dec_12.jetted.table: a jetted run of the term of hoon_dec_12 (65536 rows, 131072 cells, 4146 roots, 26 jets)
+hoon_dec_12: jet-prove: proved 65536 rows (1939 instantiations), 131072 memory cells, in 1.43 s; proof 503004 bytes -> release/nock/jets/hoon_dec_12.jetted.proof
+hoon_dec_12: jet-verify: VERIFIED hoon_dec_12: the proof checks against its term and Lean's jet table (0.692 s)
+hoon_dec_0: jet file: 4139 roots, 26 jets
+hoon_dec_0: jets-measure: plain 11364 rows, 74154 cells; jetted 10275 rows, 73079 cells, 164 instantiations; padded CPU 16384, POP 512, INSTW 64
+hoon_dec_0: jets-measure: jetted: proved in 0.92 s, verified in 0.701 s
+hoon_dec_0: avon witness --jet-table writes the same table (contractions 3960 rows 10275 cells 73079 loaded 60158 insts 164)
+ACCEPT hoon_dec_0.jetted.table: a jetted run of the term of hoon_dec_0 (16384 rows, 131072 cells, 4139 roots, 26 jets)
+hoon_dec_0: jet-prove: proved 16384 rows (164 instantiations), 131072 memory cells, in 0.92 s; proof 504796 bytes -> release/nock/jets/hoon_dec_0.jetted.proof
+hoon_dec_0: jet-verify: VERIFIED hoon_dec_0: the proof checks against its term and Lean's jet table (0.687 s)

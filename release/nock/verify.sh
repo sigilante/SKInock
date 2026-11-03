@@ -47,6 +47,18 @@
 #      `Circuit.probeExport_sound_tree`, then `probe_value` and
 #      `probe_decodes_nock`: *[s f] = p), and refuses it for the tree of
 #      the product + 1, for the cell's, and with one byte changed.
+#   6. The jetted rows (release/nock/jets, M5): lean-ski's `lake exe jets
+#      statement` checks every jet file against its corpus term (the file
+#      is exactly the term's, its roots licensed: `Air.rootsOKB`), and
+#      `nockprobe jets` recomputes each; `nockprobe check-jets` accepts the
+#      released jetted table for its row (lean-ski's `Air.checkJA`:
+#      `Air.checkJA_sound`, `Air.air_sound_jet`, so the table ends on a
+#      value the row's term evaluates to up to weak reduction and with its
+#      head, `jet_run_eval`, `jet_run_shape`; then `embed_outcome`) and
+#      refuses it as another row's; `ski-air jet-verify` checks each proof
+#      against the corpus row and the jet file (Lean's `jets
+#      statement-stdin` first; `Circuit.jetExport_sound`), and refuses it
+#      as another row's and with one byte changed.
 #
 # Exits nonzero on any failure.  With VERIFY_ALL=1 every check runs and the
 # exit comes at the end.
@@ -230,6 +242,61 @@ while IFS=$'\t' read -r name subject product form formula; do
 done < "$R/programs.txt"
 [ "$(grep -c '^ACCEPT' "$P/results.txt")" -ge "$n" ] && ok "probe/results.txt records the $n accepted table(s)" || no "probe/results.txt does not record one ACCEPT per table"
 [ "$(grep -c 'probe-verify: VERIFIED' "$P/results.txt")" = "$n" ] && ok "probe/results.txt records the $n verified proof(s)" || no "probe/results.txt does not record one VERIFIED per proof"
+
+
+echo "--- 6. The jetted rows: the jet files, the jetted tables and their proofs (release/nock/jets, M5)"
+J=$R/jets
+(cd "$LEAN_SKI" && lake build jets > /dev/null)
+if (cd "$LEAN_SKI" && lake exe jets statement "$OLDPWD/$R/corpus.txt" "$OLDPWD/$J") > "$tmp/js.log" 2>&1 && ! grep -qv '^STATEMENT' "$tmp/js.log"; then
+    ok "lean-ski's jets statement: each row's jet file is its term's, roots licensed ($(grep -c '^STATEMENT' "$tmp/js.log") files)"
+else
+    no "lean-ski's jets statement refuses a jet file: $(grep -v '^STATEMENT' "$tmp/js.log" | head -n 2 | tr '\n' ';')"
+fi
+n=0
+while IFS=$'\t' read -r name subject product form formula; do
+    [ -n "$name" ] || continue
+    n=$((n+1))
+    lake exe nockprobe term "$R/corpus.txt" "$name" > "$tmp/$name.term"
+    if lake exe nockprobe jets "$tmp/$name.term" 2> "$tmp/jets.err" | cmp -s - "$J/$name.jets"; then
+        ok "$name: $name.jets is the term's jet file ($(sed 's/.*: //' "$tmp/jets.err"))"
+    else
+        no "$name: $name.jets is not the term's jet file"
+    fi
+    other=$(awk -v r="$name" '$1 != r {print $1; exit}' "$R/corpus.txt")
+    gunzip -c "$J/$name.jetted.table.gz" > "$tmp/$name.jetted.table"
+    if lake exe nockprobe check-jets "$R/corpus.txt" "$name" "$tmp/$name.jetted.table" > "$tmp/cj.log" 2>&1; then
+        ok "$(sed "s|$tmp/||" "$tmp/cj.log")"
+    else
+        no "$name: $(head -n 1 "$tmp/cj.log")"
+    fi
+    if lake exe nockprobe check-jets "$R/corpus.txt" "$other" "$tmp/$name.jetted.table" > "$tmp/cj2.log" 2>&1; then
+        no "$name: the jetted table read as $other's"
+    else
+        ok "$name: the jetted table is refused as $other's"
+    fi
+    if "$A" jet-verify "$R/corpus.txt" "$J" "$name" "$J/$name.jetted.proof" > "$tmp/jv.log" 2>&1 && grep -q '^VERIFIED' "$tmp/jv.log"; then
+        ok "$name: ski-air jet-verify accepts $name.jetted.proof $(grep -o '([0-9.]* s)' "$tmp/jv.log")"
+    else
+        no "$name: jet-verify rejects the proof ($(head -c 100 "$tmp/jv.log"))"
+    fi
+    if "$A" jet-verify "$R/corpus.txt" "$J" "$other" "$J/$name.jetted.proof" > "$tmp/jv2.log" 2>&1; then
+        no "$name: the jetted proof verified as $other's"
+    else
+        ok "$name: the jetted proof is refused as $other's ($(grep -o 'REJECTED: [^(]*' "$tmp/jv2.log" | head -c 60))"
+    fi
+    /bin/cp "$J/$name.jetted.proof" "$tmp/jflip.proof"
+    size=$(wc -c < "$tmp/jflip.proof")
+    off=$((size / 2))
+    byte=$(dd if="$tmp/jflip.proof" bs=1 skip=$off count=1 2>/dev/null | od -An -tu1 | tr -d ' ')
+    printf '%b' "$(printf '\\0%03o' $(( (byte + 1) % 256 )))" \
+        | dd of="$tmp/jflip.proof" bs=1 seek=$off count=1 conv=notrunc 2>/dev/null
+    if "$A" jet-verify "$R/corpus.txt" "$J" "$name" "$tmp/jflip.proof" > "$tmp/jf.log" 2>&1; then
+        no "$name: the jetted proof with one byte changed verified"
+    else
+        ok "$name: the jetted proof with byte $off changed is refused ($(grep -o 'REJECTED: [^(]*' "$tmp/jf.log" | head -c 60))"
+    fi
+done < "$R/programs.txt"
+[ "$(grep -c 'jet-verify: VERIFIED' "$J/results.txt")" = "$n" ] && ok "jets/results.txt records the $n verified jetted proof(s)" || no "jets/results.txt does not record one VERIFIED per row"
 
 [ "$failed" = 0 ] || { echo "NOT VERIFIED: release/nock"; exit 1; }
 echo "VERIFIED: release/nock"

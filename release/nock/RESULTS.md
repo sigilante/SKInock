@@ -1,4 +1,4 @@
-# release/nock: Nock programs on lean-ski's circuits (M4a, M4b, M4c, M4d, M4f, M4g; 2026-11-04)
+# release/nock: Nock programs on lean-ski's circuits (M4a, M4b, M4c, M4d, M4f, M4g, M5; 2026-11-04)
 
 Three Nock programs compiled to SKI by `Nock2Ski.compiled` and offered to
 lean-ski's base circuit as corpus rows (`ski-air CORPUS OUTDIR`,
@@ -339,6 +339,103 @@ has the value p`), refuses it for the product + 1 and for the cell `[p
 0]`, and runs the refusals of the proof above.  No Avon is needed to
 verify; ski-air is, built from lean-ski's `probe-plan-file` branch.
 
+## Jetted rows: lean-ski's supercombinator jets (M5, 2026-11-04)
+
+No new jet is built here (no Avon C jet, no lean-ski data-jet circuit; the
+transported `dec` data jet of `Nock2Ski/JetTransport.lean` is a theorem
+without a circuit, held).  These rows use lean-ski's **existing**
+supercombinator-jet machinery (`Ski/Inst.lean`, `Ski/JetTable.lean`,
+`Ski/AirJet.lean`, `Ski/Circuit/JetSound.lean`): code jets of SKIlark's
+compiler templates, generic bracket-abstraction shapes that
+`JetTable.jetTable` finds inside the loaded Nock term and licenses as
+roots; an instantiation row writes a template's body for its arguments in
+one step where the plain run pays the β-chain.  The jet files are the ones
+the probe step wrote (`probe/NAME.jets`, `nockprobe jets`): 9,259 roots in
+the count-up term, 4,146 in Hoon's `++dec`, 4,139 in the crash row.
+
+`produce.sh jets` (`jets/`): `ski-air jets-measure TERM JETS TABLE` runs the
+row with the roots instantiated and writes the jetted witness table
+(`NAME.jetted.table.gz`), printing the plain run beside it and proving and
+verifying the table in-process; Avon's `witness --jet-table` writes the
+same table byte for byte (compared; Avon also prints the contraction
+counts); `lake exe nockprobe check-jets` accepts it bound to the row
+(lean-ski's `Air.checkJA`); `ski-air jet-prove` writes the proof
+(`NAME.jetted.proof`) and `jet-verify` checks it against the corpus row and
+the jet file, Lean checking the jet file first (`lake exe jets
+statement-stdin`).  `results.txt`:
+
+```
+countup_dec_7: jet file: 9259 roots, 24 jets
+countup_dec_7: jets-measure: plain 29591 rows, 175296 cells; jetted 17716 rows, 162491 cells, 683 instantiations; padded CPU 32768, POP 4096, INSTW 512
+countup_dec_7: jets-measure: jetted: proved in 1.95 s, verified in 1.189 s
+countup_dec_7: avon witness --jet-table writes the same table (contractions 6270 rows 17716 cells 162491 loaded 139920 insts 683)
+ACCEPT countup_dec_7.jetted.table: a jetted run of the term of countup_dec_7 (32768 rows, 262144 cells, 9259 roots, 24 jets)
+countup_dec_7: jet-prove: proved 32768 rows (683 instantiations), 262144 memory cells, in 1.95 s; proof 553128 bytes -> release/nock/jets/countup_dec_7.jetted.proof
+countup_dec_7: jet-verify: VERIFIED countup_dec_7: the proof checks against its term and Lean's jet table (1.171 s)
+hoon_dec_12: jet file: 4146 roots, 26 jets
+hoon_dec_12: jets-measure: plain 81895 rows, 157396 cells; jetted 52084 rows, 125598 cells, 1939 instantiations; padded CPU 65536, POP 8192, INSTW 1024
+hoon_dec_12: jets-measure: jetted: proved in 1.43 s, verified in 0.701 s
+hoon_dec_12: avon witness --jet-table writes the same table (contractions 18420 rows 52084 cells 125598 loaded 60218 insts 1939)
+ACCEPT hoon_dec_12.jetted.table: a jetted run of the term of hoon_dec_12 (65536 rows, 131072 cells, 4146 roots, 26 jets)
+hoon_dec_12: jet-prove: proved 65536 rows (1939 instantiations), 131072 memory cells, in 1.43 s; proof 503004 bytes -> release/nock/jets/hoon_dec_12.jetted.proof
+hoon_dec_12: jet-verify: VERIFIED hoon_dec_12: the proof checks against its term and Lean's jet table (0.692 s)
+hoon_dec_0: jet file: 4139 roots, 26 jets
+hoon_dec_0: jets-measure: plain 11364 rows, 74154 cells; jetted 10275 rows, 73079 cells, 164 instantiations; padded CPU 16384, POP 512, INSTW 64
+hoon_dec_0: jets-measure: jetted: proved in 0.92 s, verified in 0.701 s
+hoon_dec_0: avon witness --jet-table writes the same table (contractions 3960 rows 10275 cells 73079 loaded 60158 insts 164)
+ACCEPT hoon_dec_0.jetted.table: a jetted run of the term of hoon_dec_0 (16384 rows, 131072 cells, 4139 roots, 26 jets)
+hoon_dec_0: jet-prove: proved 16384 rows (164 instantiations), 131072 memory cells, in 0.92 s; proof 504796 bytes -> release/nock/jets/hoon_dec_0.jetted.proof
+hoon_dec_0: jet-verify: VERIFIED hoon_dec_0: the proof checks against its term and Lean's jet table (0.687 s)
+```
+
+| row | contractions plain → jetted | machine rows plain → jetted | instantiations | memory cells plain → jetted | CPU / POP / INSTW | prove s | verify s | proof bytes | prover peak |
+|---|--:|--:|--:|--:|---|--:|--:|--:|--:|
+| `countup_dec_7` | 12,004 → 6,270 (−48%) | 29,591 → 17,716 (−40%) | 683 | 175,296 → 162,491 | 2^15 / 2^12 / 2^9 | 1.95 | 1.17 | 553,128 | 418 MB |
+| `hoon_dec_12` | 33,043 → 18,420 (−44%) | 81,895 → 52,084 (−36%) | 1,939 | 157,396 → 125,598 | 2^16 / 2^13 / 2^10 | 1.43 | 0.69 | 503,004 | 325 MB |
+| `hoon_dec_0` | 4,606 → 3,960 (−14%) | 11,364 → 10,275 (−10%) | 164 | 74,154 → 73,079 | 2^14 / 2^9 / 2^6 | 0.92 | 0.69 | 504,796 | 199 MB |
+
+The plain rows are the base circuit's (`results.txt` above: 29,591, 81,895,
+11,364).  `rows` are the CPU table's before padding (contractions, `App`
+unwinding steps and instantiation rows); POP and INSTW are the two side
+tables of the jet circuit (the arguments popped and the cells written per
+instantiation), padded.  The jetted runs match the probe step's jetted
+measurements (M4f, `avon witness --jet-table --plan`: 17,760 rows and 688
+instantiations, 52,139 and 1,945, the probe segments adding 44 and 55 rows
+and 5 and 6 instantiations).  The whole stage took 21 s and peaked at
+418 MB.
+
+**What the fall means.**  The templates are generic: they collapse the
+β-chains of bracket abstraction that the compiler writes everywhere (the
+`force` continuations, the `pull`s, the Scott-case λs), so about half the
+contractions and 36–40% of the rows go on the two public rows, and 10% on
+the crash row, which is mostly the sharing's βs before the underflow.  The
+`dec` loop itself is paid in full: each iteration's contractions remain,
+and the rows stay proportional to the count (count-up `dec` at 7 is seven
+iterations; at 70 the jetted rows would be about ten times these).  What
+would collapse the loop to a constant is the transported **data** jet,
+`cw .dec` as one row (`jet_transport`, README "Jet transport"), whose
+circuit is not built.  PLAN §3.2: the transported jet licenses a value and
+says nothing about steps; this table is the measurement that limitation
+asks for, with the jets that exist.
+
+**What an accepted jetted proof says** (README, "Jet transport"):
+`Circuit.jetExport_sound` (lean-ski) for the row's term, `rootsOKB` checked
+by `jets statement`, gives `Air.AcceptsJ` and, by `Air.air_sound_jet`, a
+final weak head normal form `v` with `∃ v', Eval t v' ∧ WSteps v' v`
+(`Mach.jet_run_eval`) and `∃ v', Eval t v' ∧ chead v' = chead v`
+(`jet_run_shape`); `embed_outcome` on `Eval t v'` (through
+`compiled_terminates`/`shared_terminates`) makes `v'` an encoding of Nock's
+product or `Err` for its crash, so `v` has that head.  `nockprobe
+check-jets`'s `ACCEPT` is `Air.checkJA_sound`, the same `AcceptsJ` from the
+table itself.
+
+Refusals (`verify.sh` step 6): each table is refused bound to another row
+(`REJECT …: its term is not the term of NAME`); each proof is refused
+offered as another row's (`heights […] out of bounds`, the term's) and with
+one byte changed at the middle (`verify: Verification(…)`).  A tampered
+table (one row's counter changed) is refused by `check-jets` (`not a jetted
+run of NAME with its jet table`).
+
 ## Rows per contraction
 
 | row | contractions | machine rows | rows / contraction |
@@ -397,6 +494,16 @@ For the crash row, `shared_crash_eval : WSteps v errT` under
   the stage's output.  `nockprobe check` accepts the table for the row and
   the product (`Air.checkPA`, `probe_check`, `probe_decodes_nock`); the
   proof needs ski-air from lean-ski's `probe-plan-file` branch (above).
+- `jets/NAME.jets`, `jets/NAME.jetted.table.gz`, `jets/NAME.jetted.proof`,
+  `jets/results.txt` (M5): the row's jet file (`nockprobe jets`, lean-ski's
+  `jetTable` over `allTemplates`; the same as `probe/NAME.jets`), the jetted
+  witness table ski-air's `jets-measure` wrote with the licensed roots
+  instantiated (Avon's `witness --jet-table` writes the same bytes;
+  gzipped), its proof (`ski-air jet-prove`, verified by `jet-verify` against
+  the corpus row and the jet file, Lean's `jets statement-stdin` first), and
+  the stage's output.  `nockprobe check-jets` accepts the table for the row
+  (`Air.checkJA`, so `Air.checkJA_sound`, `Air.air_sound_jet`;
+  `embed_outcome` reads the final state).  No Avon is needed to verify.
 - `out/` (not committed; `produce.sh` and `verify.sh` regenerate it):
   `NAME.txt`, the witness table of each row in Lean's format, the file
   `aircheck` accepts.  **There are no proof files.**  ski-air's base path
