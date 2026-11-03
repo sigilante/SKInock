@@ -3,6 +3,31 @@
 Started 2026-11-03. Open question C5 of `../OPEN-QUESTIONS.md`. Companion paper:
 `~/Documents/1 Projects/Davis2027 Nock in SKI/`.
 
+## Status (2026-11-03, evening)
+
+- **Compiler built** (`python/skinock`, SKIjack route): opcodes 0–11 and autocons, strict
+  in Nock's places in Vere's order, crashes as `Err`, literal formulas carrying code
+  (`Form`). urbit/benchmark `norm/tests.json`: 63/63 agree with the Python oracle, on
+  aviary and on Avon. Hoon's compiled `++dec` runs: about 220 contractions per Nock step,
+  3,000 DAG nodes after hash-consing literals and formula bodies (the first version
+  duplicated code per nesting level and reached 1.1 M atoms).
+- **M0 done**: lean-nock builds on Lean 4.31.0 on its `lean-4.31` branch (four edits, all
+  six gates pass, uncommitted there); skinock's Lake package requires both by path.
+- **In progress**: the interpreter fallback `nockI` for formulas built from data (§2.3's
+  dynamic case); Lean M1 (`Nock2Ski/Noun.lean`, `Prims.lean`); Avon jets for `inc` and `eq`
+  with the Avon agent (terms pinned in `terms/`).
+- **Design change against §2.2**: the embedding is *strict*, not lazy. Nock evaluates every
+  subformula to a complete noun, so a lazy embedding would return values where Nock
+  crashes (`[7 [0 0] [1 42]]`). Only opcode 6's branches are deferred, which is Nock's own
+  behaviour. With forces nested in Vere's order the crash-versus-divergence race of §9
+  resolves identically on both sides, so `embed_crash` can be stated exactly against
+  lean-nock's semantics.
+- **Design change against §2.3**: no static fragment analysis is needed. Code is attached
+  to literal formulas at compile time and travels with them as data; opcode 2 and 9 use it
+  when present and fall back to `nockI` otherwise. The "Hoon-shaped fragment" is then a
+  dynamic property (every formula that reaches 2 or 9 carries code), which Hoon's output
+  satisfies because batteries are literals pushed by `[1 …]`.
+
 ## 0. What this is, and what it is not
 
 `skinock` is the Lean development that joins `lean-nock` (`~/Code/lean-nock`, Nock 4K
