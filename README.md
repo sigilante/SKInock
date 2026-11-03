@@ -77,7 +77,10 @@ Avon, share mode, from the `dag` input form (70–260 KB where the printed form 
 dec 100 in 170,041, dec 1000 in 1,684,702, factorial 5 in 5,088,741, fibonacci 8 in
 1,017,378, bigslot in 8,741,269 contractions, each in well under a second, all with the right
 product. Avon's generic constructor and data jets (`--discover --data`, no new code) cut
-those by about 5.5× (dec 1000: 304,807). The interpreter fallback
+those by about 5.5× (dec 1000: 304,807). Larger subjects, Avon share mode: dec 10,000 in
+16.8 M contractions (0.3 s, 168 per Nock step), add 300 + 400 in 76.5 M (1.3 s, 166 per step),
+fibonacci 12 in 20.0 M (146 per step), ackermann (2, 3) in 232,576 (111 per step); every
+product is the oracle's. The interpreter fallback
 (`nockI`, formulas as data) costs about 8× the compiled code on the same programs.
 
 ## The Lean package
