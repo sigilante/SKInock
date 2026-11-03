@@ -116,6 +116,10 @@ Started 2026-11-03. Open question C5 of `../OPEN-QUESTIONS.md`. Companion paper:
 - **Remaining** (M3's other items, M4–M7): `embed_diverges` (needs fuel adequacy on both
   sides); `fragment_static` is now moot for correctness (the fallback is proved) and is a
   cost statement; the Λ front end; the statement path and the circuit.
+- **M6, analytic**: `release/nock/COMPARISON.md` sets skinock's measured rows against Zorp's
+  NockVMROM row accounting (no per-program numbers in their paper; Nockchain's prover is not a
+  stand-alone CLI): about 60–100× the trace area per Nock step before jets. The live run
+  remains.
 - **In progress**: Avon jets for `inc` and `eq` with the Avon agent (terms pinned in `terms/`).
 - **Design change against §2.2**: the embedding is *strict*, not lazy. Nock evaluates every
   subformula to a complete noun, so a lazy embedding would return values where Nock

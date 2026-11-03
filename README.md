@@ -98,6 +98,15 @@ fibonacci 12 in 20.0 M (146 per step), ackermann (2, 3) in 232,576 (111 per step
 product is the oracle's. The interpreter fallback
 (`nockI`, formulas as data) costs about 8× the compiled code on the same programs.
 
+## Against a native Nock zkVM
+
+`release/nock/COMPARISON.md`: an analytic comparison with Zorp's NockVMROM from its paper's row
+accounting (one compute row per Nock node, two tables, 395-wide over Goldilocks) against the rows
+measured here (about 2.45 rows per contraction, 150–270 contractions per Nock step): two to three
+orders of magnitude more rows per Nock step in narrower tables, roughly 60–100× the trace area
+before jets, bought with a three-rule circuit audited once, semantics outside the circuit, and
+jets licensed by theorems. A live run of the same programs on both provers is future work.
+
 ## The Lean package
 
 `lakefile.toml` requires lean-ski and lean-nock by path; lean-nock must be on its
