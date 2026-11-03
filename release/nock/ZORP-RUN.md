@@ -11,6 +11,11 @@ scratch copies of `hoon/`).
 
 ## Summary
 
+*Scope note (2026-11-04).* The released NockVM covers the mining puzzle's
+subset of Nock; opcode 9 and the general memory table are known pending
+work at Zorp. The observations below are therefore measurements of a partial
+release, taken for the row comparison, not findings to report.
+
 | | native NockVM (v2 tables, proof version %5) | skinock (`countup_dec_7`, lean-ski's base circuit) |
 |---|--:|--:|
 | computation | `[7 F']`, `F'` = count-up dec with opcode 9 desugared (below) | `[7 F]`, the formula as written |
@@ -73,8 +78,10 @@ and the v2 compute table's `%9` is its tag for the cons formula
 released NockVM is Nock opcodes 0–8 plus cons. The count-up formula uses 9
 twice, and running it as written crashes the interpreter
 (`Deterministic(Exit)`, no proof). The paper's constraint tables mention
-opcode 9 (`zorp.txt:2089`), so this is a gap of the release against the
-paper, not of the design.
+opcode 9 (`zorp.txt:2089`). This is known and expected: the released prover
+is the mining-puzzle subset, and the general zkVM (opcode 9 and the memory
+table that tracks every subject visited, below) is Zorp's pending work, not a
+defect of the release against its stated scope.
 
 The spec's macro `*[a 9 b c] → *[a 7 c 2 [0 1] 0 b]` desugars it exactly, so
 the computation proved is

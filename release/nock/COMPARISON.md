@@ -56,7 +56,9 @@ padded to 128 and 64, a 74,655-byte proof in about 1.9 s at 946 MB, against 29,5
 estimated above: 230× on compute rows. Two caveats from the run: the native proof is at 50
 bits of security (`security-level=_50`) against 100 here, and it does not verify, because
 the released memory table only records fetches against the initial subject (every loop
-changes the subject); the puzzle itself, pushed through the same harness, verifies. The
+changes the subject); the puzzle itself, pushed through the same harness, verifies. That is
+the release's known scope, the mining-puzzle subset: opcode 9 and the general memory table
+are Zorp's pending zkVM work, so the measurement is of a partial release. The
 analytic comparison above stands as the comparison of designs; the measured compute rows
 confirm its native side.
 
