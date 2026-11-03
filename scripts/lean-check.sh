@@ -13,7 +13,9 @@
 # (its branch `namespace-nock`): Nock2Ski.Circuit composes lean-ski's circuit
 # theorems with the simulation, Nock2Ski.PredNock the released statements
 # with lean-nock's runs, Nock2Ski.HoonDec Hoon's own `++dec` as a proved jet
-# (lean-nock's branch `hoon-dec-general`, battery- and clue-generic `++dec`).
+# (lean-nock's branch `hoon-dec-general`, battery- and clue-generic `++dec`),
+# Nock2Ski.HoonDecFree the same jet on real cores (any encoding; any terms at
+# axes 2 and 7) and the fire check Avon implements.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export PATH="$HOME/.elan/bin:$PATH"
@@ -265,5 +267,24 @@ import Nock2Ski
 #print axioms Nock2Ski.hoon_dec_bench_call
 #print axioms Nock2Ski.hoon_dec_bench
 #print axioms Nock2Ski.hoon_dec_bench_zero
+-- M5: the `++dec` jet on real cores (HoonDecFree): any encoding, any battery and context
+#print axioms Nock2Ski.jet_step_enc
+#print axioms Nock2Ski.hoon_dec_enc
+#print axioms Nock2Ski.hoonDecBodyF_split
+#print axioms Nock2Ski.hoonDecLoopF_split
+#print axioms Nock2Ski.dec_pull
+#print axioms Nock2Ski.dec_editT
+#print axioms Nock2Ski.dec_edit
+#print axioms Nock2Ski.dec_loop
+#print axioms Nock2Ski.dec_guard
+#print axioms Nock2Ski.hoon_dec_body_free
+#print axioms Nock2Ski.hoon_dec_free
+#print axioms Nock2Ski.hoon_dec_free_zero
+#print axioms Nock2Ski.hoon_dec_free_noSample
+#print axioms Nock2Ski.hoonDecSample?_sound
+#print axioms Nock2Ski.hoonDecSample?_cellT
+#print axioms Nock2Ski.hoon_dec_fires_sound
+#print axioms Nock2Ski.hoon_dec_fires
+#print axioms Nock2Ski.hoonDecFires_pins
 LEAN
 lake env lean "$tmp/Axioms.lean"

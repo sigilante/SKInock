@@ -357,6 +357,9 @@ jets licensed by theorems. A live run of the same programs on both provers is fu
   (lean-nock branch `hoon-dec-general`). Its transport is `hoon_dec_transport : Implements
   (onContract HoonDecDom hoonDecC) (jetT hoonDecBodyF)`. The benchmark's program
   `dec.nock` is `hoon_dec_bench`. Below, "Hoon's own `++dec`".
+  `Nock2Ski/HoonDecFree.lean` states the jet on real cores, whose battery and context carry
+  code: `hoon_dec_enc` over any `Enc`, `hoon_dec_free` for any terms at axes 2 and 7, and the
+  fire check `HoonDecFires` with `hoon_dec_fires_sound`.
 
 ## Proofs (`release/nock/`, M4a, M4b, M4c, M4d, M4e, M4f, M4g; M5 below)
 
@@ -810,6 +813,38 @@ and matching:
 - The released Hoon `dec` rows (`Nock2Ski/PredNock.lean`) are now instances of the leaf for
   every sample (`hoonDecHidden_gen`, `hoonDecF_val`, `hoonDecF_call`). Before, they were the
   fuel interpreter evaluated by the kernel, one input at a time.
+
+**The jet on real cores** (`Nock2Ski/HoonDecFree.lean`). `hoon_dec_transport` is stated over
+`encNoun` inputs, which never contain a `Form`. A real compiled gate core `[bat [sam ctx]]`
+carries code in `bat` and `ctx` (pushed by `[1 …]`, so `Form`s). Two statements cover it:
+
+    hoon_dec_enc        : Enc s es → HoonDecDom s → jetT hoonDecBodyF ⬝ es ↠ encOut (hoonDecC s)
+    hoon_dec_free B C n : jetT hoonDecBodyF ⬝ cellT B (cellT ⟨n+1⟩ C) ↠ ⟨n⟩
+    hoon_dec_free_zero B C       : jetT hoonDecBodyF ⬝ cellT B (cellT ⟨0⟩ C) ↠ Err
+    hoon_dec_free_noSample B t   : jetT hoonDecBodyF ⬝ cellT B ⟨t⟩ ↠ Err
+
+Here `⟨m⟩ = encNoun (atom m)`. The first is for any encoding of a domain subject: it comes
+from `embed_value`/`embed_crash`, which hold for every `Enc`, and then `toCell_enc` or
+`toCell_err`. The other three are for **arbitrary closed terms** `B` and `C`, with no `Enc`
+hypothesis, even divergent ones. Only the sample position is constrained, and it must be a
+canonical atom encoding. A cell sample is excluded, since there the arm diverges
+(`hoon_dec_off_domain_term`). The proof runs the compiled arm step by step (`dec_guard`,
+`dec_pull`, `dec_edit`, `dec_loop` by induction on the remaining count). Every operation that
+touches the subject is `hdT`, `tlT`, `forceT` or the edit walk, and each looks only at the
+outer constructor of the cell it is given (`hd_cellT`, `tl_cellT`, `force_cellT`, for any
+fields). The arm pushes the counter and the loop battery, giving the loop core
+`[loop [i S]]` with the whole subject `S` copied as a field. The loop reads axis 30 (the
+sample, through `S`) and axis 6 (the counter). The edit at axis 6 forces `S` only to its
+outer `cellT`. So `B` and `C` ride along in `S` and are never applied, projected into or
+forced. `eqT` and `incT` see only the canonical atoms `⟨m⟩`, `⟨i⟩`, `⟨i+1⟩`.
+
+**The fire check** (`HoonDecFires`, decidable, what Avon's check implements):
+`hoonDecSample? t = some m` when `t` is literally `cellT B (cellT (atomT (bl bs)) C)` and `bs`
+is canonical (`bits (val bs) = bs`, no trailing `false`), with `m = val bs`. `HoonDecFires t`
+is that, plus `m < 2^32`. `hoon_dec_fires_sound : hoonDecSample? t = some m → jetT
+hoonDecBodyF ⬝ t ↠ encOut (hoonDecOutN m)`, which is `⟨m-1⟩` for `m ≥ 1` and `Err` at `0`.
+`hoonDecSample?_cellT` shows the check accepts every `cellT B (cellT ⟨m⟩ C)`, and
+`hoonDecFires_pins` pins accept and decline cases by kernel evaluation.
 
 **Jetted proofs with the existing machinery** (`release/nock/jets/`, `produce.sh jets`,
 `verify.sh` step 6). lean-ski's supercombinator jets (`Ski/Inst.lean`, `Ski/JetTable.lean`,
