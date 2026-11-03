@@ -119,15 +119,20 @@ def slot(axis: int, n: Noun) -> Noun:
 
 
 def edit(axis: int, v: Noun, t: Noun) -> Noun:
+    """`#[axis v t]`: `t` with the subtree at `axis` replaced by `v`."""
     if axis == 0:
         raise Crash("edit axis 0")
-    if axis == 1:
-        return v
-    if not is_cell(t):
-        raise Crash("edit into atom")
-    if axis % 2 == 0:
-        return (edit(axis // 2, v, t[0]), t[1])
-    return (t[0], edit(axis // 2, v, t[1]))
+    path = bin(axis)[3:]
+
+    def go(i: int, cur: Noun) -> Noun:
+        if i == len(path):
+            return v
+        if not is_cell(cur):
+            raise Crash("edit into atom")
+        if path[i] == "0":
+            return (go(i + 1, cur[0]), cur[1])
+        return (cur[0], go(i + 1, cur[1]))
+    return go(0, t)
 
 
 class Evaluator:
@@ -141,6 +146,12 @@ class Evaluator:
             raise Fuel()
 
     def nock(self, s: Noun, f: Noun) -> Noun:
+        try:
+            return self._nock(s, f)
+        except (TypeError, IndexError, ValueError):
+            raise Crash("malformed formula")
+
+    def _nock(self, s: Noun, f: Noun) -> Noun:
         self.tick()
         if not is_cell(f):
             raise Crash("atom formula")
