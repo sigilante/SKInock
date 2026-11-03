@@ -25,7 +25,7 @@ also propagates `Err`), in Vere's order as lean-nock fixed it.
 | `10`: `*[a 10 [b c] d] → #[b *[a c] *[a d]]` | force the target `d`, then the patch `c` (lean-nock's and Vere's order), rebuild the path with forced projections | `editB` | `step_op10`; `nockO_O10` | 54–58 |
 | `11`: `*[a 11 b c] → *[a c]`; `*[a 11 [b c] d] → *[[*[a c] *[a d]] 0 3]` | static hint: `c`; dynamic hint: force the hint, run the body | — | `step_op11_static`, `step_op11_dynamic`; `nockO_O11` | 59–62 |
 | shape | a node whose shape lean-nock's `Malformed` rejects compiles to `Err` before its operands | `cel2` guards | `nockToSki_malformed`, `malformed_both` | the crash cases above |
-| `12` (not in Nock 4K; `+mock`'s scry) | crash by default, as lean-nock's `Eval.lean:291` ("Opcode 12 does not exist") and Vere outside `+mock`; with a fact table, both operands forced and the resolver `scry` consulted | `op12 ev` | `nockO_O12`, `nockO_Obad` | `tests/test_compile.py::test_op12_scry` |
+| `12` (not in Nock 4K: the specification's rule list ends at `*[a 11 b c] → *[a c]` followed by the catch-all `*a → *a`, and "12" does not occur on the specification page, nock.is `content/specification/index.md` lines 53–71; `+mock`'s scry) | crash by default, which is the catch-all rule, as lean-nock's `Eval.lean:291` states ("Opcode 12 does not exist") and Vere does outside `+mock`; with a fact table, both operands forced and the resolver `scry` consulted | `op12 ev` | `nockO_O12`, `nockO_Obad` | `tests/test_compile.py::test_op12_scry` |
 
 Beyond the per-opcode lemmas: `embed_value` and `embed_crash` (one induction over every
 `NockEval` rule, compiled code and interpreter together), `embed_terminates`, `embed_complete`
