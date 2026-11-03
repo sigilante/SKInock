@@ -59,6 +59,11 @@ A `Form` met in formula position runs its code, so `Form` keeps its fast path.
 `Program(f, s, code=False)` encodes every literal as a plain `Cell`, which forces the
 interpreter and is how the tests re-run the reference suite through it.
 
+**Opcode 12** is lean-nock's crash by default (Vere outside `+mock`). As an extension,
+`Program(f, s, scry=[((ref, path), value), …])` compiles a resolver `scry x p` over the fact
+table, compared structurally, and `[12 ref path]` evaluates both operands then consults it;
+a miss is a crash. The Python evaluator takes the same table as `resolver=`.
+
 `nock.py` is the reference: a parser and printer for `[a b c]` notation, `is_formula`, and
 an evaluator in Vere's order that counts steps, the oracle `check.py` and `bench.py`
 compare against.
@@ -135,7 +140,8 @@ product is the oracle's. The interpreter fallback
   reference results and a small evaluator in lean-nock's order: 63/63 and 6/6. A gate in
   `scripts/lean-check.sh`. Hoon's `dec 5` is 11,664 head contractions (aviary measured
   14,116 with the read-out, copy mode).
-- Not yet pinned: the interpreter fallback (`nockI` and friends), which is mutually
-  recursive with `app`; lean-ski's front end does not tie mutual recursion (Python's does).
+- The interpreter fallback was restructured (eb37139) so that only `nockI` is recursive,
+  passing itself to its helpers, and `app` calls `nockI` one way; its pin and simulation
+  are M3.
   This is what the `Err` disjunct of `embed_value` stands for; pinning `nockI` and proving
   its spec would close it to the strong form on all of Nock.

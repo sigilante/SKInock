@@ -35,6 +35,8 @@ Started 2026-11-03. Open question C5 of `../OPEN-QUESTIONS.md`. Companion paper:
   `embed_value` on all of Nock: pin `nockI` (needs Front to tie mutual recursion) and prove
   `app` with the fallback simulates `NockEval`; or M3's `fragment_static`, under which the
   `Err` disjunct cannot arise.
+- **Opcode 12** built as an extension: a resolver over a fact table (`scry`), default crash;
+  the interpreter restructured to a single recursive equation so Front can pin it (M3).
 - **In progress**: Avon jets for `inc` and `eq` with the Avon agent (terms pinned in `terms/`).
 - **Design change against §2.2**: the embedding is *strict*, not lazy. Nock evaluates every
   subformula to a complete noun, so a lazy embedding would return values where Nock
