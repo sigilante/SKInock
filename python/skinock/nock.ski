@@ -1,0 +1,21 @@
+-- skinock runtime: nouns and the Nock primitives, in SKIjack (ASCII lexicon).
+-- A noun is deep once forced: every field of a forced value is itself a value.
+-- Err is a crash; every case propagates it.  Form is a cell that is a formula,
+-- carrying its compiled code (subject -> product) in the third field.
+
+bit === T | F
+bits === Nil | Cons bit bits
+noun === Atom bits | Cell noun noun | Form noun noun noun | Err
+
+hd n = n |> { Atom b Err ; Cell h t h ; Form h t c h ; Err Err }
+tl n = n |> { Atom b Err ; Cell h t t ; Form h t c t ; Err Err }
+force x k = x |> { Atom b (k (Atom b)) ; Cell h t (k (Cell h t)) ; Form h t c (k (Form h t c)) ; Err Err }
+cel n = n |> { Atom b (Atom (Cons T Nil)) ; Cell h t (Atom Nil) ; Form h t c (Atom Nil) ; Err Err }
+incbk b k = b |> { Nil (k (Cons T Nil)) ; Cons x r (x |> { T (incbk r (\r2. k (Cons F r2))) ; F (k (Cons T r)) }) }
+inc n = n |> { Atom b (incbk b (\b2. Atom b2)) ; Cell h t Err ; Form h t c Err ; Err Err }
+eqb a b = a |> { Nil (b |> { Nil T ; Cons y s F }) ; Cons x r (b |> { Nil F ; Cons y s (x |> { T (y |> { T (eqb r s) ; F F }) ; F (y |> { T F ; F (eqb r s) }) }) }) }
+eqn a b = a |> { Atom p (b |> { Atom q (eqb p q) ; Cell h t F ; Form h t c F ; Err F }) ; Cell h t (b |> { Atom q F ; Cell h2 t2 ((eqn h h2) |> { T (eqn t t2) ; F F }) ; Form h2 t2 c ((eqn h h2) |> { T (eqn t t2) ; F F }) ; Err F }) ; Form h t c (b |> { Atom q F ; Cell h2 t2 ((eqn h h2) |> { T (eqn t t2) ; F F }) ; Form h2 t2 c2 ((eqn h h2) |> { T (eqn t t2) ; F F }) ; Err F }) ; Err F }
+loob x = x |> { T (Atom Nil) ; F (Atom (Cons T Nil)) }
+eq a b = loob (eqn a b)
+ifn c y n = c |> { Atom b (b |> { Nil y ; Cons x r (r |> { Nil (x |> { T n ; F Err }) ; Cons z q Err }) }) ; Cell h t Err ; Form h t c Err ; Err Err }
+app f x = f |> { Atom b Err ; Cell h t Err ; Form h t c (c x) ; Err Err }

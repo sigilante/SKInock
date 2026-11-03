@@ -1,0 +1,9 @@
+[project]
+name = "skinock"
+version = "0.0.1"
+description = "Nock in SKI: a compiler from Nock 4K formulas to closed SKI terms, via SKIjack"
+requires-python = ">=3.10"
+dependencies = ["skijack>=0.2.1", "aviary-kernel"]
+
+[tool.setuptools.packages.find]
+where = ["."]
