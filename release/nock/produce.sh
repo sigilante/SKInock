@@ -58,9 +58,15 @@
 #      kept gzipped; `nockprobe check` accepts it (Air.checkPA, so
 #      `probe_check`: the term's value is the product, and
 #      `probe_decodes_nock`: *[s f] = p).  Without Avon the committed table
-#      is checked.  The STARK proof of the table waits on lean-ski: ski-air
-#      takes a plan only from `lake exe jets plan OUTCOME`, a SKIlark
-#      outcome (bench/plonky3/src/probe.rs, `lean_plan`).
+#      is checked.  Then the STARK (M4g): `nockprobe tree PRODUCT` writes
+#      the tree `nounV p` as outcome words (`NAME.tree`: `tree`, then the
+#      nodes in preorder), which ski-air's probe commands pass to `lake exe
+#      jets plan` (lean-ski's probe-plan-file branch, Ski/ProbeText.lean);
+#      `ski-air probe-prove-table` proves the released table for that plan
+#      (`NAME.probe.proof`) and `probe-verify` checks the proof against the
+#      corpus row, the jet file and the tree, Lean comparing the AIRs
+#      (`circuit compare-probe`): `Circuit.probeExport_sound_tree`, then
+#      `probe_value` and `probe_decodes_nock`.
 #
 # Stages: `release/nock/produce.sh [STAGE…]` of rows, prove, hidden, probe;
 # all by default.  One job at a time.
@@ -117,7 +123,7 @@ done < "$R/hidden/programs.txt"
 fi
 
 if want probe; then
-echo "--- Lean + Avon: the public product as a probe plan, and the probe table checked (M4f)"
+echo "--- Lean + Avon + ski-air: the public product as a probe plan, the probe table checked and proved (M4f, M4g)"
 lake build nockprobe > /dev/null
 AVON=${AVON:-$HOME/avon/build/avon}
 P=$R/probe
@@ -127,6 +133,7 @@ while IFS=$'\t' read -r name subject product form formula; do
     [ -n "$name" ] || continue
     [ "$product" != crash ] || continue
     lake exe nockprobe plan "$product" > "$P/$name.plan" 2> "$tmp/plan.err"
+    lake exe nockprobe tree "$product" > "$P/$name.tree" 2> /dev/null
     lake exe nockprobe term "$R/corpus.txt" "$name" > "$tmp/$name.term"
     lake exe nockprobe jets "$tmp/$name.term" > "$P/$name.jets" 2> "$tmp/jets.err"
     echo "$name: product $product: $(sed 's/^[^:]*: //' "$tmp/plan.err"); jet file: $(sed 's/.*: //' "$tmp/jets.err")" | tee -a "$P/results.txt"
@@ -144,5 +151,14 @@ while IFS=$'\t' read -r name subject product form formula; do
         gunzip -c "$P/$name.probe.table.gz" > "$P/out/$name.probe.table"
     fi
     lake exe nockprobe check "$R/corpus.txt" "$name" "$P/out/$name.probe.table" "$product" | tee -a "$P/results.txt"
+    # the STARK of the released table, for the plan of the tree (`lake exe
+    # jets plan tree …`), verified against the corpus row, the jet file and
+    # the tree; the proof is kept
+    # shellcheck disable=SC2046
+    "$A" probe-prove-table "$tmp/$name.term" "$P/$name.jets" "$P/out/$name.probe.table" "$P/$name.probe.proof" $(cat "$P/$name.tree") \
+        | sed "s/^/$name: probe-prove-table: /" | tee -a "$P/results.txt"
+    # shellcheck disable=SC2046
+    "$A" probe-verify "$R/corpus.txt" "$P" "$name" "$P/$name.probe.proof" $(cat "$P/$name.tree") \
+        | sed "s/^/$name: probe-verify: /; s/ decodes to tree [0-9 ]*(/ decodes to the tree of $product (/" | tee -a "$P/results.txt"
 done < "$R/programs.txt"
 fi

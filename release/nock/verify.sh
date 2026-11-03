@@ -38,9 +38,15 @@
 #      (lean-ski's `Air.checkPA`: `probe_check`, so the term's value is the
 #      product, and `probe_decodes_nock`: *[s f] = p), and refuses it for
 #      the product + 1 and for a cell.  The table is the prover's (Avon's
-#      `witness --plan`); Lean's check is the whole of this step, since
-#      ski-air's probe prover and verifier take a plan only from `lake exe
-#      jets plan OUTCOME`, a SKIlark outcome (bench/plonky3/src/probe.rs).
+#      `witness --plan`).  Then the STARK (M4g): Lean recomputes the tree
+#      words (`nockprobe tree PRODUCT`: `tree`, then `nounV p`'s nodes in
+#      preorder) and compares them with NAME.tree; `ski-air probe-verify`
+#      checks NAME.probe.proof against the corpus row, the jet file (Lean's
+#      `jets statement-stdin`) and the tree (Lean's `jets plan`, lean-ski's
+#      probe-plan-file branch, and `circuit compare-probe`, so
+#      `Circuit.probeExport_sound_tree`, then `probe_value` and
+#      `probe_decodes_nock`: *[s f] = p), and refuses it for the tree of
+#      the product + 1, for the cell's, and with one byte changed.
 #
 # Exits nonzero on any failure.  With VERIFY_ALL=1 every check runs and the
 # exit comes at the end.
@@ -148,7 +154,7 @@ while IFS=$'\t' read -r name subject product skel logr logm formula; do
 done < "$R/hidden/programs.txt"
 [ "$(grep -c '^proved' "$R/hidden/results.txt")" = "$n" ] && ok "hidden/results.txt records the $n proof(s) of hidden/programs.txt" || no "hidden/results.txt does not record one line per program"
 
-echo "--- 5. The product as a public value: the probe plan and the probe table (release/nock/probe)"
+echo "--- 5. The product as a public value: the probe plan, the probe table and its proof (release/nock/probe)"
 lake build nockprobe > /dev/null
 P=$R/probe
 n=0
@@ -160,6 +166,11 @@ while IFS=$'\t' read -r name subject product form formula; do
         ok "$name: $name.plan is Lean's plan of the product $product ($(sed 's/.*: //' "$tmp/plan.err"))"
     else
         no "$name: $name.plan is not the plan of $product"
+    fi
+    if lake exe nockprobe tree "$product" 2> /dev/null | cmp -s - "$P/$name.tree"; then
+        ok "$name: $name.tree is the tree nounV of the product $product ($(wc -w < "$P/$name.tree" | tr -d ' ') words)"
+    else
+        no "$name: $name.tree is not the tree of $product"
     fi
     lake exe nockprobe term "$R/corpus.txt" "$name" > "$tmp/$name.term"
     if lake exe nockprobe jets "$tmp/$name.term" 2> "$tmp/jets.err" | cmp -s - "$P/$name.jets"; then
@@ -186,8 +197,39 @@ while IFS=$'\t' read -r name subject product form formula; do
             ok "$name: the probe table is refused for the cell [$product 0]"
         fi ;;
     esac
+    # the STARK: ski-air probe-verify against the corpus row, the jet file and the tree
+    # shellcheck disable=SC2046
+    if "$A" probe-verify "$R/corpus.txt" "$P" "$name" "$P/$name.probe.proof" $(cat "$P/$name.tree") > "$tmp/pv.log" 2>&1 && grep -q '^VERIFIED' "$tmp/pv.log"; then
+        ok "$name: ski-air probe-verify accepts $name.probe.proof for the tree of $product $(grep -o '([0-9]* segments; [0-9.]* s)' "$tmp/pv.log")"
+    else
+        no "$name: probe-verify rejects the proof ($(head -c 100 "$tmp/pv.log"))"
+    fi
+    case "$product" in
+    ''|*[!0-9]*) ;;
+    *)  for claim in "$((product + 1))" "[$product 0]"; do
+            # shellcheck disable=SC2046
+            if "$A" probe-verify "$R/corpus.txt" "$P" "$name" "$P/$name.probe.proof" $(lake exe nockprobe tree "$claim" 2> /dev/null) > "$tmp/pv2.log" 2>&1; then
+                no "$name: the probe proof verified for the tree of $claim"
+            else
+                ok "$name: the probe proof is refused for the tree of $claim ($(grep -o 'REJECTED: [^(]*' "$tmp/pv2.log" | head -c 60))"
+            fi
+        done ;;
+    esac
+    /bin/cp "$P/$name.probe.proof" "$tmp/pflip.proof"
+    size=$(wc -c < "$tmp/pflip.proof")
+    off=$((size / 2))
+    byte=$(dd if="$tmp/pflip.proof" bs=1 skip=$off count=1 2>/dev/null | od -An -tu1 | tr -d ' ')
+    printf '%b' "$(printf '\\0%03o' $(( (byte + 1) % 256 )))" \
+        | dd of="$tmp/pflip.proof" bs=1 seek=$off count=1 conv=notrunc 2>/dev/null
+    # shellcheck disable=SC2046
+    if "$A" probe-verify "$R/corpus.txt" "$P" "$name" "$tmp/pflip.proof" $(cat "$P/$name.tree") > "$tmp/pf.log" 2>&1; then
+        no "$name: the probe proof with one byte changed verified"
+    else
+        ok "$name: the probe proof with byte $off changed is refused ($(grep -o 'REJECTED: [^(]*' "$tmp/pf.log" | head -c 60))"
+    fi
 done < "$R/programs.txt"
 [ "$(grep -c '^ACCEPT' "$P/results.txt")" -ge "$n" ] && ok "probe/results.txt records the $n accepted table(s)" || no "probe/results.txt does not record one ACCEPT per table"
+[ "$(grep -c 'probe-verify: VERIFIED' "$P/results.txt")" = "$n" ] && ok "probe/results.txt records the $n verified proof(s)" || no "probe/results.txt does not record one VERIFIED per proof"
 
 [ "$failed" = 0 ] || { echo "NOT VERIFIED: release/nock"; exit 1; }
 echo "VERIFIED: release/nock"

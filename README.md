@@ -311,15 +311,18 @@ jets licensed by theorems. A live run of the same programs on both provers is fu
   exe): `nockprobe plan PRODUCT` prints the probe plan of `nounV p` (`nounPlan`) in the
   format `lake exe jets plan` prints and ski-air's `probe.rs::parse_plan` and Avon's
   `witness --plan` read (`plan n`, then `base k ctor arity parent field` per segment);
+  `nockprobe tree PRODUCT` (M4g) the tree itself as the outcome words ski-air's
+  `probe-prove`, `probe-prove-table`, `probe-verify` and `lake exe jets plan` take on
+  lean-ski's `probe-plan-file` branch (`tree`, then the nodes in preorder, `c k n` each);
   `nockprobe term CORPUS NAME` the row's term; `nockprobe jets TERMFILE` the term's jet
   file (lean-ski's `JetTable.jetTable` over `allTemplates`, what `jets emit` writes);
   `nockprobe check CORPUS NAME TABLE PRODUCT` runs lean-ski's `Air.checkPA` on a table with
   probe segments (the format of `jets check-probe`) for `nounPlan p`, after binding the
   table's term to the corpus row's: `ACCEPT` is `probe_check`, hence `probe_decodes_nock`.
-  `scripts/lean-check.sh` runs the plan and the check on the released tables as its M4f
-  gate.
+  `scripts/lean-check.sh` runs the plan, the tree and the check on the released tables as
+  its M4f gate.
 
-## Proofs (`release/nock/`, M4a, M4b, M4c, M4d, M4e, M4f)
+## Proofs (`release/nock/`, M4a, M4b, M4c, M4d, M4e, M4f, M4g)
 
 Three Nock programs proved on lean-ski's circuit, with no Nock circuit, as corpus rows of
 lean-ski's base circuit (`ski-air CORPUS OUTDIR`): the spec's count-up `dec` at subject 7,
@@ -554,7 +557,7 @@ the Nock claim conditionally ("`*[n f]` is `p` if it is anything"). M4e proves i
   `compiled_terminates`, `shared_terminates` for the base-circuit rows. Axioms:
   `propext`, `Classical.choice`, `Quot.sound`, the contraposition being classical.
 
-### The product as a public value (`release/nock/probe/`, M4f)
+### The product as a public value (`release/nock/probe/`, M4f, M4g)
 
 The rows above prove evaluation to a weak head normal form `v`; that `v` encodes Nock's
 product is `embed_outcome`, a Lean fact the proof does not name. lean-ski's probe circuit
@@ -621,14 +624,30 @@ cells) and refuses them for the product + 1 and for a cell. The plain tables are
 gzipped (0.7 and 1.0 MB), with the plans and jet files; `verify.sh` recomputes the plan and
 the jet file from the product and the corpus term and checks the table without Avon.
 
-**What waits on lean-ski.** The STARK proof of a probe table. ski-air's `probe-prove`,
-`probe-prove-table` and `probe-verify` take the plan only from `lake exe jets plan
-OUTCOME` (`bench/plonky3/src/probe.rs:101`, `lean_plan`), and `bench/Jets.lean:256-278`
-(`parseOutcome`, `planOfOutcome`) knows only `err | val n…` through `Probe.toV`
-(`Ski/ProbeTree.lean:201`); `compare_probe` (`bench/plonky3/src/jets.rs:922`) has `lake
-exe circuit compare-probe` recompute the plan from the outcome the same way
-(`bench/Circuit.lean:309-365`, `parseOutcomeC`). The AIRs (`probe.rs`, `Circuit.probeAirs`)
-and the Lean theorems are generic in the plan; the generalisation is an input: `jets plan`
-taking a tree (or a plan file) and `compare-probe` taking the plan rather than the outcome,
-with `lean_plan` reading a file. Avon and `Air.checkPA` already take the plan, which is why
-the table exists and is Lean-checked here; the proof is not.
+**The STARK (M4g; `probe/NAME.tree`, `probe/NAME.probe.proof`).** ski-air's `probe-prove`,
+`probe-prove-table` and `probe-verify` took their plan only from `lake exe jets plan
+OUTCOME`, a SKIlark outcome (`err | val n…`, `Probe.toV`; `bench/plonky3/src/probe.rs`
+`lean_plan`, `bench/Jets.lean` `parseOutcome`, `bench/Circuit.lean` `parseOutcomeC` for
+`compare-probe`). **This step needs lean-ski's branch `probe-plan-file`** (commit `a12b13e`,
+"probe: the output as a literal probe tree"; `produce.sh` and `verify.sh` build ski-air from
+the checkout beside this one): the outcome words may be any probe tree written out, `tree`
+and then its nodes in preorder, `c k n` each for `V.node c k ch` with `n = ch.length`
+(`Ski/ProbeText.lean`, `Probe.vWords`/`Probe.vOfWords`; plain decimal, `c < k`, one spelling
+per tree, the same cap of 65,536 segments). `jets plan`, `jets check-probe` and `circuit
+compare-probe` take either form; ski-air passes the words through to Lean unchanged, so its
+statement check is as it was, and every SKIlark form still works. The branch adds one
+theorem, `Circuit.probeExport_sound_tree`: a proof Plonky3 accepts against AIRs that match
+`Circuit.probeAirs t roots jets (planOf v 0)` (what `compare-probe` checks, with licensed
+roots and numbers that fit) gives `Probe.DecV t.toO v`, for any tree `v`;
+`probeExport_sound` is its instance at `Probe.toV o`. `nockprobe tree PRODUCT` writes
+`nounV p` in that form; `ski-air probe-prove-table` proves the released table for it
+(29,829 rows padded to 2^15, 2.09 s, 609,390 bytes, 447 MB peak; 82,203 rows padded to 2^17,
+3.41 s, 598,190 bytes, 783 MB) and `probe-verify` accepts each in 0.7–1.2 s after Lean's
+three checks (the jet file for the corpus row, the plan of the tree, the AIRs), and refuses
+it for the tree of the product + 1, of the cell `[p 0]`, for `val 6`, with one byte changed,
+and offered as the other row's. **The accepted proof instantiates `probe_sound`**
+(`Nock2Ski/ProbeTree.lean`): `probeExport_sound_tree` at `nounV p` is `DecV t.toO (nounV
+p)`, which `probe_value` makes `ValueIs t p`, the conclusion `probe_sound` draws from
+`Air.air_probe_sound` for the checker's `AcceptsP`; and `probe_decodes_nock`
+(`Nock2Ski/Probe.lean`) gives the Nock claim, `*[s f] = p`, with `p` read from the public
+tree. `release/nock/RESULTS.md` has the numbers and the refusals.

@@ -175,12 +175,23 @@ Started 2026-11-03. Open question C5 of `../OPEN-QUESTIONS.md`. Companion paper:
   10 segments, 33,165, 82,203), and Lean's `Air.checkPA` accepts both tables (and the runs
   with lean-ski's 9,259 and 4,146 licensed template roots instantiated: 6,279 and 18,431
   contractions). Released gzipped with plans and jet files; `verify.sh` step 5 checks them
-  with Lean alone. **Waits on lean-ski**: the STARK of a probe table, since ski-air takes a
-  plan only from `lake exe jets plan OUTCOME` (`bench/plonky3/src/probe.rs:101`,
-  `bench/Jets.lean:256-278`, `bench/Circuit.lean:309-365`); the AIRs are generic, the input
-  is not. A `Form`-shaped cell product has no finite tree (its code field is a function);
-  atoms always read, cells when the term is a `Cell`; a code-dropping `toCell` wrapper
-  would cover all products.
+  with Lean alone. A `Form`-shaped cell product has no finite tree (its code field is a
+  function); atoms always read, cells when the term is a `Cell`; a code-dropping `toCell`
+  wrapper would cover all products.
+- **M4g done** (lean-ski branch `probe-plan-file`, commit `a12b13e`; `bench/NockProbe.lean`
+  `tree`, `release/nock/probe/NAME.tree`, `NAME.probe.proof`, 2026-11-04): the STARK of the
+  probe tables. ski-air took a plan only from `lake exe jets plan OUTCOME`, a SKIlark
+  outcome; the branch lets the outcome words be any probe tree written out (`tree`, then
+  the nodes in preorder, `c k n` each; `Ski/ProbeText.lean`), accepted by `jets plan`,
+  `jets check-probe`, `circuit compare-probe` and so by ski-air's probe commands, which pass
+  the words through unchanged (no change to the statement check; every SKIlark form still
+  works, lean-ski's `release/verify.sh` step 5 passes), and adds
+  `Circuit.probeExport_sound_tree` (generic in the tree, concluding `Probe.DecV t.toO v`;
+  `probeExport_sound` is its instance). `ski-air probe-prove-table` proved both released
+  tables (2.09 s and 3.41 s, 609,390 and 598,190 bytes, under 0.8 GB) and `probe-verify`
+  accepts them for the tree of the product and refuses the product + 1, the cell, a changed
+  byte, the other row. The accepted proof instantiates `probe_sound` through
+  `probeExport_sound_tree` and `probe_value`; `probe_decodes_nock` gives `*[s f] = p`.
 - **Remaining** (M3's other items, M4–M7): `fragment_static` is moot for correctness (the
   fallback is proved) and is a cost statement; the Λ front end; the statement path and the
   circuit.
@@ -340,7 +351,8 @@ the jetted one, per program, at several atom sizes.
   bits under a public cell skeleton, the `predStmt` shape of `Ski/Predicate.lean`), and the
   probe plan for the public product (`air_probe_decodes`; M4f: `nockprobe plan`, the plan of
   `nounV p`, with `probe_sound`/`probe_decodes_nock` in place of `air_probe_decodes`, whose
-  tree is SKIlark's; the STARK of the probe table waits on lean-ski taking a plan).
+  tree is SKIlark's; M4g: `nockprobe tree`, the tree as ski-air's outcome words on lean-ski's
+  `probe-plan-file` branch, the probe tables proved and verified).
 - The verifier (`ski-air`) pipes the formula bytes to Lean exactly as `skilark statement`
   does, so the term is never trusted from a file. Lean's check is the theorem of §2.4
   instantiated at the formula.
@@ -398,7 +410,7 @@ realized across ISAs. It is §8's stretch item; the direct route is enough for t
 | M1 | nouns as the Scott sum; tagged axis pulls; `encNoun`, `decNoun`, opcode 3/4/5 terms with their specs | `pull_tagged`, `inc_spec`, `eq_spec` kernel-checked | 1–2 weeks |
 | M2 | the compiler over opcodes 0–9 on the Hoon-shaped fragment; `embed_value` and `embed_crash` | count-up `dec` and `++dec` run through `runF` to the right outcomes; theorems closed | 3–4 weeks |
 | M3 | the interpreter fallback pinned and simulated; `embed_value` strong; then `embed_diverges`, `fragment_static` | `nockI_value`, `nockI_crash`; the 63 tests interpreted; `countUp_zero_diverges` carried to SKI | 1–2 weeks |
-| M4 | `nock statement` exe; the verifier's Lean check; the three statements proved on the circuit; rows measured (M4a done: `nockstatement`, count-up `dec` proved on the base circuit; M4b: sharing, Hoon's `++dec`; M4c: hidden subjects on the composed predicate circuit, `nockpred`; M4d: cell-shaped hidden subjects, `add` over two hidden atoms; M4e: the converse simulation, `embed_terminates`, the hidden-subject statements as Nock claims; M4f: the product as a public value, `nounV`, `probe_decodes_nock`, probe tables Lean-checked; left: the STARK of a probe table, on lean-ski taking a plan) | `release/nock/` with `verify.sh` passing | 2 weeks |
+| M4 | `nock statement` exe; the verifier's Lean check; the three statements proved on the circuit; rows measured (M4a done: `nockstatement`, count-up `dec` proved on the base circuit; M4b: sharing, Hoon's `++dec`; M4c: hidden subjects on the composed predicate circuit, `nockpred`; M4d: cell-shaped hidden subjects, `add` over two hidden atoms; M4e: the converse simulation, `embed_terminates`, the hidden-subject statements as Nock claims; M4f: the product as a public value, `nounV`, `probe_decodes_nock`, probe tables Lean-checked; M4g: the probe tables proved, ski-air taking the tree as its outcome words on lean-ski's `probe-plan-file` branch) | `release/nock/` with `verify.sh` passing | 2 weeks |
 | M5 | `jet_transport` for `dec` and `add`; jetted proofs; the rows table | the loop collapses; theorem closed | 2–3 weeks |
 | M6 | Zorp comparison; paper draft | numbers in the table; draft to USTJ | 2 weeks |
 | M7 (stretch) | Λ → SKIlark front end, co-derivation across ISAs | `composition` shared | open |

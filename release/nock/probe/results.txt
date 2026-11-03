@@ -3,8 +3,12 @@ countup_dec_7: avon witness --plan: contractions 12099 rows 29829 cells 175586 l
 countup_dec_7: avon witness --jet-table --plan: contractions 6279 rows 17760 cells 162567 loaded 139920 insts 688
 ACCEPT release/nock/probe/out/countup_dec_7.probe.jetted.table: the term of countup_dec_7 has the value 6 (32768 rows, 262144 cells, 8 segments, 9259 roots)
 ACCEPT release/nock/probe/out/countup_dec_7.probe.table: the term of countup_dec_7 has the value 6 (32768 rows, 262144 cells, 8 segments, 9259 roots)
+countup_dec_7: probe-prove-table: proved 32768 rows (0 instantiations, 8 segments), 262144 memory cells, in 2.09 s; proof 609390 bytes -> release/nock/probe/countup_dec_7.probe.proof
+countup_dec_7: probe-verify: VERIFIED countup_dec_7: the term decodes to the tree of 6 (8 segments; 1.196 s)
 hoon_dec_12: product 11: 10 segments, 22 markers; jet file: 4146 roots, 26 jets
 hoon_dec_12: avon witness --plan: contractions 33165 rows 82203 cells 157767 loaded 60218 insts 0
 hoon_dec_12: avon witness --jet-table --plan: contractions 18431 rows 52139 cells 125692 loaded 60218 insts 1945
 ACCEPT release/nock/probe/out/hoon_dec_12.probe.jetted.table: the term of hoon_dec_12 has the value 11 (65536 rows, 131072 cells, 10 segments, 4146 roots)
 ACCEPT release/nock/probe/out/hoon_dec_12.probe.table: the term of hoon_dec_12 has the value 11 (131072 rows, 262144 cells, 10 segments, 4146 roots)
+hoon_dec_12: probe-prove-table: proved 131072 rows (0 instantiations, 10 segments), 262144 memory cells, in 3.41 s; proof 598190 bytes -> release/nock/probe/hoon_dec_12.probe.proof
+hoon_dec_12: probe-verify: VERIFIED hoon_dec_12: the term decodes to the tree of 11 (10 segments; 0.679 s)

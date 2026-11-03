@@ -45,12 +45,14 @@ done < release/nock/hidden/programs.txt
 # here with nockprobe; each released probe table (release/nock/probe, Avon's
 # `witness --plan` for Lean's plan of the product) is accepted by lean-ski's
 # Air.checkPA for the plan Lean recomputes from the product (`probe_check`,
-# then `probe_decodes_nock`), and the plan file is that plan
+# then `probe_decodes_nock`), and the plan file is that plan, the tree file
+# the tree words ski-air's probe commands take (M4g)
 lake build Nock2Ski.ProbeTree nockprobe
 tmp="$(mktemp -d)"; trap 'command rm -rf "$tmp"' EXIT
 while IFS=$'\t' read -r name subject product form formula; do
     [ "$product" != crash ] || continue
     lake exe nockprobe plan "$product" 2> /dev/null | cmp - "release/nock/probe/$name.plan"
+    lake exe nockprobe tree "$product" 2> /dev/null | cmp - "release/nock/probe/$name.tree"
     gunzip -c "release/nock/probe/$name.probe.table.gz" > "$tmp/$name.probe.table"
     lake exe nockprobe check release/nock/corpus.txt "$name" "$tmp/$name.probe.table" "$product" | sed "s|$tmp/||"
 done < release/nock/programs.txt

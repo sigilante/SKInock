@@ -1,5 +1,6 @@
 import Nock2Ski.ProbeTree
 import Ski.JetTable
+import Ski.ProbeText
 import Nock2Ski.NounText
 
 /-!
@@ -18,6 +19,12 @@ compute the plan from the theorem's own tree and run lean-ski's checker.
   (the crash's tree `errV` is one segment with no fields, `nounV` never
   produces it: a row that crashes is proved by the base circuit's
   `shared_crash_eval`).
+- `nockprobe tree PRODUCT` prints the tree itself, `nounV p`, as the
+  outcome words ski-air's `probe-prove`, `probe-prove-table` and
+  `probe-verify` and `lake exe jets plan` take (lean-ski's
+  `probe-plan-file` branch, `Ski/ProbeText.lean`): `tree`, then the nodes
+  in preorder, `c k n` each (`Probe.vWords`); `lake exe jets plan` of those
+  words is this exe's plan.
 - `nockprobe term CORPUS NAME` prints the row's term from the corpus
   (`NAME COUNT PREFIXTERM`), the file Avon and ski-air take.
 - `nockprobe jets TERMFILE` prints the term's jet file (`JetTable.jetTable`
@@ -142,6 +149,16 @@ def plan (product : String) : IO UInt32 := do
     IO.print (planText pl)
     pure 0
 
+def tree (product : String) : IO UInt32 := do
+  match parseNoun product with
+  | .error e => die s!"product: {e}" 2
+  | .ok p =>
+    let v := nounV p
+    let ws := Probe.vWords v
+    IO.eprintln s!"{showNoun p}: {ws.length / 3} nodes"
+    IO.println ("tree " ++ " ".intercalate ws)
+    pure 0
+
 def term (corpus name : String) : IO UInt32 := do
   match ← rowOf corpus name with
   | .error e => die e
@@ -182,11 +199,12 @@ def check (corpus name table product : String) : IO UInt32 := do
   | _, _ => die s!"MALFORMED {table}"
 
 def usage : String :=
-  "usage: nockprobe plan PRODUCT\n       nockprobe term CORPUS NAME\n       nockprobe jets TERMFILE\n       nockprobe check CORPUS NAME TABLE PRODUCT"
+  "usage: nockprobe plan PRODUCT\n       nockprobe tree PRODUCT\n       nockprobe term CORPUS NAME\n       nockprobe jets TERMFILE\n       nockprobe check CORPUS NAME TABLE PRODUCT"
 
 def main (args : List String) : IO UInt32 := do
   match args with
   | ["plan", product] => plan product
+  | ["tree", product] => tree product
   | ["term", corpus, name] => term corpus name
   | ["jets", file] => jets file
   | ["check", corpus, name, table, product] => check corpus name table product

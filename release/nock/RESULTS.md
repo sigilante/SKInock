@@ -1,4 +1,4 @@
-# release/nock: Nock programs on lean-ski's circuits (M4a, M4b, M4c, M4d, M4f; 2026-11-04)
+# release/nock: Nock programs on lean-ski's circuits (M4a, M4b, M4c, M4d, M4f, M4g; 2026-11-04)
 
 Three Nock programs compiled to SKI by `Nock2Ski.compiled` and offered to
 lean-ski's base circuit as corpus rows (`ski-air CORPUS OUTDIR`,
@@ -219,7 +219,7 @@ from `NockEval [a b] f (.val p)` and `a, b < 2^k`.  Both are instances of
 the skeleton theorems `nock_predS_sound` and `nock_predS_complete`, stated
 for any skeleton (`sk.ok`: every hole has a bit) over `sk.fill bs`.
 
-## The product as a public value: the probe step (M4f, 2026-11-04)
+## The product as a public value: the probe step (M4f, M4g, 2026-11-04)
 
 The base rows prove evaluation to a weak head normal form; that it encodes
 the product is Lean's `embed_outcome`, not a value in the proof.  lean-ski's
@@ -271,35 +271,73 @@ countup_dec_7: avon witness --plan: contractions 12099 rows 29829 cells 175586 l
 countup_dec_7: avon witness --jet-table --plan: contractions 6279 rows 17760 cells 162567 loaded 139920 insts 688
 ACCEPT release/nock/probe/out/countup_dec_7.probe.jetted.table: the term of countup_dec_7 has the value 6 (32768 rows, 262144 cells, 8 segments, 9259 roots)
 ACCEPT release/nock/probe/out/countup_dec_7.probe.table: the term of countup_dec_7 has the value 6 (32768 rows, 262144 cells, 8 segments, 9259 roots)
+countup_dec_7: probe-prove-table: proved 32768 rows (0 instantiations, 8 segments), 262144 memory cells, in 2.09 s; proof 609390 bytes -> release/nock/probe/countup_dec_7.probe.proof
+countup_dec_7: probe-verify: VERIFIED countup_dec_7: the term decodes to the tree of 6 (8 segments; 1.196 s)
 hoon_dec_12: product 11: 10 segments, 22 markers; jet file: 4146 roots, 26 jets
 hoon_dec_12: avon witness --plan: contractions 33165 rows 82203 cells 157767 loaded 60218 insts 0
 hoon_dec_12: avon witness --jet-table --plan: contractions 18431 rows 52139 cells 125692 loaded 60218 insts 1945
 ACCEPT release/nock/probe/out/hoon_dec_12.probe.jetted.table: the term of hoon_dec_12 has the value 11 (65536 rows, 131072 cells, 10 segments, 4146 roots)
 ACCEPT release/nock/probe/out/hoon_dec_12.probe.table: the term of hoon_dec_12 has the value 11 (131072 rows, 262144 cells, 10 segments, 4146 roots)
+hoon_dec_12: probe-prove-table: proved 131072 rows (0 instantiations, 10 segments), 262144 memory cells, in 3.41 s; proof 598190 bytes -> release/nock/probe/hoon_dec_12.probe.proof
+hoon_dec_12: probe-verify: VERIFIED hoon_dec_12: the term decodes to the tree of 11 (10 segments; 0.679 s)
 ```
 
-`verify.sh`, step 5: Lean recomputes the plan from the product and the jet
-file from the corpus term and compares them with the released files,
-accepts each released table (`ACCEPT …: the term of NAME has the value p`),
-and refuses it for the product + 1 and for the cell `[p 0]`.  No Avon is
-needed to verify.
+**The STARK of the probe table (M4g).**  ski-air's probe prover and
+verifier took their plan only from `lake exe jets plan OUTCOME`, a SKIlark
+outcome (`err | val n…`, `Probe.toV`).  lean-ski's branch `probe-plan-file`
+(commit `a12b13e`, "probe: the output as a literal probe tree") lets the
+outcome words name any probe tree: `tree`, then the tree's nodes in
+preorder, `c k n` each for `V.node c k ch` with `n = ch.length`
+(`Ski/ProbeText.lean`: `Probe.vWords`, `Probe.vOfWords`; plain decimal,
+`c < k`, so one tree has one spelling; the same cap of 65,536 segments).
+`jets plan`, `jets check-probe` and `circuit compare-probe` take either
+form, and ski-air passes the words through to Lean unchanged
+(`probe.rs::lean_plan`, `jets.rs::compare_probe`): nothing in the
+statement check changed, and every SKIlark outcome form still works
+(lean-ski's `release/verify.sh` step 5 passes).  The theorem of the export
+path is `Circuit.probeExport_sound_tree`, generic in the tree and
+concluding `Probe.DecV t.toO v`; `probeExport_sound` is its instance at
+`Probe.toV o`.
 
-**What waits on lean-ski: the STARK proof of the probe table.**  ski-air's
-`probe-prove`, `probe-prove-table` and `probe-verify` take their plan only
-from `lake exe jets plan OUTCOME` (`bench/plonky3/src/probe.rs:101`,
-`lean_plan`), and `bench/Jets.lean:256-278` (`parseOutcome`,
-`planOfOutcome`) knows only SKIlark outcomes, `err | val n…`, through
-`Probe.toV` (`Ski/ProbeTree.lean:201`); `compare_probe`
-(`bench/plonky3/src/jets.rs:922`) has `lake exe circuit compare-probe`
-recompute the plan from the outcome the same way (`bench/Circuit.lean:
-309-365`).  A jets directory is required and its file must be exactly the
-term's jet file (`jets statement-stdin`), so a zero-root file would be
-refused: the files here are the ones to use.  The AIRs and the theorems
-are generic in the plan; what needs generalising is the plan's input
-(`jets plan` taking a tree or a plan file, `compare-probe` taking the plan,
-`lean_plan` reading a file).  Then `ski-air probe-prove TERM JETS TABLE
-PROOF` on `probe/NAME.plan` is the proof whose statement
-`probe_sound`/`probe_decodes_nock` give.
+`nockprobe tree PRODUCT` writes `nounV p` in that form (`NAME.tree`: 25
+and 31 words), `verify.sh` recomputes and compares it, and `ski-air
+probe-prove-table TERM JETS TABLE PROOF $(cat NAME.tree)` proves the
+released (plain) table, `probe-verify CORPUS probe/ NAME PROOF $(cat
+NAME.tree)` checks the proof against the corpus row (`jets
+statement-stdin` on the jet file), the plan Lean gives for the tree and
+Lean's AIRs (`compare-probe`).  So the accepted proof instantiates
+`Circuit.probeExport_sound_tree` at `nounV p`, which with `probe_value`
+is `probe_sound`'s conclusion `ValueIs t p`, and `probe_decodes_nock`
+makes it `*[s f] = p`, with `p` read from the public tree.
+
+| row | product | tree words | segments | table rows (padded) | memory cells | prove s | peak RSS | proof bytes | verify s |
+|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| `countup_dec_7` | 6 | 25 | 8 | 29,829 (2^15) | 262,144 | 2.09 | 447 MB | 609,390 | 1.20 |
+| `hoon_dec_12` | 11 | 31 | 10 | 82,203 (2^17) | 262,144 | 3.41 | 783 MB | 598,190 | 0.68 |
+
+The verify time is `probe-verify`'s own clock, after its three Lean calls
+(statement, plan, compare-probe; about 1 s each as `lake exe`).  ski-air's
+own run of the segments (`probe-prove`, not released) instantiates the jet
+file's roots and reproduces Avon's jetted runs row for row: 17,760 rows
+(688 instantiations, 162,567 cells, 2.12 s, 610,894 bytes) and 52,139
+(1,945, 125,692 cells, 2^16 rows, 1.78 s, 561,538 bytes); the released
+proofs are of the released tables, the ones `nockprobe check` accepts.
+
+Refusals (`verify.sh` step 5): each proof is refused for the tree of the
+product + 1 and of the cell `[p 0]` (`verify: Transcript`), with one byte
+changed at the middle (`verify: Verification`), and `countup_dec_7`'s
+proof offered as `hoon_dec_12`'s is refused before verification (`heights
+[15, 18, …] out of bounds`, the term's); for the SKIlark outcome `val 6`
+it is refused too (another tree, so another plan).  A truncated tree,
+one with `c ≥ k`, a leading zero or words after the tree has no plan
+(`plan: NO PLAN FOR tree …`).
+
+`verify.sh`, step 5: Lean recomputes the plan and the tree words from the
+product and the jet file from the corpus term and compares them with the
+released files, accepts each released table (`ACCEPT …: the term of NAME
+has the value p`), refuses it for the product + 1 and for the cell `[p
+0]`, and runs the refusals of the proof above.  No Avon is needed to
+verify; ski-air is, built from lean-ski's `probe-plan-file` branch.
 
 ## Rows per contraction
 
@@ -346,15 +384,19 @@ For the crash row, `shared_crash_eval : WSteps v errT` under
   witness (the subject's bits) is written to a temporary directory and
   never under `release/`; `programs.txt` records the subject so that
   `produce.sh` reproduces the run.
-- `probe/NAME.plan`, `probe/NAME.jets`, `probe/NAME.probe.table.gz`,
-  `probe/results.txt` (M4f): the probe plan of the product (`nockprobe
-  plan`, `Air.planOf (nounV p) 0`), the term's jet file (`nockprobe jets`,
-  lean-ski's `jetTable`), the table with probe segments Avon wrote for the
-  plan (`avon witness --plan`, gzipped; `probe/out/`, not committed, holds
-  it unpacked and the jetted run), and the stage's output.  `nockprobe
-  check` accepts the table for the row and the product (`Air.checkPA`,
-  `probe_check`, `probe_decodes_nock`).  There is no proof file: ski-air's
-  probe prover takes a plan only from a SKIlark outcome (above).
+- `probe/NAME.plan`, `probe/NAME.tree`, `probe/NAME.jets`,
+  `probe/NAME.probe.table.gz`, `probe/NAME.probe.proof`,
+  `probe/results.txt` (M4f, M4g): the probe plan of the product (`nockprobe
+  plan`, `Air.planOf (nounV p) 0`), the tree itself as the outcome words
+  ski-air takes (`nockprobe tree`: `tree`, then `nounV p`'s nodes in
+  preorder), the term's jet file (`nockprobe jets`, lean-ski's `jetTable`),
+  the table with probe segments Avon wrote for the plan (`avon witness
+  --plan`, gzipped; `probe/out/`, not committed, holds it unpacked and the
+  jetted run), ski-air's proof of that table (`probe-prove-table`, verified
+  by `probe-verify` against the corpus row, the jet file and the tree), and
+  the stage's output.  `nockprobe check` accepts the table for the row and
+  the product (`Air.checkPA`, `probe_check`, `probe_decodes_nock`); the
+  proof needs ski-air from lean-ski's `probe-plan-file` branch (above).
 - `out/` (not committed; `produce.sh` and `verify.sh` regenerate it):
   `NAME.txt`, the witness table of each row in Lean's format, the file
   `aircheck` accepts.  **There are no proof files.**  ski-air's base path
