@@ -19,6 +19,10 @@ Started 2026-11-03. Open question C5 of `../OPEN-QUESTIONS.md`. Companion paper:
   Opcode 12 crashes, as Vere does outside `+mock`.
 - **Done since**: the interpreter fallback `nockI` (about 8× the compiled code; every
   reference test also passes with the formula supplied as data).
+- **M1 done** (commit 8c558f4): encodings and all primitive specs proved, terms pinned to
+  SKIjack's output through lean-ski's front end (`compileDecls`, since `compileFile` refuses
+  the `noun` type's shape). Known limit for M2: Front does not tie mutual recursion, so the
+  interpreter fallback is not pinned; either extend Front or state `nockI` separately.
 - **In progress**: for formulas built from data (§2.3's
   dynamic case); Lean M1 (`Nock2Ski/Noun.lean`, `Prims.lean`); Avon jets for `inc` and `eq`
   with the Avon agent (terms pinned in `terms/`).

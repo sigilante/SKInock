@@ -85,6 +85,20 @@ product is the oracle's. The interpreter fallback
 
 ## The Lean package
 
-`lakefile.toml` requires lean-ski and lean-nock by path; `Nock2Ski/Basic.lean` imports
-`Nock.Eval` and `Ski.Weak`. lean-nock must be on its `lean-4.31` branch (four small edits
-for Lean 4.31.0, its gates passing). `scripts/lean-check.sh` builds and prints axioms.
+`lakefile.toml` requires lean-ski and lean-nock by path; lean-nock must be on its
+`lean-4.31` branch (four small edits for Lean 4.31.0, its gates passing).
+`scripts/lean-check.sh` builds and prints axioms.
+
+- `Nock2Ski/Noun.lean`: the encodings. `bitsT` is lean-ski's `BitArith.bl`, `encNoun` the
+  four-constructor Scott sum as bracket abstraction leaves it, with eliminator lemmas.
+- `Nock2Ski/Prims.lean`: the twelve M1 equations of `nock.ski` compiled by lean-ski's own
+  SKIjack front end (`parseFile` then `compileDecls`; `compileFile` refuses the file because
+  its object-type pass mistakes `noun` for an object type, and that refusal is itself a
+  theorem) and pinned by `decide +kernel` to the terms the Python compiler emits
+  (`terms/*.ski`, identical character for character). Specs proved for all of them:
+  `hd_spec`, `tl_spec`, `cel_spec` (lean-nock's `wut`), `force_spec`, `inc_spec` with the
+  crash on a cell, `eq_spec` and `eq_tisN` (lean-nock's `tisN`), `ifn_*`, `app_form`, and
+  `pull_tagged` for axis pulls. Axioms: `propext`, `Quot.sound`, and `Classical.choice` where
+  `omega` enters; no `sorry`, no `native_decide`.
+- Not yet pinned: the interpreter fallback (`nockI` and friends), which is mutually
+  recursive with `app`; lean-ski's front end does not tie mutual recursion (Python's does).
