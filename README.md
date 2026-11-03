@@ -73,8 +73,11 @@ not); Avon's share mode (Turner graph reduction) is about two thirds of that.
 | ackermann | [1 2] / [2 2] | 4 / 7 | 215 / 1,191 | 32,693 / 191,907 | 152 / 161 | 16,113 |
 | bigslot | 0 | 0 | 53,233 | 14,037,181 | 264 | |
 
-Avon, share mode: dec 100 in 170,905, factorial 5 in 5,092,073, fibonacci 8 in 1,017,378,
-bigslot in 8,742,789 contractions, all with the right product. The interpreter fallback
+Avon, share mode, from the `dag` input form (70–260 KB where the printed form is 12–158 MB):
+dec 100 in 170,041, dec 1000 in 1,684,702, factorial 5 in 5,088,741, fibonacci 8 in
+1,017,378, bigslot in 8,741,269 contractions, each in well under a second, all with the right
+product. Avon's generic constructor and data jets (`--discover --data`, no new code) cut
+those by about 5.5× (dec 1000: 304,807). The interpreter fallback
 (`nockI`, formulas as data) costs about 8× the compiled code on the same programs.
 
 ## The Lean package

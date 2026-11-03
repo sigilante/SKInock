@@ -69,7 +69,56 @@ SHOW_TEXT = _show(_SHOW)
 
 
 def term_text(main) -> str:
+    """The printed form (unfolds sharing; large)."""
     return "(" + SHOW_TEXT + ") (" + pretty(main) + ")"
+
+
+def dag_text(main) -> str:
+    """Avon's `dag` form: every distinct node once, `id=l.r` for an application,
+    the leaves `S K I` and atom names, the root last.  Nodes are interned by
+    identity for the reducer's term (which is a DAG already) and by structure
+    for the show prefix."""
+    from aviary_kernel.terms import App as _App
+    ids: dict = {}
+    lines: list[str] = []
+
+    def node(key, rhs):
+        if key in ids:
+            return ids[key]
+        i = len(lines)
+        ids[key] = i
+        lines.append(f"{i}={rhs}")
+        return i
+
+    def of_text(t):                       # the show term, a tuple tree
+        if isinstance(t, tuple):
+            return node(("t", t), f"{of_text(t[0])}.{of_text(t[1])}")
+        return node(("a", t), t)
+
+    def of_term(t):                       # aviary term, by identity, iterative post-order
+        stack = [(t, False)]
+        while stack:
+            x, expanded = stack.pop()
+            if not isinstance(_App, type) or not isinstance(x, _App):
+                continue
+            k = ("i", id(x))
+            if k in ids:
+                continue
+            if expanded:
+                node(k, f"{of_term1(x.fn)}.{of_term1(x.arg)}")
+            else:
+                stack.append((x, True))
+                stack.append((x.arg, False))
+                stack.append((x.fn, False))
+        return of_term1(t)
+
+    def of_term1(x):
+        if isinstance(x, _App):
+            return ids[("i", id(x))]
+        return node(("a", x.name), x.name)
+
+    root = node(("root",), f"{of_text(_SHOW)}.{of_term(main)}")
+    return "dag " + " ".join(lines) + f" @{root}"
 
 
 def _parse_nf(text: str) -> N.Noun:
@@ -116,15 +165,19 @@ def _parse_nf(text: str) -> N.Noun:
     return noun(expr())
 
 
-def run_avon(main, strategy: str = "share", fuel: int | None = None, path: str | None = None):
-    """Returns (noun or None on crash, contractions, status line)."""
-    txt = term_text(main)
+def run_avon(main, strategy: str = "share", fuel: int | None = None, path: str | None = None,
+             discover: bool = False, dag: bool = True):
+    """Returns (noun or None on crash, contractions, status line).  `discover`
+    turns on Avon's generic constructor and data jets (`--discover --data`)."""
+    txt = dag_text(main) if dag else term_text(main)
     if path:
         open(path, "w").write(txt + "\n")
-    args = [AVON, "reduce", f"--strategy={strategy}"]
+    args = [AVON, "reduce", f"--strategy={strategy}", "--budget=50000000"]
     if fuel:
         args.append(f"--fuel={fuel}")
-    r = subprocess.run(args, input=txt, capture_output=True, text=True)
+    if discover:
+        args += ["--discover", "--data"]
+    r = subprocess.run(args, input=txt + "\n", capture_output=True, text=True)
     if r.returncode != 0 and not r.stdout:
         raise RuntimeError(r.stderr.strip()[:200])
     lines = r.stdout.splitlines()
