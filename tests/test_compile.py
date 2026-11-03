@@ -107,3 +107,13 @@ def test_avon_agrees_with_aviary():
     for s, f in [("42", "[4 0 1]"), ("[1 2]", "[0 6]"), ("0", "[9 2 [1 [[4 0 3] 42]]]")]:
         p = Program(N.parse(f), N.parse(s))
         assert run_avon(p.main)[0] == p.run().value
+
+
+def test_shape_crash_precedes_operand_evaluation():
+    # lean-nock's Malformed is checked at a node before its operands run: a
+    # 6 whose tail is an atom crashes even though its condition would diverge.
+    dec0 = "[7 [1 0] 8 [1 0] 8 [1 6 [5 [0 7] 4 0 6] [0 6] 9 2 [0 2] [4 0 6] 0 7] 9 2 0 1]"
+    bad = N.parse(f"[6 {dec0} 99]")
+    assert N.malformed(bad)
+    assert run(bad, 1, max_steps=200_000).value is None                 # compiled
+    assert run(N.parse("[2 [0 2] [0 3]]"), (1, bad), max_steps=200_000, code=False).value is None  # interpreted

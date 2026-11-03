@@ -51,17 +51,18 @@ editB b v t = b |> { Nil Err ; Cons x r (editP (path (Cons x r)) v t) }
 nockI s f = f |> { Atom b Err ; Cell h t (nockP s h t) ; Form h t c (c s) ; Err Err }
 nockP s h t = h |> { Atom b (nockO (decop b) s t) ; Cell a d (autocons s h t) ; Form a d c (autocons s h t) ; Err Err }
 autocons s h t = force (nockI s h) (\x. force (nockI s t) (\y. Cell x y))
+cel2 t k = t |> { Atom b Err ; Cell h u (k h u) ; Form h u c (k h u) ; Err Err }
 nockO o s t = o |> {
   O0 (t |> { Atom b (slotB b s) ; Cell h u Err ; Form h u c Err ; Err Err }) ;
   O1 t ;
-  O2 (force (nockI s (hd t)) (\x. force (nockI s (tl t)) (\g. app g x))) ;
+  O2 (cel2 t (\b. \c. force (nockI s b) (\x. force (nockI s c) (\g. app g x)))) ;
   O3 (cel (nockI s t)) ;
   O4 (inc (nockI s t)) ;
-  O5 (force (nockI s (hd t)) (\x. force (nockI s (tl t)) (\y. eq x y))) ;
-  O6 (ifn (nockI s (hd t)) (nockI s (hd (tl t))) (nockI s (tl (tl t)))) ;
-  O7 (force (nockI s (hd t)) (\x. nockI x (tl t))) ;
-  O8 (force (nockI s (hd t)) (\x. nockI (Cell x s) (tl t))) ;
-  O9 ((hd t) |> { Atom b (force (nockI s (tl t)) (\core. app (slotB b core) core)) ; Cell h u Err ; Form h u c Err ; Err Err }) ;
-  O10 ((hd (hd t)) |> { Atom b (force (nockI s (tl (hd t))) (\v. force (nockI s (tl t)) (\u. editB b v u))) ; Cell h u Err ; Form h u c Err ; Err Err }) ;
-  O11 ((hd t) |> { Atom b (nockI s (tl t)) ; Cell h u (force (nockI s u) (\x. nockI s (tl t))) ; Form h u c (force (nockI s u) (\x. nockI s (tl t))) ; Err Err }) ;
+  O5 (cel2 t (\b. \c. force (nockI s b) (\x. force (nockI s c) (\y. eq x y)))) ;
+  O6 (cel2 t (\b. \yn. cel2 yn (\y. \n. ifn (nockI s b) (nockI s y) (nockI s n)))) ;
+  O7 (cel2 t (\b. \c. force (nockI s b) (\x. nockI x c))) ;
+  O8 (cel2 t (\b. \c. force (nockI s b) (\x. nockI (Cell x s) c))) ;
+  O9 (cel2 t (\ax. \c. force (nockI s c) (\core. ax |> { Atom b (app (slotB b core) core) ; Cell h u Err ; Form h u k Err ; Err Err }))) ;
+  O10 (cel2 t (\bc. \d. cel2 bc (\ax. \c. force (nockI s c) (\v. force (nockI s d) (\u. ax |> { Atom b (editB b v u) ; Cell h w Err ; Form h w k Err ; Err Err }))))) ;
+  O11 (cel2 t (\h. \body. h |> { Atom b (nockI s body) ; Cell a d (force (nockI s d) (\x. nockI s body)) ; Form a d k (force (nockI s d) (\x. nockI s body)) ; Err Err })) ;
   Obad Err }

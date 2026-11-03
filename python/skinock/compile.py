@@ -95,7 +95,7 @@ class Compiler:
 
     # ---- formulas
     def formula(self, f: N.Noun, s: str) -> str:
-        if not N.is_cell(f):
+        if N.malformed(f):
             return "Err"
         op, rest = f
         if N.is_cell(op):
@@ -131,12 +131,14 @@ class Compiler:
         if op == 9:
             ax, c = rest
             core = self.fresh("c")
-            return (f"(force {self.formula(c, s)} (\\{core}. (app {self.axis(ax, core)} {core})))")
+            pull = f"(app {self.axis(ax, core)} {core})" if isinstance(ax, int) else "Err"
+            return f"(force {self.formula(c, s)} (\\{core}. {pull}))"
         if op == 10:
             (ax, c), d = rest
             v, t = self.fresh("v"), self.fresh("t")
+            ed = self.edit(ax, v, t) if isinstance(ax, int) else "Err"
             return (f"(force {self.formula(c, s)} (\\{v}. (force {self.formula(d, s)} "
-                    f"(\\{t}. {self.edit(ax, v, t)}))))")
+                    f"(\\{t}. {ed}))))")
         if op == 11:
             hint, body = rest
             if N.is_cell(hint):

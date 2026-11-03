@@ -105,6 +105,25 @@ def is_formula(n: Noun) -> bool:
 
 # ---------------------------------------------------------------- evaluator
 
+def malformed(f: Noun) -> bool:
+    """lean-nock's `Malformed`: the shallow shape check a node makes before
+    evaluating its operands."""
+    if not is_cell(f):
+        return True
+    op, t = f
+    if is_cell(op):
+        return False
+    if op in (0, 1, 3, 4):
+        return False
+    if op in (2, 5, 7, 8, 9, 11):
+        return not is_cell(t)
+    if op == 6:
+        return not (is_cell(t) and is_cell(t[1]))
+    if op == 10:
+        return not (is_cell(t) and is_cell(t[0]))
+    return True
+
+
 def slot(axis: int, n: Noun) -> Noun:
     if axis == 0:
         raise Crash("axis 0")
@@ -153,8 +172,8 @@ class Evaluator:
 
     def _nock(self, s: Noun, f: Noun) -> Noun:
         self.tick()
-        if not is_cell(f):
-            raise Crash("atom formula")
+        if malformed(f):
+            raise Crash("malformed formula")
         op, rest = f
         if is_cell(op):
             h = self.nock(s, op)
