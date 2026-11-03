@@ -358,8 +358,9 @@ jets licensed by theorems. A live run of the same programs on both provers is fu
   (onContract HoonDecDom hoonDecC) (jetT hoonDecBodyF)`. The benchmark's program
   `dec.nock` is `hoon_dec_bench`. Below, "Hoon's own `++dec`".
   `Nock2Ski/HoonDecFree.lean` states the jet on real cores, whose battery and context carry
-  code: `hoon_dec_enc` over any `Enc`, `hoon_dec_free` for any terms at axes 2 and 7, and the
-  fire check `HoonDecFires` with `hoon_dec_fires_sound`.
+  code: `hoon_dec_enc` over any `Enc`, `hoon_dec_free_cl` for any terms at axes 2 and 7 with
+  either cell a `Form`, the `Err` shapes for any bits, and the fire check `hoonDecFire?`
+  with `hoon_dec_fire_sound`.
 
 ## Proofs (`release/nock/`, M4a, M4b, M4c, M4d, M4e, M4f, M4g; M5 below)
 
@@ -816,35 +817,49 @@ and matching:
 
 **The jet on real cores** (`Nock2Ski/HoonDecFree.lean`). `hoon_dec_transport` is stated over
 `encNoun` inputs, which never contain a `Form`. A real compiled gate core `[bat [sam ctx]]`
-carries code in `bat` and `ctx` (pushed by `[1 …]`, so `Form`s). Two statements cover it:
+carries code in `bat` and `ctx` (pushed by `[1 …]`, so `Form`s). The core itself may also be
+formula-shaped: under `Enc`, `[bat [n ctx]]` and `[n ctx]` (with `n ≤ 11` read as an opcode)
+may each be `formT h t k`, not `cellT h t`. `CellLike x h t` is `x = cellT h t ∨ ∃ k, x =
+formT h t k`. Write `⟨m⟩` for `encNoun (atom m)`:
 
-    hoon_dec_enc        : Enc s es → HoonDecDom s → jetT hoonDecBodyF ⬝ es ↠ encOut (hoonDecC s)
-    hoon_dec_free B C n : jetT hoonDecBodyF ⬝ cellT B (cellT ⟨n+1⟩ C) ↠ ⟨n⟩
-    hoon_dec_free_zero B C       : jetT hoonDecBodyF ⬝ cellT B (cellT ⟨0⟩ C) ↠ Err
-    hoon_dec_free_noSample B t   : jetT hoonDecBodyF ⬝ cellT B ⟨t⟩ ↠ Err
+    hoon_dec_enc          : Enc s es → HoonDecDom s → jetT hoonDecBodyF ⬝ es ↠ encOut (hoonDecC s)
+    hoon_dec_free_cl      : CellLike s B X → CellLike X ⟨n+1⟩ C → jetT hoonDecBodyF ⬝ s ↠ ⟨n⟩
+    hoon_dec_free_cl_zero : CellLike s B X → CellLike X ⟨0⟩ C   → jetT hoonDecBodyF ⬝ s ↠ Err
+    hoon_dec_err_atom b   :                                      jetT hoonDecBodyF ⬝ atomT b ↠ Err
+    hoon_dec_err_noSample : CellLike s B (atomT b)             → jetT hoonDecBodyF ⬝ s ↠ Err
 
-Here `⟨m⟩ = encNoun (atom m)`. The first is for any encoding of a domain subject: it comes
-from `embed_value`/`embed_crash`, which hold for every `Enc`, and then `toCell_enc` or
-`toCell_err`. The other three are for **arbitrary closed terms** `B` and `C`, with no `Enc`
-hypothesis, even divergent ones. Only the sample position is constrained, and it must be a
-canonical atom encoding. A cell sample is excluded, since there the arm diverges
-(`hoon_dec_off_domain_term`). The proof runs the compiled arm step by step (`dec_guard`,
-`dec_pull`, `dec_edit`, `dec_loop` by induction on the remaining count). Every operation that
-touches the subject is `hdT`, `tlT`, `forceT` or the edit walk, and each looks only at the
-outer constructor of the cell it is given (`hd_cellT`, `tl_cellT`, `force_cellT`, for any
-fields). The arm pushes the counter and the loop battery, giving the loop core
-`[loop [i S]]` with the whole subject `S` copied as a field. The loop reads axis 30 (the
-sample, through `S`) and axis 6 (the counter). The edit at axis 6 forces `S` only to its
-outer `cellT`. So `B` and `C` ride along in `S` and are never applied, projected into or
-forced. `eqT` and `incT` see only the canonical atoms `⟨m⟩`, `⟨i⟩`, `⟨i+1⟩`.
+The first is for any encoding of a domain subject: it comes from `embed_value`/`embed_crash`,
+which hold for every `Enc`, and then `toCell_enc` or `toCell_err`. The others are for
+**arbitrary closed terms** `B`, `C` and codes `k`, with no `Enc` hypothesis, even divergent
+ones. `hoon_dec_free`, `hoon_dec_free_form` and `hoon_dec_free_zero` are the `cellT`/`formT`
+instances. The sample must be canonical: `eqT` compares bit lists, so a non-canonical zero is
+unequal to the literal `0`. In the two `Err` shapes the atom's bit term `b` is **arbitrary**,
+since the arm only cases on the constructor (`hd_atomT`, `tl_atomT`). A cell sample is
+excluded, since there the arm diverges (`hoon_dec_off_domain_term`).
 
-**The fire check** (`HoonDecFires`, decidable, what Avon's check implements):
-`hoonDecSample? t = some m` when `t` is literally `cellT B (cellT (atomT (bl bs)) C)` and `bs`
-is canonical (`bits (val bs) = bs`, no trailing `false`), with `m = val bs`. `HoonDecFires t`
-is that, plus `m < 2^32`. `hoon_dec_fires_sound : hoonDecSample? t = some m → jetT
-hoonDecBodyF ⬝ t ↠ encOut (hoonDecOutN m)`, which is `⟨m-1⟩` for `m ≥ 1` and `Err` at `0`.
-`hoonDecSample?_cellT` shows the check accepts every `cellT B (cellT ⟨m⟩ C)`, and
-`hoonDecFires_pins` pins accept and decline cases by kernel evaluation.
+The proof runs the compiled arm step by step (`dec_guard`, `dec_pull`, `dec_edit`, `dec_loop`
+by induction on the remaining count). Every operation that touches the subject is `hdT`,
+`tlT`, `forceT` or the edit walk. Each looks only at the outer constructor of the cell it is
+given, and a `Form` answers as a `Cell` does (`hd_form`, `tl_form`, `force_form`, so
+`CellLike.hd`/`.tl`/`.force`). The arm pushes the counter and the loop battery, giving the
+loop core `[loop [i S]]` with the whole subject `S` copied as a field. The loop reads axis 30
+(the sample, through `S`) and axis 6 (the counter). The edit at axis 6 forces `S` only to its
+outer constructor. So `B`, `C` and the codes ride along in `S` and are never applied,
+projected into or forced. `eqT` and `incT` see only the canonical atoms `⟨m⟩`, `⟨i⟩`, `⟨i+1⟩`.
+
+**The fire check** (`hoonDecFire? : Term → Option Term`, what Avon's check implements):
+
+- **Fire `Err`** (`HoonDecErrFires`) when `t` is literally `atomT b`, or a literal
+  `cellT`/`formT` whose tail is literally `atomT b`, for any `b`.
+- **Fire with the value** (`HoonDecFires`) when `t` is literally a `cellT`/`formT` of
+  `[B [atomT (bl bs) C]]` (inner cell also `cellT`/`formT`), `bs` canonical, and `m = val bs <
+  2^32`. The output is `encOut (hoonDecOutN m)`: `⟨m-1⟩` for `m ≥ 1`, `Err` at `0`.
+- **Decline** otherwise.
+
+`hoon_dec_fire_sound : hoonDecFire? t = some u → jetT hoonDecBodyF ⬝ t ↠ u`. It is assembled
+from `hoon_dec_fires_sound`, `hoon_dec_err_fires`, `hoonDecSample?_sound` and
+`cellParts?_sound`. `hoonDecSample?_cl` shows the sample check accepts every cell-like
+`[B [⟨m⟩ C]]`. `hoonDecFires_pins` pins all three outcomes by kernel evaluation.
 
 **Jetted proofs with the existing machinery** (`release/nock/jets/`, `produce.sh jets`,
 `verify.sh` step 6). lean-ski's supercombinator jets (`Ski/Inst.lean`, `Ski/JetTable.lean`,

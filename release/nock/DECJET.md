@@ -44,38 +44,58 @@ sha256 of the dag file: `929d398137d65283b50f941877177a4472adeaffe02543483aca784
 ### Real cores, and the fire check
 
 `hoon_dec_transport` is over `encNoun` inputs, which contain no `Form`. A real gate core
-carries code in its battery and context, so the jet must fire there too.
-`Nock2Ski/HoonDecFree.lean` proves it does. Write `⟨m⟩` for `encNoun (atom m)`:
+carries code in its battery and context. Under `Enc`, the core `[bat [n ctx]]` and the inner
+cell `[n ctx]` (with `n ≤ 11` read as an opcode) may each be a `Form` too. The jet must fire
+on all of these. `Nock2Ski/HoonDecFree.lean` proves it does. Notation: `⟨m⟩ = encNoun (atom m)`,
+and `CellLike x h t` means `x` is `cellT h t` or `formT h t k` for some `k`.
 
-    hoon_dec_enc       : Enc s es → HoonDecDom s → jetT hoonDecBodyF ⬝ es ↠ encOut (hoonDecC s)
-    hoon_dec_free      : ∀ B C n, jetT hoonDecBodyF ⬝ cellT B (cellT ⟨n+1⟩ C) ↠ ⟨n⟩
-    hoon_dec_free_zero : ∀ B C,   jetT hoonDecBodyF ⬝ cellT B (cellT ⟨0⟩ C)   ↠ Err
-    hoon_dec_fires_sound : hoonDecSample? t = some m → jetT hoonDecBodyF ⬝ t ↠ encOut (hoonDecOutN m)
+    hoon_dec_enc          : Enc s es → HoonDecDom s → jetT hoonDecBodyF ⬝ es ↠ encOut (hoonDecC s)
+    hoon_dec_free_cl      : CellLike s B X → CellLike X ⟨n+1⟩ C → jetT hoonDecBodyF ⬝ s ↠ ⟨n⟩
+    hoon_dec_free_cl_zero : CellLike s B X → CellLike X ⟨0⟩ C   → jetT hoonDecBodyF ⬝ s ↠ Err
+    hoon_dec_err_atom b   : jetT hoonDecBodyF ⬝ atomT b ↠ Err                  (any bit term b)
+    hoon_dec_err_noSample : CellLike s B (atomT b) → jetT hoonDecBodyF ⬝ s ↠ Err  (any b)
+    hoon_dec_fire_sound   : hoonDecFire? t = some u → jetT hoonDecBodyF ⬝ t ↠ u
 
-`B` and `C` are **any** closed terms, with no `Enc` hypothesis, even divergent ones. The
-compiled arm never applies, projects into or forces them. It copies the subject into the
-loop core `[loop [i S]]` and reads only axis 6 of `S` (the sample) and its own counter. The
-fire check, for a C implementer, given the input term `t`:
+`B`, `C` and the codes `k` are **any** closed terms, with no `Enc` hypothesis, even divergent
+ones. The compiled arm never applies, projects into or forces them. It copies the subject
+into the loop core `[loop [i S]]` and reads only axis 6 of `S` (the sample) and its own
+counter. On those projections a `Form` behaves exactly as a `Cell` (`hd_form`, `tl_form`,
+`force_form`). The sample must be a canonical atom, because `eqT` compares bit lists. The
+atom in the two `Err` shapes may have any bit term, because the arm only checks that it is
+not a cell.
 
-1. `t` is literally the `Cell` value `K (S (K K) (S (K K) (S (S I (K B)) (K X))))`, i.e.
-   `cellT B X`. `B` is not inspected.
-2. `X` is literally `cellT a C`. `C` is not inspected.
-3. `a` is literally `atomT b = S (K K) (S (K K) (S (K K) (S I (K b))))`.
-4. `b` is a bit list `bl bs`: `K` is nil, and `K (S (S I (K h)) (K rest))` is a cons, with `h`
-   literally `K` (bit 1) or `K I` (bit 0), least significant first.
-5. `bs` is canonical: empty, or its last bit is 1. Let `m` be its value, and require
-   `m < 2^32`.
+**The fire check, for a C implementer** (`hoonDecFire?`). Match on literal constructors:
 
-If all five hold, the jet replaces the term with `⟨m-1⟩` (`atomT (bl (bits (m-1)))`) when
-`m ≥ 1`, and with `Err` (`K (K (K I))`) when `m = 0`. Otherwise it declines, and the term
-runs. This is `HoonDecFires t` (`hoonDecSample? t = some m ∧ m < 2^32`), and
-`hoon_dec_fires` proves that the replacement is the term's own reduct. A cell sample, a
-`Form` sample or a non-canonical atom declines (`hoonDecFires_pins`). On a cell sample the
-term diverges, so declining is the only correct answer. On `cellT B ⟨t⟩` (no axis 6) the
-term reaches `Err` too (`hoon_dec_free_noSample`), but the check declines and lets it run.
-Shapes are syntactic: the check matches the term's constructors exactly, and a term that
-only reduces to a cell is not matched. A check over a shared graph must therefore match the
-tree that the graph denotes.
+- `CELL(h, t)` is `K (S (K K) (S (K K) (S (S I (K h)) (K t))))`, i.e. `cellT h t`.
+- `FORM(h, t, k)` is `K (K (S (K K) (S (S (S I (K h)) (K t)) (K k))))`, i.e. `formT h t k`
+  (`Nock2Ski/Noun.lean`: `K ⬝ (K ⬝ (S ⬝ (K ⬝ K) ⬝ (S ⬝ pairT h t ⬝ (K ⬝ k))))`, with
+  `pairT h t = S (S I (K h)) (K t)`).
+- `ATOM(b)` is `S (K K) (S (K K) (S (K K) (S I (K b))))`, i.e. `atomT b`.
+- `PAIR(h, t)` means `CELL(h, t)` or `FORM(h, t, k)` for any `k`. Never inspect `k`.
+
+Given the input term `t`:
+
+1. **Fire `Err`** (output `K (K (K I))`) if `t` is `ATOM(b)` for any `b`, or if `t` is
+   `PAIR(B, x)` with `x` an `ATOM(b)` for any `b`. `B` and `b` are not inspected.
+   (`HoonDecErrFires`, `hoon_dec_err_fires`.)
+2. **Fire with a value** if `t` is `PAIR(B, x)`, `x` is `PAIR(a, C)`, `a` is `ATOM(bits)`, and
+   all of the following hold. `B` and `C` are not inspected.
+   - `bits` is a bit list, least significant first: `K` is nil, and `K (S (S I (K h)) (K
+     rest))` is a cons with `h` literally `K` (bit 1) or `K I` (bit 0).
+   - The list is canonical: empty, or its last bit is 1.
+   - Its value is `m < 2^32`.
+
+   The output is `atomT (bl (bits (m-1)))` (canonical) when `m ≥ 1`, and `K (K (K I))`
+   (`Err`) when `m = 0`. (`HoonDecFires`, `hoon_dec_fires_sound`.)
+3. **Decline** otherwise, and the term runs. That covers a cell or `Form` sample (the term
+   diverges there, so declining is the only correct answer), a non-canonical sample atom,
+   `m ≥ 2^32`, and any term that is not literally one of these shapes.
+
+The shapes in 1 and 2 are disjoint. `hoonDecFire?` checks 1 first, but the order does not
+matter. A term that only reduces to a cell is not matched, so a check over a shared graph
+must match the tree that the graph denotes. `hoonDecFires_pins` pins every case by kernel
+evaluation: both cells `Form`s, an atom core with non-canonical bits, `[B atom]` under a
+`Form`, and the declines.
 
 Measurement (the Hoon `++dec` benchmark, fired against unfired on Avon) is pending zori's
 jet for this term.
