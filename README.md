@@ -8,6 +8,11 @@ joining [lean-nock](https://github.com/sigilante/lean-nock) (Nock 4K, the three-
 contract, co-derivation) to [lean-ski](https://github.com/sigilante/lean-ski) (SKI, the
 heap machine, licensed jets, the circuit). `PLAN.md` is the plan; this file is what exists.
 
+## The opcode walk
+
+`OPCODES.md`: every rule of Nock 4K in order, with its compiled form, its interpreter case,
+its Lean step lemmas and the reference tests that cover it.
+
 ## The artifact in one command
 
 ```
