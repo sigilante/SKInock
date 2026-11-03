@@ -117,3 +117,19 @@ def test_shape_crash_precedes_operand_evaluation():
     assert N.malformed(bad)
     assert run(bad, 1, max_steps=200_000).value is None                 # compiled
     assert run(N.parse("[2 [0 2] [0 3]]"), (1, bad), max_steps=200_000, code=False).value is None  # interpreted
+
+
+def test_op10_evaluates_the_target_before_the_patch():
+    # lean-nock (NockEval.op10, Order.lean) and Vere evaluate d before c in
+    # [10 [b c] d]; here d diverges and c crashes, so the outcome is divergence.
+    s = N.parse("[2 [0 1] [0 1]]")
+    f = N.parse("[10 [2 [0 0]] [2 [0 1] [0 1]]]")
+    with pytest.raises(N.Fuel):
+        N.nock(s, f, fuel=2000)
+    from skinock.run import SkiFuel
+    with pytest.raises(SkiFuel):
+        run(f, s, max_steps=100_000)
+    with pytest.raises(SkiFuel):
+        run(N.parse("[2 [0 2] [0 3]]"), (s, f), max_steps=100_000, code=False)
+    # and the patch is still evaluated: a crashing patch over a good tree crashes
+    assert run(N.parse("[10 [2 [0 0]] [0 1]]"), s).value is None

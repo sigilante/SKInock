@@ -1,8 +1,8 @@
 """Nock formulas to SKIjack source, and on to closed SKI terms.
 
 The compiled formula is an expression over a subject variable.  Strictness
-follows Nock: both halves of an autocons, both operands of opcodes 2, 5 and
-10, the pushed value of 8, the subject of 7 and 9 and the hint of a dynamic
+follows Nock: both halves of an autocons, both operands of opcodes 2 and 5, the
+target then the patch of 10, the pushed value of 8, the subject of 7 and 9 and the hint of a dynamic
 11 are forced (one case, propagating Err) before use, in Vere's order; the
 branches of 6 are left unevaluated until chosen.  A literal cell that
 parses as a formula is emitted as `Form h t code` with its compiled code,
@@ -137,8 +137,9 @@ class Compiler:
             (ax, c), d = rest
             v, t = self.fresh("v"), self.fresh("t")
             ed = self.edit(ax, v, t) if isinstance(ax, int) else "Err"
-            return (f"(force {self.formula(c, s)} (\\{v}. (force {self.formula(d, s)} "
-                    f"(\\{t}. {ed}))))")
+            # lean-nock and Vere evaluate the target tree d before the patch c
+            return (f"(force {self.formula(d, s)} (\\{t}. (force {self.formula(c, s)} "
+                    f"(\\{v}. {ed}))))")
         if op == 11:
             hint, body = rest
             if N.is_cell(hint):

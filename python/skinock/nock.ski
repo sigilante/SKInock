@@ -63,6 +63,6 @@ nockO o s t = o |> {
   O7 (cel2 t (\b. \c. force (nockI s b) (\x. nockI x c))) ;
   O8 (cel2 t (\b. \c. force (nockI s b) (\x. nockI (Cell x s) c))) ;
   O9 (cel2 t (\ax. \c. force (nockI s c) (\core. ax |> { Atom b (app (slotB b core) core) ; Cell h u Err ; Form h u k Err ; Err Err }))) ;
-  O10 (cel2 t (\bc. \d. cel2 bc (\ax. \c. force (nockI s c) (\v. force (nockI s d) (\u. ax |> { Atom b (editB b v u) ; Cell h w Err ; Form h w k Err ; Err Err }))))) ;
+  O10 (cel2 t (\bc. \d. cel2 bc (\ax. \c. force (nockI s d) (\u. force (nockI s c) (\v. ax |> { Atom b (editB b v u) ; Cell h w Err ; Form h w k Err ; Err Err }))))) ;
   O11 (cel2 t (\h. \body. h |> { Atom b (nockI s body) ; Cell a d (force (nockI s d) (\x. nockI s body)) ; Form a d k (force (nockI s d) (\x. nockI s body)) ; Err Err })) ;
   Obad Err }

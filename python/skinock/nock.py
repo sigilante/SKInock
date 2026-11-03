@@ -4,7 +4,7 @@ Nouns are Python ints (atoms) and 2-tuples (cells).  The evaluator raises
 `Crash` on a deterministic crash and `Fuel` when its step budget runs out;
 it evaluates in the order lean-nock discharged against Vere: autocons head
 then tail, opcode 2 subject then formula, opcode 5 left then right,
-opcode 10 the value then the target, a dynamic hint before its body.
+opcode 10 the target tree then the patch, a dynamic hint before its body.
 """
 from __future__ import annotations
 
@@ -169,6 +169,8 @@ class Evaluator:
             return self._nock(s, f)
         except (TypeError, IndexError, ValueError):
             raise Crash("malformed formula")
+        except RecursionError:
+            raise Fuel("recursion depth")
 
     def _nock(self, s: Noun, f: Noun) -> Noun:
         self.tick()
@@ -216,8 +218,8 @@ class Evaluator:
             return self.nock(core, slot(rest[0], core))
         if op == 10:
             (axis, c), d = rest
-            v = self.nock(s, c)
             t = self.nock(s, d)
+            v = self.nock(s, c)
             return edit(axis, v, t)
         if op == 11:
             hint, body = rest
