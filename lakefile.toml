@@ -14,3 +14,7 @@ path = "../../lean-nock"
 
 [[lean_lib]]
 name = "Nock2Ski"
+
+[[lean_exe]]
+name = "normcheck"
+root = "bench.NormCheck"

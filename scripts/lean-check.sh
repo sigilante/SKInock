@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
-# Build skinock and print the axiom footprint of its theorems.
+# Build skinock, run the normalized reference tests through the Lean
+# compiler (M2's executable gate), and print the axiom footprint of its
+# theorems.
 #     ./scripts/lean-check.sh
-# Expected: `m0_join` uses no axioms; the M1 specs use at most `propext`,
-# `Classical.choice` and `Quot.sound` (from `simp`/`omega`); the pins
-# (`decide +kernel`) use none.
+# Expected: `m0_join` uses no axioms; the M1 specs and the M2 theorems use
+# at most `propext`, `Classical.choice` and `Quot.sound` (from
+# `simp`/`omega`); the pins (`decide +kernel`) use none.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export PATH="$HOME/.elan/bin:$PATH"
 lake build
+# M2 gate: every urbit/benchmark norm test (63) and the M2 programs agree
+lake build normcheck
+lake exe normcheck | tail -2
 tmp="$(mktemp -d)"; trap 'command rm -rf "$tmp"' EXIT
 cat > "$tmp/Axioms.lean" <<'LEAN'
 import Nock2Ski
@@ -39,5 +44,8 @@ import Nock2Ski
 #print axioms Nock2Ski.app_noun
 -- M1: tagged axis pulls
 #print axioms Nock2Ski.pull_tagged
+-- M2: the compiler
+#print axioms Nock2Ski.malformed_eq
+#print axioms Nock2Ski.axisPath_eq_axisSteps
 LEAN
 lake env lean "$tmp/Axioms.lean"
