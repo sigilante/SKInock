@@ -40,7 +40,8 @@ case on the noun, which also propagates `Err`) before use, in the order lean-noc
 discharged against Vere: head before tail, subject before formula. The branches of 6 are
 left unevaluated until chosen. A forced value is deep: every field is a value, so a crash
 cannot hide in an unread position and the three outcomes value, crash and divergence
-coincide with Nock's.
+coincide with Nock's. A node's shape is checked before its operands run, as lean-nock's
+`Malformed` does, so `[6 c 99]` crashes even when `c` would diverge.
 
 **Products** are read behaviourally (`run.py`): the term is applied to one marker atom per
 constructor and reduced to weak head normal form, recursively; on Avon (`avon.py`) a show
