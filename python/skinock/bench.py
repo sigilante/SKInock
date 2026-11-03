@@ -10,6 +10,7 @@ from __future__ import annotations
 import os, sys, time
 from . import nock as N
 from .run import Program, SkiFuel
+from skijack.probe import dag_size
 
 BAR = os.path.expanduser("~/Code/urbit/benchmark/desk/bar")
 
@@ -55,7 +56,7 @@ def main(names, max_steps=20_000_000):
                          "ok" if ok else f"MISMATCH {got}", ev.steps, steps, per, p.atoms, dt))
             print(f"{name:10} subject {N.show(s):10} -> {rows[-1][2]:>8} {rows[-1][3]:8} "
                   f"nock steps {ev.steps:7,} ski contractions {steps:11,} ({per:7.1f}/step) "
-                  f"main {p.atoms:,} atoms  [{dt:.1f}s]", flush=True)
+                  f"main {dag_size(p.main):,} nodes  [{dt:.1f}s]", flush=True)
     return rows
 
 
