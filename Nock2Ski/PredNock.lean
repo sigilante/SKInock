@@ -2,6 +2,7 @@ import Nock2Ski.PredSkel
 import Nock2Ski.Probe
 import Nock.Comp
 import Nock.HoonOne
+import Nock2Ski.HoonDec
 
 open Nock Nock.Noun
 open Term
@@ -20,16 +21,20 @@ out here as the released text (`n!`) and its product is proved from
 lean-nock:
 
 - `countUpF = countUp` by `rfl`, so `countUp_correct 6` is the run;
-- Hoon's `++dec` from `urbit/benchmark` is **not** lean-nock's `decBat`: the
-  guard and loop body are lean-nock's `decBat_guardBody` to the cell, but the
-  `%fast` hint's clue formula differs (`hoonDecBat_parts`: the benchmark's
-  is the constant `[1 [[1 %dec] [[7 …] [0 1]]]]`, lean-nock's `decBat_hintF`
-  the autocons `[[1 [[1 %dec] [7 …]]] [0 1]]`), and lean-nock's `dec_correct`
-  and `dec_loop_inv` are stated on `decBat` itself (`decLoopCore` carries
-  it), so they do not compose into the released formulas.  The three
-  Hoon `dec` runs are therefore lean-nock's fuel interpreter evaluated by
-  the kernel: `nockF_sound` on `decide +kernel` (`hoonDecHidden_eval`,
-  `hoonDec12_eval`, `hoonDec0_crash`; a few hundred Nock steps each);
+- Hoon's `++dec` in the released programs is **not** lean-nock's `decBat`:
+  the guard and loop body are lean-nock's `decBat_guardBody` to the cell, but
+  the clue formula of its `~_` hint (`[11 [%mean c] …]`, the trace message
+  `decrement-underflow`) differs (`hoonDecBat_parts`: the released
+  one is the constant `[1 [[1 %dec] [[7 …] [0 1]]]]`, lean-nock's
+  `decBat_hintF` the autocons `[[1 [[1 %dec] [7 …]]] [0 1]]`).  The clue is
+  registration, not computation.  lean-nock's battery- and clue-generic
+  `dec_body_correct`, `dec_body_underflow` (branch `hoon-dec-general`) give
+  the arm's leaf (`Nock2Ski/HoonDec.lean`, `hoon_dec_leaf`).  Through the
+  constant-clue hint it is the released battery's leaf too
+  (`hoonDecBat_leaf`).  The three Hoon `dec` runs are its instances for every
+  sample (`hoonDecHidden_gen`, `hoonDecF_val`, `hoonDecF_call`).  Before the
+  generalisation they were the fuel interpreter evaluated by the kernel
+  (`nockF_sound` on `decide +kernel`), one input at a time;
 - Hoon's `++add` from `urbit/benchmark` is not lean-nock's `addBat` either
   (it finds `dec` at `[9 10 0 7]` where lean-nock's finds it at `[9 2398 [0
   8191]]`), so `add_correct` does not apply; its two runs are the same
@@ -82,12 +87,13 @@ theorem countup_dec_7_probe : WSteps (compiled countUpF (.atom 7)) (encNoun (.at
 -- Hoon's `++dec`: `hoon_dec_12`, `hoon_dec_0`, `hoon_dec_hidden_12`
 -- ---------------------------------------------------------------------------
 
-/-- The `%fast` hint's clue formula of the benchmark's `++dec` battery. -/
+/-- The `%mean` (`~_ leaf+"decrement-underflow"`) hint's clue formula of the
+    released `++dec` battery (tag `1851876717` is `%mean`). -/
 def hoonDecClue : Noun :=
   n! "[1 [1 1717658988] [7 [[0 1] [8 [1 [1 [100 [101 [99 [114 [101 [109 [101 [110 [116 [45 [117 [110 [100 [101 [114 [102 [108 [111 [119 0]]]]]]]]]]]]]]]]]]]]] [9 2 [0 1]]]]] [0 1]]"
 
 /-- The benchmark's `++dec` battery: lean-nock's guard and loop
-    (`decBat_guardBody`) under a `%fast` hint with `hoonDecClue`. -/
+    (`decBat_guardBody`) under a `%mean` hint with `hoonDecClue`. -/
 def hoonDecBat : Noun :=
   cell (atom 11) (cell (cell (atom 1851876717) hoonDecClue) decBat_guardBody)
 
@@ -108,16 +114,30 @@ theorem hoonDecHiddenF_parts : hoonDecHiddenF =
         (cell (cell (atom 6) (cell (atom 0) (atom 3))) (cell (atom 0) (atom 2))))))) := rfl
 
 /-- The benchmark's battery against lean-nock's: the same guard body, a
-    different clue (`decBat = [11 [%fast decBat_hintF] decBat_guardBody]`,
+    different clue (`decBat = [11 [%mean decBat_hintF] decBat_guardBody]`,
     `decBat_parts` in lean-nock). -/
 theorem hoonDecBat_parts :
     hoonDecBat = cell (atom 11) (cell (cell (atom 1851876717) hoonDecClue) decBat_guardBody) ∧
     hoonDecClue ≠ decBat_hintF := ⟨rfl, by decide⟩
 
-/-- `*[12 hoonDecHiddenF] = 11`: lean-nock's fuel interpreter, run by the
-    kernel, and `nockF_sound`. -/
+/-- The released battery is the arm under a constant-clue `%mean` hint, so it
+    meets the Hoon `++dec` contract on its domain (`hoon_dec_hinted_leaf`). -/
+theorem hoonDecBat_leaf : LeafOn HoonDecDom hoonDecBat hoonDecC :=
+  hoon_dec_hinted_leaf (atom 1851876717) _
+
+/-- `*[n+1 hoonDecHiddenF] = n` for every `n`: the gate slammed with the
+    subject, then the leaf. -/
+theorem hoonDecHidden_gen (n : Nat) :
+    NockEval (.atom (n + 1)) hoonDecHiddenF (.val (.atom n)) := by
+  rw [hoonDecHiddenF_parts]
+  refine NockEval.op8 NockEval.op1 ?_
+  refine NockEval.op9 (NockEval.op10 (NockEval.op0 (fasO_head _ _))
+    (NockEval.op0 (fasO_tail _ _)) (haxO_six _ _ _ _)) (fasO_head _ _) ?_
+  exact hoonDecBat_leaf _ trivial
+
+/-- `*[12 hoonDecHiddenF] = 11`, the instance of `hoonDecHidden_gen`. -/
 theorem hoonDecHidden_eval : NockEval (.atom 12) hoonDecHiddenF (.val (.atom 11)) :=
-  nockF_sound 4000 (by decide +kernel)
+  hoonDecHidden_gen 11
 
 /-- **`hoon_dec_hidden_12` is complete**: the verifier accepts the 8 bits of
     12 for the product 11. -/
@@ -138,13 +158,24 @@ theorem hoonDecF_12 : hoonDecF 12 =
 theorem hoonDecF_0 : hoonDecF 0 =
     n! "[7 [1 [[11 [1851876717 [1 [1 1717658988] [7 [[0 1] [8 [1 [1 [100 [101 [99 [114 [101 [109 [101 [110 [116 [45 [117 [110 [100 [101 [114 [102 [108 [111 [119 0]]]]]]]]]]]]]]]]]]]]] [9 2 [0 1]]]]] [0 1]]] [6 [5 [1 0] [0 6]] [0 0] [8 [1 0] [8 [1 6 [5 [0 30] 4 0 6] [0 6] 9 2 [10 [6 4 0 6] 0 1]] [9 2 0 1]]]]] 0 0]] [9 2 [10 [6 [1 0]] [0 1]]]]" := rfl
 
-/-- `*[0 hoonDecF 12] = 11`, by the kernel. -/
-theorem hoonDec12_eval : NockEval (.atom 0) (hoonDecF 12) (.val (.atom 11)) :=
-  nockF_sound 4000 (by decide +kernel)
+/-- The released call shape on any sample: push the gate, slam it
+    (lean-nock's `callGate_gate_eval`), then the battery's leaf. -/
+theorem hoonDecF_call (s : Nat) :
+    NockEval (.atom 0) (hoonDecF s) (hoonDecC (cell hoonDecBat (cell (atom s) (atom 0)))) :=
+  NockEval.op7 NockEval.op1
+    (callGate_gate_eval hoonDecBat (atom 0) (atom 0) (atom s) (hoonDecBat_leaf _ trivial))
 
-/-- `*[0 hoonDecF 0]` crashes (the underflow guard), by the kernel. -/
+/-- `*[0 hoonDecF (n+1)] = n` for every `n`. -/
+theorem hoonDecF_val (n : Nat) : NockEval (.atom 0) (hoonDecF (n + 1)) (.val (.atom n)) :=
+  hoonDecF_call (n + 1)
+
+/-- `*[0 hoonDecF 12] = 11`, the instance of `hoonDecF_val`. -/
+theorem hoonDec12_eval : NockEval (.atom 0) (hoonDecF 12) (.val (.atom 11)) :=
+  hoonDecF_val 11
+
+/-- `*[0 hoonDecF 0]` crashes (the underflow guard). -/
 theorem hoonDec0_crash : NockEval (.atom 0) (hoonDecF 0) .exit :=
-  nockF_sound 4000 (by decide +kernel)
+  hoonDecF_call 0
 
 /-- **`hoon_dec_12`'s probe table is makeable**: the shared row's term
     reaches `encNoun 11`. -/

@@ -27,4 +27,5 @@ import Nock2Ski.JetSpec
 import Nock2Ski.JetWord
 import Nock2Ski.JetTransport
 import Nock2Ski.PredNock
+import Nock2Ski.HoonDec
 import Nock2Ski.Circuit

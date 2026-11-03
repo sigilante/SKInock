@@ -333,8 +333,9 @@ jets licensed by theorems. A live run of the same programs on both provers is fu
   table is `*[s f] = p`), `pred_proof_nock`, `predS_proof_nock`, `pred2_proof_nock` (an
   accepted predicate proof shows the hidden subject with `*[s f] = p`). `PredNock` imports
   `Nock.Comp` and `Nock.HoonOne`: the five released programs' runs from lean-nock
-  (`countUp_correct`; the Hoon rows by `nockF_sound` on `decide +kernel`, since the
-  benchmark's batteries are not lean-nock's), and the released statements' completeness and
+  (`countUp_correct`; the Hoon `dec` rows from lean-nock's battery- and clue-generic
+  `dec_body_correct` through `Nock2Ski/HoonDec.lean`'s leaf; Hoon `add` by `nockF_sound` on
+  `decide +kernel`, since its battery is not lean-nock's), and the released statements' completeness and
   the probe tables' makeability as their instances.
 
 - `Nock2Ski/JetSpec.lean`, `Nock2Ski/JetWord.lean`, `Nock2Ski/JetTransport.lean` (M5): jet
@@ -349,6 +350,13 @@ jets licensed by theorems. A live run of the same programs on both provers is fu
   `Contract.Respects` by `encNoun_inj`, the corollaries
   `jet_close`/`jet_real` of `JSteps.close`/`real_of_jet`, and the code-dropping copy
   `toCellT` (`toCell_enc : Enc p ep → toCellT ⬝ ep ↠ encNoun p`). Below, "Jet transport".
+- `Nock2Ski/HoonDec.lean` (M5): Hoon's own `++dec` as a proved jet. The arm is
+  `hoonDecBodyF` (`= decBat_guardBody`), the gate's battery formula run against the core
+  `[bat [sam ctx]]`. Its leaf is `hoon_dec_leaf : LeafOn HoonDecDom hoonDecBodyF hoonDecC`,
+  from lean-nock's battery- and clue-generic `dec_body_correct` and `dec_body_underflow`
+  (lean-nock branch `hoon-dec-general`). Its transport is `hoon_dec_transport : Implements
+  (onContract HoonDecDom hoonDecC) (jetT hoonDecBodyF)`. The benchmark's program
+  `dec.nock` is `hoon_dec_bench`. Below, "Hoon's own `++dec`".
 
 ## Proofs (`release/nock/`, M4a, M4b, M4c, M4d, M4e, M4f, M4g; M5 below)
 
@@ -443,11 +451,12 @@ product's encoding is `encNoun p`'s. What is proved (`Nock2Ski/Pred.lean`):
   `embed_value_encNoun` and `eq_enc`'s `eqn_enc`. The released statements are instances
   (`Nock2Ski/PredNock.lean`): `countup_hidden_7_complete` from lean-nock's `countUp_correct
   6` (the released text is `countUp` by `rfl`), and `hoon_dec_hidden_12_complete` from
-  `hoonDecHidden_eval`, lean-nock's fuel interpreter run by the kernel (`nockF_sound` on
-  `decide +kernel`). lean-nock's `dec_correct` does not compose into the second: the
-  benchmark's `++dec` battery is lean-nock's `decBat_guardBody` under a *different* `%fast`
-  clue formula (`hoonDecBat_parts`), and `dec_correct`/`dec_loop_inv` are stated on `decBat`
-  itself. `nockpred --run` shows the acceptance in the clear (17,141 and 41,249
+  `hoonDecHidden_eval`, the instance at 12 of `hoonDecHidden_gen`. The released `++dec`
+  battery is lean-nock's `decBat_guardBody` under a *different* `~_` (`%mean`) clue formula
+  (`hoonDecBat_parts`), and `dec_correct`/`dec_loop_inv` are stated on `decBat` itself, so
+  the run comes from lean-nock's battery- and clue-generic `dec_body_correct` (branch
+  `hoon-dec-general`) through `hoon_dec_hinted_leaf`. Before that, it was lean-nock's fuel
+  interpreter run by the kernel (`nockF_sound` on `decide +kernel`). `nockpred --run` shows the acceptance in the clear (17,141 and 41,249
   contractions).
 - **Soundness**, `nock_pred_sound : 0 < k → bs.length = k → Eval (nockPredV f k ⬝ encNoun
   p ⬝ boolsT bs) K → ∃ n, n < 2^k ∧ WSteps (eqn ⬝ (nockToSki f ⬝ encNoun (.atom n)) ⬝
@@ -762,6 +771,45 @@ Axioms: `propext`, `Classical.choice`, `Quot.sound` on the lean-ski side; `prope
   `dec` made. `jet_transport` licenses the row: whatever circuit computes `cw .dec` on
   `encNoun` may stand in for `jetT decF`, and a proof accepted under it is a proof about the
   Nock formula. PLAN §3.2's limit stands: the transported jet says nothing about steps.
+
+**Hoon's own `++dec`** (`Nock2Ski/HoonDec.lean`, `terms/jetT-hoonDecBodyF.dag`). The
+benchmark's `dec.nock` is a two-arm core. Arm 5 builds the gate `[body [0 core]]`, and arm 4
+slams it with the subject (`[8 [9 5 0 1] 9 2 10 [6 0 7] 0 2]`). `body` is lean-nock's
+`decBat_guardBody` to the cell, with no hint at all. The released programs' battery and
+lean-nock's `decBat` put the same body under Hoon's `~_ leaf+"decrement-underflow"`, a
+dynamic `%mean` hint (tag `1851876717`), and differ only in that hint's clue formula. Neither
+carries a `%fast` hint: `hoon.hoon`'s `~/ %dec` (`~% %dec +7 ~`) wraps the formula that builds
+the gate, outside the battery. So the jet follows the Nock-level split between registration
+and matching:
+
+    hoon_dec_leaf       : LeafOn HoonDecDom hoonDecBodyF hoonDecC      from dec_body_correct, dec_body_underflow
+    hoon_dec_transport  : Implements (onContract HoonDecDom hoonDecC) (jetT hoonDecBodyF)
+    hoon_dec_hinted_leaf tag k : LeafOn HoonDecDom [11 [tag [1 k]] hoonDecBodyF] hoonDecC
+    hoon_dec_bench n    : *[n+1 hoonDecBenchF] = n,   hoon_dec_bench_zero : *[0 hoonDecBenchF] crashes
+
+- **Licence**: the computation under any hint, the body against the core. Domain
+  `HoonDecDom`: every subject except a core whose sample is a cell. There the arm diverges
+  (`hoon_dec_off_domain`, from lean-nock's `dec_body_cell_diverges`), and so does its
+  compiled term (`hoon_dec_off_domain_term`). So no total `Leaf` exists, and the contract is
+  `onContract`, the `nounContract` shape on a subtype (`jet_transport_on`). The model
+  `hoonDecC` is `n` on `[bat [n+1 ctx]]` and the crash everywhere else in the domain.
+- **Matched term**: `jetT hoonDecBodyF`, the compiled body. A static hint compiles away
+  (`nockToSki [11 t c] = nockToSki c`). A dynamic hint compiles to "evaluate the clue, then
+  the body's term". Either way the jettable SKI term is the compiled body, so any `++dec`
+  that differs only in a hint over the body matches the same term.
+- **Registration**: metadata at the Nock level (for `hoon.hoon`'s `++dec`: name `%dec`,
+  parent axis 7, no hooks), outside the licence and outside the matched term.
+  `hoon_dec_hinted_leaf` covers any constant-clue hint. lean-nock's `dec_hint_correct`,
+  `dec_hint_underflow` and `dec_hint_cell_diverges` cover any clue, each under exactly the
+  clue hypothesis its outcome needs.
+- **Avon.** An SKI term has no hint to carry registration, so an Avon supercombinator
+  jet's identity is its term (structural hash). That is the right design for SKI, and it is
+  how the Λ `dec` jet (Avon PR #121, `jetT decF`) is matched. The registration/matching split
+  is a Nock-level matter, and it shows up here only in which Nock formula is compiled to the
+  matched term: the body, not the hinted battery.
+- The released Hoon `dec` rows (`Nock2Ski/PredNock.lean`) are now instances of the leaf for
+  every sample (`hoonDecHidden_gen`, `hoonDecF_val`, `hoonDecF_call`). Before, they were the
+  fuel interpreter evaluated by the kernel, one input at a time.
 
 **Jetted proofs with the existing machinery** (`release/nock/jets/`, `produce.sh jets`,
 `verify.sh` step 6). lean-ski's supercombinator jets (`Ski/Inst.lean`, `Ski/JetTable.lean`,

@@ -12,7 +12,8 @@
 # whole package is one Lean environment since lean-nock's `namespace Nock`
 # (its branch `namespace-nock`): Nock2Ski.Circuit composes lean-ski's circuit
 # theorems with the simulation, Nock2Ski.PredNock the released statements
-# with lean-nock's runs.
+# with lean-nock's runs, Nock2Ski.HoonDec Hoon's own `++dec` as a proved jet
+# (lean-nock's branch `hoon-dec-general`, battery- and clue-generic `++dec`).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export PATH="$HOME/.elan/bin:$PATH"
@@ -236,6 +237,10 @@ import Nock2Ski
 #print axioms Nock2Ski.countup_hidden_7_complete
 #print axioms Nock2Ski.countup_dec_7_probe
 #print axioms Nock2Ski.hoonDecBat_parts
+#print axioms Nock2Ski.hoonDecBat_leaf
+#print axioms Nock2Ski.hoonDecHidden_gen
+#print axioms Nock2Ski.hoonDecF_call
+#print axioms Nock2Ski.hoonDecF_val
 #print axioms Nock2Ski.hoonDecHidden_eval
 #print axioms Nock2Ski.hoon_dec_hidden_12_complete
 #print axioms Nock2Ski.hoonDec12_eval
@@ -246,5 +251,19 @@ import Nock2Ski
 #print axioms Nock2Ski.hoonAdd_6_57
 #print axioms Nock2Ski.hoon_add_hidden_3_4_complete
 #print axioms Nock2Ski.hoon_add_hidden_6_57_complete
+-- M5: Hoon's own `++dec` as a proved jet (HoonDec): the arm under the hint
+#print axioms Nock2Ski.jet_transport_on
+#print axioms Nock2Ski.onContract_respects
+#print axioms Nock2Ski.hoonDecBodyF_eq
+#print axioms Nock2Ski.hoon_dec_leaf
+#print axioms Nock2Ski.hoon_dec_off_domain
+#print axioms Nock2Ski.hoon_dec_off_domain_term
+#print axioms Nock2Ski.hoon_dec_transport
+#print axioms Nock2Ski.hoonDecContract_respects
+#print axioms Nock2Ski.hoon_dec_hinted_leaf
+#print axioms Nock2Ski.hoonDecBenchF_parts
+#print axioms Nock2Ski.hoon_dec_bench_call
+#print axioms Nock2Ski.hoon_dec_bench
+#print axioms Nock2Ski.hoon_dec_bench_zero
 LEAN
 lake env lean "$tmp/Axioms.lean"

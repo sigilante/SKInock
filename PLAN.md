@@ -24,10 +24,10 @@ Started 2026-11-03. Open question C5 of `../OPEN-QUESTIONS.md`. Companion paper:
   `probe_value`/`probe_decodes_nock` and `nock_pred*_sound_nock`), `JetTransport.lean`
   (`dec_transport`, `add_transport` unconditional, `JetWord` imported), and
   `Nock2Ski/PredNock.lean` (the released statements' completeness from lean-nock's
-  `countUp_correct`, and from `nockF_sound` on `decide +kernel` for the Hoon rows: the
-  benchmark's `++dec` and `++add` batteries differ from lean-nock's `decBat` in the `%fast`
-  clue and from `addBat` in the context layout, so `dec_correct`/`add_correct` do not
-  compose). `Value.lean`, `JetSpec.lean` and `Pred.lean`'s `boolsT` remain as the
+  `countUp_correct`. The Hoon `dec` rows come from lean-nock's battery- and clue-generic
+  `dec_body_correct` (branch `hoon-dec-general`; the released battery differs from `decBat`
+  only in its `~_` (`%mean`) hint's clue), and `++add` from `nockF_sound` on `decide +kernel`
+  (it differs from `addBat` in the context layout, so `add_correct` does not compose). `Value.lean`, `JetSpec.lean` and `Pred.lean`'s `boolsT` remain as the
   vocabularies the light and heavy modules share; `PredText.lean`'s copies of
   `ComposedText` remain (tooling, byte-checked by ski-air).
 - **Measured** (§7 item 1, first numbers): 150–270 contractions per Nock step on aviary's
@@ -462,7 +462,7 @@ realized across ISAs. It is §8's stretch item; the direct route is enough for t
 | M2 | the compiler over opcodes 0–9 on the Hoon-shaped fragment; `embed_value` and `embed_crash` | count-up `dec` and `++dec` run through `runF` to the right outcomes; theorems closed | 3–4 weeks |
 | M3 | the interpreter fallback pinned and simulated; `embed_value` strong; then `embed_diverges`, `fragment_static` | `nockI_value`, `nockI_crash`; the 63 tests interpreted; `countUp_zero_diverges` carried to SKI | 1–2 weeks |
 | M4 | `nock statement` exe; the verifier's Lean check; the three statements proved on the circuit; rows measured (M4a done: `nockstatement`, count-up `dec` proved on the base circuit; M4b: sharing, Hoon's `++dec`; M4c: hidden subjects on the composed predicate circuit, `nockpred`; M4d: cell-shaped hidden subjects, `add` over two hidden atoms; M4e: the converse simulation, `embed_terminates`, the hidden-subject statements as Nock claims; M4f: the product as a public value, `nounV`, `probe_decodes_nock`, probe tables Lean-checked; M4g: the probe tables proved, ski-air taking the tree as its outcome words on lean-ski's `probe-plan-file` branch) | `release/nock/` with `verify.sh` passing | 2 weeks |
-| M5 | `jet_transport` for `dec` and `add`; jetted proofs; the rows table (done 2026-11-04: `jet_transport`, `dec_transport`, `add_transport` closed, `Nock2Ski/JetTransport.lean`; jetted proofs with lean-ski's existing template jets, `release/nock/jets/`, rows −36–40%; the transported `dec` data jet's circuit, which would collapse the loop, is held) | the loop collapses; theorem closed | 2–3 weeks |
+| M5 | `jet_transport` for `dec` and `add`; jetted proofs; the rows table (done 2026-11-04: `jet_transport`, `dec_transport`, `add_transport` closed, `Nock2Ski/JetTransport.lean`; Hoon's own `++dec`, `hoon_dec_transport` on its domain, the body under any hint, `Nock2Ski/HoonDec.lean`, term pinned `terms/jetT-hoonDecBodyF.dag`; jetted proofs with lean-ski's existing template jets, `release/nock/jets/`, rows −36–40%; the transported `dec` data jet's circuit, which would collapse the loop, is held) | the loop collapses; theorem closed | 2–3 weeks |
 | M6 | Zorp comparison; paper draft | numbers in the table; draft to USTJ | 2 weeks |
 | M7 (stretch) | Λ → SKIlark front end, co-derivation across ISAs | `composition` shared | open |
 

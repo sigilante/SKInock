@@ -1,4 +1,5 @@
 import Nock2Ski.JetTransport
+import Nock2Ski.HoonDec
 import Std.Data.HashMap
 open Term
 
@@ -39,3 +40,8 @@ def main : IO Unit := do
   IO.FS.writeFile "/Users/neal/Code/ski/skinock/terms/jetT-decF.prefix" (enc t ++ "\n")
   IO.FS.writeFile "/Users/neal/Code/ski/skinock/terms/toCellT.dag" (dagText Nock2Ski.toCellT ++ "\n")
   IO.println s!"jetT decF: {size t} atoms; toCellT: {size Nock2Ski.toCellT} atoms; nockToSki decF: {size (Nock2Ski.nockToSki Nock2Ski.decF)} atoms"
+  -- Hoon's `++dec`: the arm under the `%fast` hint (`hoon_dec_transport`)
+  let h := Nock2Ski.jetT Nock2Ski.hoonDecBodyF
+  IO.FS.writeFile "/Users/neal/Code/ski/skinock/terms/jetT-hoonDecBodyF.dag" (dagText h ++ "\n")
+  IO.FS.writeFile "/Users/neal/Code/ski/skinock/terms/jetT-hoonDecBodyF.prefix" (enc h ++ "\n")
+  IO.println s!"jetT hoonDecBodyF: {size h} atoms; nockToSki hoonDecBodyF: {size (Nock2Ski.nockToSki Nock2Ski.hoonDecBodyF)} atoms"

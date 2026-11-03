@@ -63,7 +63,7 @@ ACCEPT release/nock/out/hoon_dec_0.txt (16384 rows, 131072 cells)
 In M4a (2026-11-03) the two Hoon rows were refused for their heights:
 `encLit` gives every formula-shaped literal its compiled code, and a
 battery's nested formulas are encoded once per nesting level, so the term
-of Hoon's `%fast`-hinted `++dec` was 2,154,393 cells as a tree, 2.7% over
+of Hoon's `~_`-hinted (`%mean`) `++dec` was 2,154,393 cells as a tree, 2.7% over
 the 2^21 = 2,097,152 cells the memory and program tables may hold, and
 ski-air, which loads a term cell by cell (`build` in `main.rs`), built
 2^22-row tables that the verifier refused (`heights [17, 22, 22] out of
