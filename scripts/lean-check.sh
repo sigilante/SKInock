@@ -40,7 +40,20 @@ while IFS=$'\t' read -r name subject product skel logr logm formula; do
     lake exe nockpred --check "$name" "$formula" "$product" "$skel" < "release/nock/hidden/$name/public.txt" 2> /dev/null
     lake exe nockpred --run "$name" "$formula" "$product" "$subject" "$skel" 2> /dev/null
 done < release/nock/hidden/programs.txt
+# M4f gate: the probe step.  Nock2Ski.ProbeTree is on lean-ski's side of the
+# two environments (it imports Ski.AirProbe, so not Nock2Ski's root), built
+# here with nockprobe; each released probe table (release/nock/probe, Avon's
+# `witness --plan` for Lean's plan of the product) is accepted by lean-ski's
+# Air.checkPA for the plan Lean recomputes from the product (`probe_check`,
+# then `probe_decodes_nock`), and the plan file is that plan
+lake build Nock2Ski.ProbeTree nockprobe
 tmp="$(mktemp -d)"; trap 'command rm -rf "$tmp"' EXIT
+while IFS=$'\t' read -r name subject product form formula; do
+    [ "$product" != crash ] || continue
+    lake exe nockprobe plan "$product" 2> /dev/null | cmp - "release/nock/probe/$name.plan"
+    gunzip -c "release/nock/probe/$name.probe.table.gz" > "$tmp/$name.probe.table"
+    lake exe nockprobe check release/nock/corpus.txt "$name" "$tmp/$name.probe.table" "$product" | sed "s|$tmp/||"
+done < release/nock/programs.txt
 cat > "$tmp/Axioms.lean" <<'LEAN'
 import Nock2Ski
 #print axioms Nock2Ski.m0_join
@@ -154,5 +167,24 @@ import Nock2Ski
 #print axioms Nock2Ski.nock_pred_sound_nock
 #print axioms Nock2Ski.nock_predS_sound_nock
 #print axioms Nock2Ski.nock_pred2_sound_nock
+-- M4f: the product as a public value, the Nock side of the join
+#print axioms Nock2Ski.encS_of_enc
+#print axioms Nock2Ski.nock_of_valueIs
+#print axioms Nock2Ski.probe_decodes_nock
+#print axioms Nock2Ski.probe_decodes_nock_shared
+#print axioms Nock2Ski.probe_complete_nock
+#print axioms Nock2Ski.probe_complete_nock_shared
 LEAN
 lake env lean "$tmp/Axioms.lean"
+# M4f: lean-ski's side of the join (Ski.AirProbe cannot be imported beside Nock.Eval)
+cat > "$tmp/AxiomsProbe.lean" <<'LEAN'
+import Nock2Ski.ProbeTree
+#print axioms Nock2Ski.decV_encNoun
+#print axioms Nock2Ski.probe_complete
+#print axioms Nock2Ski.encS_unique
+#print axioms Nock2Ski.err_unique
+#print axioms Nock2Ski.probe_value
+#print axioms Nock2Ski.probe_sound
+#print axioms Nock2Ski.probe_check
+LEAN
+lake env lean "$tmp/AxiomsProbe.lean"

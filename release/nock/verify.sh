@@ -29,6 +29,18 @@
 #      it with one byte changed.  The subject in programs.txt is the
 #      producer's witness, published for reproduction; the proof reveals
 #      nothing of it (lean-ski's `comp_zk`).
+#   5. The product as a public value (release/nock/probe, M4f): for each
+#      row whose product is a noun, Lean recomputes the probe plan from the
+#      product (`lake exe nockprobe plan PRODUCT`: `Air.planOf (nounV p)
+#      0`, Nock2Ski/ProbeTree.lean) and the term's jet file (`nockprobe
+#      jets`) and compares them with the released files; `nockprobe check`
+#      accepts the released probe table for the row and the product
+#      (lean-ski's `Air.checkPA`: `probe_check`, so the term's value is the
+#      product, and `probe_decodes_nock`: *[s f] = p), and refuses it for
+#      the product + 1 and for a cell.  The table is the prover's (Avon's
+#      `witness --plan`); Lean's check is the whole of this step, since
+#      ski-air's probe prover and verifier take a plan only from `lake exe
+#      jets plan OUTCOME`, a SKIlark outcome (bench/plonky3/src/probe.rs).
 #
 # Exits nonzero on any failure.  With VERIFY_ALL=1 every check runs and the
 # exit comes at the end.
@@ -135,6 +147,47 @@ while IFS=$'\t' read -r name subject product skel logr logm formula; do
     fi
 done < "$R/hidden/programs.txt"
 [ "$(grep -c '^proved' "$R/hidden/results.txt")" = "$n" ] && ok "hidden/results.txt records the $n proof(s) of hidden/programs.txt" || no "hidden/results.txt does not record one line per program"
+
+echo "--- 5. The product as a public value: the probe plan and the probe table (release/nock/probe)"
+lake build nockprobe > /dev/null
+P=$R/probe
+n=0
+while IFS=$'\t' read -r name subject product form formula; do
+    [ -n "$name" ] || continue
+    [ "$product" != crash ] || continue
+    n=$((n+1))
+    if lake exe nockprobe plan "$product" 2> "$tmp/plan.err" | cmp -s - "$P/$name.plan"; then
+        ok "$name: $name.plan is Lean's plan of the product $product ($(sed 's/.*: //' "$tmp/plan.err"))"
+    else
+        no "$name: $name.plan is not the plan of $product"
+    fi
+    lake exe nockprobe term "$R/corpus.txt" "$name" > "$tmp/$name.term"
+    if lake exe nockprobe jets "$tmp/$name.term" 2> "$tmp/jets.err" | cmp -s - "$P/$name.jets"; then
+        ok "$name: $name.jets is the term's jet file ($(sed 's/.*: //' "$tmp/jets.err"))"
+    else
+        no "$name: $name.jets is not the term's jet file"
+    fi
+    gunzip -c "$P/$name.probe.table.gz" > "$tmp/$name.probe.table"
+    if lake exe nockprobe check "$R/corpus.txt" "$name" "$tmp/$name.probe.table" "$product" > "$tmp/pr.log" 2>&1; then
+        ok "$(sed "s|$tmp/||" "$tmp/pr.log")"
+    else
+        no "$name: $(head -n 1 "$tmp/pr.log")"
+    fi
+    case "$product" in
+    ''|*[!0-9]*) ;;
+    *)  if lake exe nockprobe check "$R/corpus.txt" "$name" "$tmp/$name.probe.table" "$((product + 1))" > "$tmp/pr2.log" 2>&1; then
+            no "$name: the probe table read as the product $((product + 1))"
+        else
+            ok "$name: the probe table is refused for the product $((product + 1))"
+        fi
+        if lake exe nockprobe check "$R/corpus.txt" "$name" "$tmp/$name.probe.table" "[$product 0]" > "$tmp/pr3.log" 2>&1; then
+            no "$name: the probe table read as the cell [$product 0]"
+        else
+            ok "$name: the probe table is refused for the cell [$product 0]"
+        fi ;;
+    esac
+done < "$R/programs.txt"
+[ "$(grep -c '^ACCEPT' "$P/results.txt")" -ge "$n" ] && ok "probe/results.txt records the $n accepted table(s)" || no "probe/results.txt does not record one ACCEPT per table"
 
 [ "$failed" = 0 ] || { echo "NOT VERIFIED: release/nock"; exit 1; }
 echo "VERIFIED: release/nock"

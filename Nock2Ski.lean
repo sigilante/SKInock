@@ -20,3 +20,5 @@ import Nock2Ski.PredText
 import Nock2Ski.Head
 import Nock2Ski.Pending
 import Nock2Ski.Converse
+import Nock2Ski.Value
+import Nock2Ski.Probe

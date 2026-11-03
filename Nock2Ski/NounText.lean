@@ -1,4 +1,4 @@
-import Nock2Ski.Compile
+import Nock.Basic
 
 /-!
 # Nouns in `[a b c]` notation

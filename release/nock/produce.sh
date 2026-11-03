@@ -47,16 +47,31 @@
 #      hidden/results.txt's.  The two `add` rows take 14 s and 23 s and
 #      peak at 1.9 GB and 3.4 GB.
 #
-# Stages: `release/nock/produce.sh [STAGE…]` of rows, prove, hidden; all
-# by default.  One job at a time.
+#   5. The product as a public value (M4f, release/nock/probe): for each
+#      row whose product is a noun, `lake exe nockprobe plan PRODUCT`
+#      writes the probe plan of `nounV p` (Nock2Ski/ProbeTree.lean:
+#      `Air.planOf`, the segments that read the term constructor by
+#      constructor), `nockprobe jets` the term's jet file (lean-ski's
+#      `JetTable.jetTable`: the template roots the run may instantiate),
+#      and Avon (AVON, default ~/avon/build/avon) runs the segments
+#      (`avon witness --plan`) and writes the table with probe segments,
+#      kept gzipped; `nockprobe check` accepts it (Air.checkPA, so
+#      `probe_check`: the term's value is the product, and
+#      `probe_decodes_nock`: *[s f] = p).  Without Avon the committed table
+#      is checked.  The STARK proof of the table waits on lean-ski: ski-air
+#      takes a plan only from `lake exe jets plan OUTCOME`, a SKIlark
+#      outcome (bench/plonky3/src/probe.rs, `lean_plan`).
+#
+# Stages: `release/nock/produce.sh [STAGE…]` of rows, prove, hidden, probe;
+# all by default.  One job at a time.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 LEAN_SKI=${LEAN_SKI:-../lean-ski}
 R=release/nock
-STAGES=" ${*:-rows prove hidden} "
+STAGES=" ${*:-rows prove hidden probe} "
 want() { case "$STAGES" in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 for st in $STAGES; do
-    case " rows prove hidden " in *" $st "*) ;; *) echo "no stage $st" >&2; exit 2 ;; esac
+    case " rows prove hidden probe " in *" $st "*) ;; *) echo "no stage $st" >&2; exit 2 ;; esac
 done
 tmp=$(mktemp -d)
 trap '/bin/rm -rf "$tmp"' EXIT
@@ -99,4 +114,35 @@ while IFS=$'\t' read -r name subject product skel logr logm formula; do
     lake exe nockpred --witness "$name" "$subject" "$skel" > "$tmp/$name.witness"
     "$A" composed-prove "$D/public.txt" "$tmp/$name.witness" "$D/$name.proof" | tee -a "$R/hidden/results.txt"
 done < "$R/hidden/programs.txt"
+fi
+
+if want probe; then
+echo "--- Lean + Avon: the public product as a probe plan, and the probe table checked (M4f)"
+lake build nockprobe > /dev/null
+AVON=${AVON:-$HOME/avon/build/avon}
+P=$R/probe
+mkdir -p "$P/out"
+: > "$P/results.txt"
+while IFS=$'\t' read -r name subject product form formula; do
+    [ -n "$name" ] || continue
+    [ "$product" != crash ] || continue
+    lake exe nockprobe plan "$product" > "$P/$name.plan" 2> "$tmp/plan.err"
+    lake exe nockprobe term "$R/corpus.txt" "$name" > "$tmp/$name.term"
+    lake exe nockprobe jets "$tmp/$name.term" > "$P/$name.jets" 2> "$tmp/jets.err"
+    echo "$name: product $product: $(sed 's/^[^:]*: //' "$tmp/plan.err"); jet file: $(sed 's/.*: //' "$tmp/jets.err")" | tee -a "$P/results.txt"
+    if [ -x "$AVON" ]; then
+        # the plain run: the released table
+        "$AVON" witness --plan="$P/$name.plan" "$tmp/$name.term" > "$P/out/$name.probe.table" 2> "$tmp/avon.err"
+        echo "$name: avon witness --plan: $(tail -n 1 "$tmp/avon.err")" | tee -a "$P/results.txt"
+        gzip -9 -c "$P/out/$name.probe.table" > "$P/$name.probe.table.gz"
+        # the same with lean-ski's licensed template jets instantiated: a measurement
+        "$AVON" witness --jet-table="$P/$name.jets" --plan="$P/$name.plan" "$tmp/$name.term" > "$P/out/$name.probe.jetted.table" 2> "$tmp/avonj.err"
+        echo "$name: avon witness --jet-table --plan: $(tail -n 1 "$tmp/avonj.err")" | tee -a "$P/results.txt"
+        lake exe nockprobe check "$R/corpus.txt" "$name" "$P/out/$name.probe.jetted.table" "$product" | tee -a "$P/results.txt"
+    else
+        echo "$name: no Avon at $AVON (set AVON); the released table is checked" | tee -a "$P/results.txt"
+        gunzip -c "$P/$name.probe.table.gz" > "$P/out/$name.probe.table"
+    fi
+    lake exe nockprobe check "$R/corpus.txt" "$name" "$P/out/$name.probe.table" "$product" | tee -a "$P/results.txt"
+done < "$R/programs.txt"
 fi

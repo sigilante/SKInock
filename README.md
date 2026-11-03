@@ -256,6 +256,34 @@ jets licensed by theorems. A live run of the same programs on both provers is fu
   `embed_outcome`, `embed_complete`, `embed_diverges`, `compiled_terminates`,
   `shared_terminates`, `nock_of_eqn_K`, `nock_pred_sound_nock`, `nock_predS_sound_nock`,
   `nock_pred2_sound_nock` (below, "Proofs").
+- `Nock2Ski/Value.lean` (M4f): the vocabulary the two sides of the probe step share.
+  `EncS n e`, the shape of an encoding of `n` (an atom as `encNoun`, a cell as `Cell` or as
+  `Form` with any code; `Enc` implies it), and `ValueIs t p`: `t` has a weak head normal
+  form `v`, `v` does not weakly reduce to `Err`, and every encoding-shaped term `v` weakly
+  reduces to encodes `p`. Imports `Nock2Ski.Noun` only (lean-nock's `Nock.Basic` and
+  lean-ski's `Ski.Compile`, which coexist), so both sides can import it.
+- `Nock2Ski/ProbeTree.lean` (M4f, lean-ski's side: imports `Ski.AirProbe`, so not in
+  `Nock2Ski.lean`'s root): the probe tree of our encoding, `nounV : Noun → Probe.V` (`Atom`
+  constructor 0 of 4 with the bits as its field, `Cell` constructor 1 with two; bits `Nil |
+  Cons bit bits`, bits `T | F`, 2 markers each), `nounPlan p = Air.planOf (nounV p) 0`;
+  eight kernel-checked head reductions of the constructors applied to markers (`atom_hnf`,
+  …, by `ohnf`, lean-ski's `ostep?` iterated); completeness `decV_encNoun : DecV (encNoun
+  p).toO (nounV p)` and `probe_complete : WSteps t (encNoun p) → DecV t.toO (nounV p)`;
+  uniqueness by determinism of head reduction (`osteps_neutral_det`, no confluence),
+  `encS_unique : EncS q ep → OWSteps f ep.toO → DecV f (nounV p) → q = p` and `err_unique`;
+  `probe_value : DecV t.toO (nounV p) → ValueIs t p` (the probe closed at `S` converges,
+  `Converges.app_left` four times); and the circuit: `probe_sound` (lean-ski's
+  `Air.air_probe_sound` at `nounV p`: `Air.AcceptsP` for `planOf (nounV p) b0` with
+  licensed roots gives `ValueIs t p`) and `probe_check` (the same of `Air.checkPA`, the
+  checker over arrays that `nockprobe check` runs).
+- `Nock2Ski/Probe.lean` (M4f, lean-nock's side): `encS_of_enc`, `nock_of_valueIs : Enc s es
+  → ValueIs (nockToSki f ⬝ es) p → NockEval s f (.val p)` from `embed_outcome`,
+  **`probe_decodes_nock : ValueIs (compiled f s) p → NockEval s f (.val p)`** and
+  `probe_decodes_nock_shared` for `share (compiled f s)`; completeness
+  `probe_complete_nock : NockEval s f (.val (.atom n)) → WSteps (compiled f s) (encNoun
+  (.atom n))` (and `_shared`), the hypothesis of `ProbeTree.lean`'s `probe_complete`, for
+  atom products (an atom's encoding is `encNoun`'s), `probe_complete_nock_cell` for a cell
+  product whose term is code-free (below, "The product as a public value").
 - `bench/NockPred.lean`, `lake exe nockpred` (M4c): `nockpred [--log R M] NAME FORMULA
   PRODUCT K` prints the predicate statement `predicate (nockPredV f K) (encNoun p) K` over
   a one-cell region at CPU and memory heights `2^R` and `2^M`, in the format `ski-air
@@ -279,8 +307,19 @@ jets licensed by theorems. A live run of the same programs on both provers is fu
   depth, bindings and contractions of the term unshared and shared at each threshold, the
   check to run before ski-air (its tables hold 2^21 cells). `scripts/lean-check.sh` runs
   the first two as its M4a/M4b gate.
+- `bench/NockProbe.lean`, `lake exe nockprobe` (M4f; on lean-ski's side, so a separate
+  exe): `nockprobe plan PRODUCT` prints the probe plan of `nounV p` (`nounPlan`) in the
+  format `lake exe jets plan` prints and ski-air's `probe.rs::parse_plan` and Avon's
+  `witness --plan` read (`plan n`, then `base k ctor arity parent field` per segment);
+  `nockprobe term CORPUS NAME` the row's term; `nockprobe jets TERMFILE` the term's jet
+  file (lean-ski's `JetTable.jetTable` over `allTemplates`, what `jets emit` writes);
+  `nockprobe check CORPUS NAME TABLE PRODUCT` runs lean-ski's `Air.checkPA` on a table with
+  probe segments (the format of `jets check-probe`) for `nounPlan p`, after binding the
+  table's term to the corpus row's: `ACCEPT` is `probe_check`, hence `probe_decodes_nock`.
+  `scripts/lean-check.sh` runs the plan and the check on the released tables as its M4f
+  gate.
 
-## Proofs (`release/nock/`, M4a, M4b, M4c, M4d, M4e)
+## Proofs (`release/nock/`, M4a, M4b, M4c, M4d, M4e, M4f)
 
 Three Nock programs proved on lean-ski's circuit, with no Nock circuit, as corpus rows of
 lean-ski's base circuit (`ski-air CORPUS OUTDIR`): the spec's count-up `dec` at subject 7,
@@ -339,8 +378,8 @@ What an accepted proof of a row says, by which theorems:
   at all: `shared_terminates : Eval (share (compiled f s)) v → ∃ o, NockEval s f o`, and
   `embed_outcome` reads it off the final state, an encoding of a Nock value or `Err` for a
   Nock crash, so the row's statement needs no `NockEval` hypothesis from lean-nock. Binding
-  the product as a public value, read from `v` by probing, is M4's probe step
-  (`air_probe_decodes`); the hidden subject is M4c's, below.
+  the product as a public value of the proof, read from `v` by probing, is M4f's probe step
+  (below, "The product as a public value"); the hidden subject is M4c's, below.
 
 ### Hidden subjects (`release/nock/hidden/`, M4c)
 
@@ -514,3 +553,82 @@ the Nock claim conditionally ("`*[n f]` is `p` if it is anything"). M4e proves i
   `nock_pred_sound_nock`, `nock_predS_sound_nock`, `nock_pred2_sound_nock` above, and
   `compiled_terminates`, `shared_terminates` for the base-circuit rows. Axioms:
   `propext`, `Classical.choice`, `Quot.sound`, the contraposition being classical.
+
+### The product as a public value (`release/nock/probe/`, M4f)
+
+The rows above prove evaluation to a weak head normal form `v`; that `v` encodes Nock's
+product is `embed_outcome`, a Lean fact the proof does not name. lean-ski's probe circuit
+(`Ski/AirProbe.lean`) binds an output: the term is applied to one fresh marker atom per
+constructor, the run must end at the marker of the constructor it is with its fields on
+the stack, and each field is probed in turn, one **segment** per node of a **probe tree**
+(`Probe.V`, `node c k ch`: the `c`-th of `k` constructors with fields `ch`), the segments
+laid out depth first as the public **plan** (`Air.planOf`). Its theorem is generic in the
+tree: `Air.air_probe_sound : AcceptsP M (load t) roots jets (planOf v b0) p fld row →
+RootsOK (load t).heap roots jets → DecV t.toO v`, and `Air.checkPA_sound` the same of the
+checker over arrays. Only its instance is SKIlark's: `air_probe_decodes` reads the tree
+through `Probe.toV`, the tree of a SKIlark `Outcome` (`err`, or `val` and a stack of
+numbers), and so does every tool that computes a plan.
+
+M4f gives the tree of our encoding and proves what an accepted table says of Nock:
+
+- **The tree** (`Nock2Ski/ProbeTree.lean`): `nounV p`, the probe tree of `encNoun p`:
+  `Atom` is constructor 0 of 4 with one field, its bits (`Nil | Cons bit bits`, 2 markers,
+  `T | F` 2 markers); `Cell` constructor 1 with two. The product 6 (bits `F T T`) is 8
+  segments and 18 markers, 11 (`T T F T`) 10 and 22. `decV_encNoun : DecV (encNoun p).toO
+  (nounV p)` by eight kernel-checked head reductions of the constructors on their markers,
+  so `probe_complete : WSteps t (encNoun p) → DecV t.toO (nounV p)`: the prover can make
+  the table whenever the row's term reaches the code-free encoding, which an atom product
+  always is (`probe_complete_nock`, from `compiled_value` and `Enc.atom_inv`).
+- **What a reading says** (`probe_value`): a term that reads as `nounV p` converges (its
+  probe closed at `S` reaches `S` applied to one or two fields, a weak head normal form,
+  and lean-ski's `Converges.app_left` strips the four markers), does not weakly reduce to
+  `Err`, and every encoding-shaped term its weak head normal form reaches encodes `p`
+  (`ValueIs t p`). The uniqueness lemmas `encS_unique`, `err_unique` need only determinism
+  of head reduction (`osteps_neutral_det`): a probe that weakly reduces to `var c ⬝ fields`
+  head-reduces to that spine with weakly reducing fields (`owsteps_spine`), and the
+  reading's spine is the same spine. `probe_sound` and `probe_check` are `air_probe_sound`
+  and `checkPA_sound` at `nounV p`, concluding `ValueIs t p`.
+- **To Nock** (`Nock2Ski/Probe.lean`): `probe_decodes_nock : ValueIs (compiled f s) p →
+  NockEval s f (.val p)` and `probe_decodes_nock_shared`, from `embed_outcome`: the final
+  state encodes Nock's value or is `Err` for its crash; `ValueIs` rules out `Err` and names
+  the value. **So an accepted probe table for the plan of `p` on a row's term is a proof of
+  `*[s f] = p` with `p` a public input of the proof.**
+- **The join is read across two environments**, as M4c's: `Ski.AirProbe` reaches
+  `Ski.Words`, whose root-level `Outcome` (`Ski/Words.lean:157`) clashes with lean-nock's
+  (`Nock/Eval.lean:62`), so `ProbeTree.lean` (`DecV`, `AcceptsP`, `checkPA`) and
+  `Probe.lean` (`NockEval`) cannot be imported together. They meet in
+  `Nock2Ski/Value.lean`, which both import: `ValueIs` is one constant, the conclusion of
+  `probe_check` and the hypothesis of `probe_decodes_nock`. Nothing is copied.
+- **A `Form` product has no tree.** A cell product's term may be a `Form` (constructor 2,
+  three fields, the third its compiled code, `Enc.form`): probing the code would run the
+  formula on markers, and a plan gives every field a tree (`Seg.arity = ch.length`,
+  `endRow`), so no finite plan reads it. The plan is for the code-free shape, which every
+  atom has; a cell product is covered when its term is a `Cell` (`probe_complete_nock_cell`).
+  A closed `toCell` term that copies a noun dropping code, applied to the row's term, would
+  cover every product; not done.
+
+**Run** (`release/nock/probe/`, `produce.sh probe`, `verify.sh` step 5). For
+`countup_dec_7` (product 6) and `hoon_dec_12` (product 11): `nockprobe plan` writes the
+plan, `nockprobe jets` the term's jet file (lean-ski's `jetTable` licenses 9,259 and 4,146
+template roots inside the Nock terms: SKIlark's supercombinator templates match generic
+bracket-abstraction subterms), and Avon runs the segments (`avon witness --plan`, its plan
+reader is generic, `src/probe.c`): 12,099 contractions and 29,829 rows for the count-up row
+(95 contractions over the row's 12,004 to read the product), 33,165 and 82,203 for Hoon's
+(122 over 33,043); with the jet table instantiated, 6,279 contractions, 17,760 rows and 688
+instantiations, and 18,431, 52,139 and 1,945. Lean's `nockprobe check` (`Air.checkPA`)
+accepts all four tables in 0.5–1.6 s (the plain tables padded to 2^15 and 2^17 rows, 2^18
+cells) and refuses them for the product + 1 and for a cell. The plain tables are released
+gzipped (0.7 and 1.0 MB), with the plans and jet files; `verify.sh` recomputes the plan and
+the jet file from the product and the corpus term and checks the table without Avon.
+
+**What waits on lean-ski.** The STARK proof of a probe table. ski-air's `probe-prove`,
+`probe-prove-table` and `probe-verify` take the plan only from `lake exe jets plan
+OUTCOME` (`bench/plonky3/src/probe.rs:101`, `lean_plan`), and `bench/Jets.lean:256-278`
+(`parseOutcome`, `planOfOutcome`) knows only `err | val n…` through `Probe.toV`
+(`Ski/ProbeTree.lean:201`); `compare_probe` (`bench/plonky3/src/jets.rs:922`) has `lake
+exe circuit compare-probe` recompute the plan from the outcome the same way
+(`bench/Circuit.lean:309-365`, `parseOutcomeC`). The AIRs (`probe.rs`, `Circuit.probeAirs`)
+and the Lean theorems are generic in the plan; the generalisation is an input: `jets plan`
+taking a tree (or a plan file) and `compare-probe` taking the plan rather than the outcome,
+with `lean_plan` reading a file. Avon and `Air.checkPA` already take the plan, which is why
+the table exists and is Lean-checked here; the proof is not.
