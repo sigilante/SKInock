@@ -1,9 +1,9 @@
 row               contr   rows budget  memory  prove s verify s  verdict
-ik                    1      3     16      16     0.00    0.630  verified
-skks                  2      6     16      16     0.02    0.497  verified
-countup_dec_7     12004  29591  32768  262144     1.84    1.150  verified
-hoon_dec_12       33043  81895 131072  262144     2.42    0.669  verified
-hoon_dec_0         4606  11364  16384  131072     0.84    0.674  verified
+ik                    1      3     16      16     0.00    0.615  verified
+skks                  2      6     16      16     0.02    0.488  verified
+countup_dec_7     12004  29591  32768  262144     1.83    1.141  verified
+hoon_dec_12       33043  81895 131072  262144     2.44    0.682  verified
+hoon_dec_0         4606  11364  16384  131072     0.83    0.675  verified
 
 tampered tables (each proof must be rejected by the verifier):
 forged_cell      rejected by the verifier (verify: Lookup(TerminalSumNonZero))

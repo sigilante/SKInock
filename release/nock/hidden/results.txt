@@ -1,4 +1,4 @@
-proved 42221 rows, 84181 memory cells, 1 segments, in 5.30 s; proof 762024 bytes -> release/nock/hidden/countup_hidden_7/countup_hidden_7.proof
-proved 101927 rows, 183911 memory cells, 1 segments, in 10.04 s; proof 817725 bytes -> release/nock/hidden/hoon_dec_hidden_12/hoon_dec_hidden_12.proof
-proved 94646 rows, 197147 memory cells, 1 segments, in 10.71 s; proof 823677 bytes -> release/nock/hidden/hoon_add_hidden_3_4/hoon_add_hidden_3_4.proof
-proved 225556 rows, 352360 memory cells, 1 segments, in 20.22 s; proof 878738 bytes -> release/nock/hidden/hoon_add_hidden_6_57/hoon_add_hidden_6_57.proof
+proved 42221 rows, 84181 memory cells, 1 segments, in 5.29 s; proof 760328 bytes -> release/nock/hidden/countup_hidden_7/countup_hidden_7.proof
+proved 101927 rows, 183911 memory cells, 1 segments, in 10.06 s; proof 824733 bytes -> release/nock/hidden/hoon_dec_hidden_12/hoon_dec_hidden_12.proof
+proved 94646 rows, 197147 memory cells, 1 segments, in 10.64 s; proof 825053 bytes -> release/nock/hidden/hoon_add_hidden_3_4/hoon_add_hidden_3_4.proof
+proved 225556 rows, 352360 memory cells, 1 segments, in 20.29 s; proof 880882 bytes -> release/nock/hidden/hoon_add_hidden_6_57/hoon_add_hidden_6_57.proof

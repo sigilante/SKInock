@@ -8,6 +8,18 @@ joining [lean-nock](https://github.com/sigilante/lean-nock) (Nock 4K, the three-
 contract, co-derivation) to [lean-ski](https://github.com/sigilante/lean-ski) (SKI, the
 heap machine, licensed jets, the circuit). `PLAN.md` is the plan; this file is what exists.
 
+## The artifact in one command
+
+```
+scripts/artifact.sh          # install, test, check, build, prove, verify; prints ARTIFACT OK
+scripts/artifact.sh quick    # the same without regenerating the circuit proofs
+```
+
+From a clean checkout with lean-ski beside it and lean-nock on its `lean-4.31` branch, it
+runs the Python tests (139), urbit/benchmark's reference tests and Hoon programs, the Lean
+build with its gates and axiom report, then produces and verifies every circuit proof in
+`release/nock`. About six minutes on an Apple M4 Max.
+
 ## The compiler (`python/skinock`)
 
 ```
