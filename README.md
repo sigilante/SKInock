@@ -12,8 +12,13 @@ heap machine, licensed jets, the circuit). `PLAN.md` is the plan; this file is w
 
 ```
 pip install -e python
-python -m skinock.check            # urbit/benchmark norm/tests.json: 63/63 agree
-python -m skinock.bench dec add    # Hoon-compiled programs at scaled subjects
+python -m skinock run "[4 0 1]" 41                 # 42 (271 contractions)
+python -m skinock run FORMULA SUBJECT --avon       # on Avon, share mode (--copy, --discover)
+python -m skinock run FORMULA SUBJECT --interp     # literals without code: nockI interprets
+python -m skinock compile FORMULA SUBJECT --out p.dag   # Avon's dag form (--text, --source)
+python -m skinock nock FORMULA SUBJECT             # the Python reference evaluator
+python -m skinock check                            # urbit/benchmark norm/tests.json: 63/63 agree
+python -m skinock bench dec add                    # Hoon-compiled programs at scaled subjects
 ```
 
 ```python
