@@ -13,3 +13,4 @@ import Nock2Ski.Compile
 import Nock2Ski.Enc
 import Nock2Ski.InterpEnc
 import Nock2Ski.Embed
+import Nock2Ski.Share

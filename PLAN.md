@@ -3,7 +3,7 @@
 Started 2026-11-03. Open question C5 of `../OPEN-QUESTIONS.md`. Companion paper:
 `~/Documents/1 Projects/Davis2027 Nock in SKI/`.
 
-## Status (2026-11-03, evening)
+## Status (2026-11-04)
 
 - **Compiler built** (`python/skinock`, SKIjack route): opcodes 0–11 and autocons, strict
   in Nock's places in Vere's order, crashes as `Err`, literal formulas carrying code
@@ -74,6 +74,26 @@ Started 2026-11-03. Open question C5 of `../OPEN-QUESTIONS.md`. Companion paper:
   subjects via the composed predicate circuit on `encNoun s`, and the joining lemma that an
   `Enc` is a weak head normal form, so `Eval.deterministic` identifies the circuit's result
   with `embed_value`'s encoding.
+- **M4b done** (`Nock2Ski/Share.lean`, 2026-11-04): sharing in the term. `share t`
+  hash-conses `t`, binds every repeated subterm of `shareMin = 1024` cells or more with a λ,
+  smallest first, as the let chain `(λx₁. (λx₂. … C) L₂') L₁'` by bracket abstraction, so the
+  prefix tree is the DAG's size; `share_red : WSteps (share t) t`, one `abs_beta_close` per
+  binding, the result literally `t` (checked, `shareWith`, so the hash-consing is outside the
+  trusted path); `shared_value`, `shared_crash`. The joining lemma: `enc_whnf : Enc p ep →
+  Whnf ep`, and with lean-ski's `eval_back` and `Eval.deterministic`, `shared_value_eval :
+  NockEval s f (.val p) → Eval (share (compiled f s)) v → ∃ ep, Enc p ep ∧ WSteps v ep` (the
+  circuit's final state weakly reduces to an encoding of the product; `WSteps`, not equality,
+  since `embed_value` is weak reduction and the state is a weak head normal form with
+  reductions pending inside its fields), `shared_crash_eval`, and the `compiled_*_eval` twins.
+  Hoon's `++dec` falls from 2,154,393 cells to 60,217 (28 bindings); the βs cost 17% more
+  contractions (33,043 against 28,324; the crash row 4,606 against 1,468). Both Hoon rows
+  proved: `hoon_dec_12` 81,895 rows, CPU 2^17, memory 2^18, 2.4 s; `hoon_dec_0` 11,364 rows,
+  2^14, 2^17, 0.8 s; the run peaked at 1.32 GB. The threshold is a trade (cells against
+  contractions, `nockstatement --cells`): at 32 the chain is 368,077 cells and 316,721
+  contractions, since every variable in scope costs a `K` per body and an `S`/`K` spine per
+  use, paid once per forced copy. Lower-overhead binding (B/C-style combinators, or scoping
+  each binding at its uses' common ancestor) would cut the contraction cost if it matters.
+  Python's hash-consing is the DAG analogue; Avon's `dag` form carries it.
 - **Remaining** (M3's other items, M4–M7): `embed_diverges` (needs fuel adequacy on both
   sides); `fragment_static` is now moot for correctness (the fallback is proved) and is a
   cost statement; the Λ front end; the statement path and the circuit.

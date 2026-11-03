@@ -4,10 +4,11 @@
 # default ../lean-ski) and lean-nock at ../../lean-nock.
 #
 #   1. Lean recomputes every row from its formula and subject
-#      (programs.txt) and compares it with corpus.txt and over.txt:
-#      `lake exe nockstatement --check NAME FORMULA SUBJECT < corpus.txt`,
-#      count and term; the term is never trusted from the file.  The
-#      files hold those rows and no others.
+#      (programs.txt) and compares it with corpus.txt:
+#      `lake exe nockstatement --check [--unshared] NAME FORMULA SUBJECT <
+#      corpus.txt`, count and term, `--unshared` for the rows of form
+#      `plain`; the term is never trusted from the file.  The file holds
+#      those rows and no others.
 #   2. ski-air re-proves and verifies every row of corpus.txt with the
 #      base circuit.  The base path has no verify-only entry point: the
 #      proof is made and checked in one process and never written, so the
@@ -15,8 +16,6 @@
 #      results.txt row for row in contractions, rows, budget and memory
 #      (the times vary).
 #   3. Lean accepts each witness table ski-air wrote (`lake exe aircheck`).
-#   4. With OVER=1: ski-air on over.txt, each row refused for its heights
-#      (about 5.4 GB peak); off by default.
 #
 # Exits nonzero on any failure.  With VERIFY_ALL=1 every check runs and the
 # exit comes at the end.
@@ -37,18 +36,18 @@ A=$LEAN_SKI/bench/plonky3/target/release/ski-air
 (cd "$LEAN_SKI" && lake build aircheck circuit > /dev/null)
 
 echo "--- 1. every row recomputed by Lean from its formula"
-nbase=0; nover=0
-while IFS=$'\t' read -r name subject product budget formula; do
+n=0
+while IFS=$'\t' read -r name subject product form formula; do
     [ -n "$name" ] || continue
-    case "$budget" in base) f=$R/corpus.txt; nbase=$((nbase+1)) ;; over) f=$R/over.txt; nover=$((nover+1)) ;; *) no "$name: budget is base or over"; continue ;; esac
-    if lake exe nockstatement --check "$name" "$formula" "$subject" < "$f" > "$tmp/check.log" 2> "$tmp/check.err"; then
-        ok "$(cat "$tmp/check.log") [$f, product $product]"
+    case "$form" in shared) flag=() ;; plain) flag=(--unshared) ;; *) no "$name: form is plain or shared"; continue ;; esac
+    n=$((n+1))
+    if lake exe nockstatement --check "${flag[@]}" "$name" "$formula" "$subject" < "$R/corpus.txt" > "$tmp/check.log" 2> "$tmp/check.err"; then
+        ok "$(cat "$tmp/check.log") [product $product]"
     else
         no "$name: $(tail -n 1 "$tmp/check.err")"
     fi
 done < "$R/programs.txt"
-[ "$(grep -c . "$R/corpus.txt")" = "$nbase" ] && ok "corpus.txt holds the $nbase base row(s) and no other" || no "corpus.txt has rows programs.txt does not name"
-[ "$(grep -c . "$R/over.txt")" = "$nover" ] && ok "over.txt holds the $nover over-budget row(s) and no other" || no "over.txt has rows programs.txt does not name"
+[ "$(grep -c . "$R/corpus.txt")" = "$n" ] && ok "corpus.txt holds the $n row(s) of programs.txt and no other" || no "corpus.txt has rows programs.txt does not name"
 
 echo "--- 2. ski-air proves and verifies every row of corpus.txt (prove-and-verify; the base path writes no proof)"
 if "$A" "$R/corpus.txt" "$tmp/out" > "$tmp/results.txt"; then
@@ -77,15 +76,6 @@ for row in $(awk '{print $1}' "$R/corpus.txt"); do
     head -n 1 "$tmp/out/$row.txt" | cmp -s - <(awk -v r="$row" '$1 == r {print $3}' "$R/corpus.txt") \
         && ok "$row's table names the corpus row's term" || no "$row's table names another term"
 done
-
-if [ -n "${OVER:-}" ]; then
-echo "--- 4. the rows over the budget: each refused for its heights (about 5.4 GB)"
-"$A" "$R/over.txt" "$tmp/out-over" > "$tmp/over.txt" || true
-for row in $(awk '{print $1}' "$R/over.txt"); do
-    why=$(grep -E -m 1 "^$row: FAILED an honest table: heights \[[0-9, ]*\] out of bounds\$" "$tmp/over.txt" || true)
-    [ -n "$why" ] && ok "$why" || no "$row: not refused for its heights ($(grep -m 1 "^$row" "$tmp/over.txt" || echo no line))"
-done
-fi
 
 [ "$failed" = 0 ] || { echo "NOT VERIFIED: release/nock"; exit 1; }
 echo "VERIFIED: release/nock"

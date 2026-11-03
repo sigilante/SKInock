@@ -16,15 +16,17 @@ lake build
 # M3 gate: the 63 tests again with the formula as code-free data, interpreted
 lake build normcheck
 lake exe normcheck | grep -E "^(norm|programs|interp):"
-# M4a gate: nockstatement's head contraction count is ski-air's (lean-ski's
-# release row sumto_us: 10297), and the release's rows recompute from their
-# formulas (release/nock/verify.sh runs ski-air too; this is its Lean half)
+# M4a/M4b gate: nockstatement's head contraction count is ski-air's
+# (lean-ski's release row sumto_us: 10297), and the release's rows recompute
+# from their formulas, `share (compiled f s)` for the rows of form `shared`
+# and `compiled f s` for `plain` (release/nock/verify.sh runs ski-air too;
+# this is its Lean half)
 lake build nockstatement
 n=$(lake exe nockstatement --count-term ../lean-ski/release/sumto/sumto_us.term)
 [ "$n" = 10297 ] && echo "nockstatement: sumto_us counts $n, as lean-ski's row" || { echo "nockstatement: sumto_us counts $n, not 10297"; exit 1; }
-while IFS=$'\t' read -r name subject product budget formula; do
-    case "$budget" in base) f=release/nock/corpus.txt ;; *) f=release/nock/over.txt ;; esac
-    lake exe nockstatement --check "$name" "$formula" "$subject" < "$f" 2> /dev/null
+while IFS=$'\t' read -r name subject product form formula; do
+    case "$form" in shared) flag=() ;; plain) flag=(--unshared) ;; *) echo "$name: form is plain or shared"; exit 1 ;; esac
+    lake exe nockstatement --check "${flag[@]}" "$name" "$formula" "$subject" < release/nock/corpus.txt 2> /dev/null
 done < release/nock/programs.txt
 tmp="$(mktemp -d)"; trap 'command rm -rf "$tmp"' EXIT
 cat > "$tmp/Axioms.lean" <<'LEAN'
@@ -88,5 +90,16 @@ import Nock2Ski
 #print axioms Nock2Ski.compiled_crash
 #print axioms Nock2Ski.compiled_value
 #print axioms Nock2Ski.interpreted_value
+-- M4b: sharing in the term, and the join to the circuit's statement
+#print axioms Nock2Ski.chain_red
+#print axioms Nock2Ski.share_red
+#print axioms Nock2Ski.shared_value
+#print axioms Nock2Ski.shared_crash
+#print axioms Nock2Ski.enc_whnf
+#print axioms Nock2Ski.eval_enc
+#print axioms Nock2Ski.shared_value_eval
+#print axioms Nock2Ski.shared_crash_eval
+#print axioms Nock2Ski.compiled_value_eval
+#print axioms Nock2Ski.compiled_crash_eval
 LEAN
 lake env lean "$tmp/Axioms.lean"

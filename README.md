@@ -170,6 +170,27 @@ product is the oracle's. The interpreter fallback
   term computes exactly Nock's value and crashes exactly where Nock crashes, on all of
   Nock 4K, compiled or interpreted. `compiled f s = nockToSki f ⬝ encLit s`. Axioms as M1;
   no `sorry`.
+- `Nock2Ski/Share.lean` (M4b): sharing in the term. `share : Term → Term` hash-conses the
+  term into its DAG, binds every node of `shareMin = 1024` cells or more with two or more
+  parent edges (the subterms the tree writes more than once), smallest first, and returns
+  the let chain `(λx₁. (λx₂. … (λxₙ. C) Lₙ') …) L₁'` by bracket abstraction (`absO`), each
+  body `Lⱼ'` its node with its maximal bound subterms as the earlier variables and `C` the
+  root's; so the prefix tree is the DAG's size and the heap shares each bound subterm after
+  its β. `share_red : share t ↠ t` (`WSteps`), one `abs_beta_close` per binding
+  (`chain_red`), the substituted result literally `t`: `shareWith` checks `C.close σ = t`
+  (decidable) before it returns the chain, so the hash-consing is outside the trusted
+  path. `shared_value : NockEval s f (.val p) → ∃ ep, Enc p ep ∧ share (compiled f s) ↠ ep`
+  and `shared_crash` by `WSteps.trans share_red`. Also `enc_whnf : Enc p ep → Whnf ep`,
+  `eval_enc`, and the rows' statements `shared_value_eval`, `shared_crash_eval`,
+  `compiled_value_eval`, `compiled_crash_eval` (below, "Proofs"). Python's hash-consing of
+  literals and formula bodies (`compile.py`) is the DAG analogue of `share`: it names each
+  repeated subterm once as a definition, and Avon's `dag` input form carries that sharing,
+  where the printed term and ski-air's loader unfold it. The threshold is the sweep
+  `nockstatement --cells` prints: a binding costs an `S`/`K` spine in cells and the same
+  steps in contractions once per copy of the thunk that is forced, so on Hoon's `++dec`
+  (2,154,393 cells, 28,324 contractions as a tree) sharing at 32 gives 368,077 cells and
+  316,721 contractions, at 512 58,921 and 35,433, at 1024 60,217 and 33,043, at 4096
+  80,907 and 30,632.
 - `Nock2Ski/NounText.lean`: the `[a b c]` parser and printer the exes share.
 - `bench/NormCheck.lean`, `lake exe normcheck`: the 63 reference tests and the M2 programs
   (the spec's count-up `dec`, Hoon's `++dec` on a gate in the subject and on one pushed by
@@ -181,41 +202,53 @@ product is the oracle's. The interpreter fallback
   14,116 with the read-out, copy mode); interpreted, the reference tests cost about ten
   times their compiled runs (test 0, `[[4 0 1] [0 1]]` on 42: 181 head contractions
   compiled, 2,294 interpreted).
-- `bench/NockStatement.lean`, `lake exe nockstatement` (M4a): `nockstatement NAME FORMULA
-  SUBJECT` prints the corpus row ski-air reads, `NAME COUNT PREFIXTERM`, for
-  `compiled f s`: the term in lean-ski's prefix form (a backtick for application) and its
-  head contractions to weak head normal form by lean-ski's `runF`, the count ski-air's
-  machine checks before it proves a row (`--count-term` on lean-ski's
-  `release/sumto/sumto_us.term` prints its reference 10297). `nockstatement --check NAME
-  FORMULA SUBJECT < corpus.txt` recomputes the row from the formula and compares it with
-  the named row on stdin, count and term, exit 1 on a mismatch: the verifier's Lean half,
-  which trusts no term from a file. `scripts/lean-check.sh` runs both as its M4a gate.
+- `bench/NockStatement.lean`, `lake exe nockstatement` (M4a, M4b): `nockstatement NAME
+  FORMULA SUBJECT` prints the corpus row ski-air reads, `NAME COUNT PREFIXTERM`, for
+  `share (compiled f s)` (`--unshared`: `compiled f s`): the term in lean-ski's prefix form
+  (a backtick for application) and its head contractions to weak head normal form by
+  lean-ski's `runF`, the βs of the sharing included, the count ski-air's machine checks
+  before it proves a row (`--count-term` on lean-ski's `release/sumto/sumto_us.term` prints
+  its reference 10297). `nockstatement --check [--unshared] NAME FORMULA SUBJECT <
+  corpus.txt` recomputes the row from the formula and compares it with the named row on
+  stdin, count and term, exit 1 on a mismatch: the verifier's Lean half, which trusts no
+  term from a file. `nockstatement --cells FORMULA SUBJECT [MINSIZE…]` prints the cells,
+  depth, bindings and contractions of the term unshared and shared at each threshold, the
+  check to run before ski-air (its tables hold 2^21 cells). `scripts/lean-check.sh` runs
+  the first two as its M4a/M4b gate.
 
-## Proofs (`release/nock/`, M4a)
+## Proofs (`release/nock/`, M4a, M4b)
 
-The first Nock program proved on lean-ski's circuit, with no Nock circuit: the spec's
-count-up `dec` at subject 7, product 6, as the corpus row `countup_dec_7` of lean-ski's
-base circuit (`ski-air CORPUS OUTDIR`): 12,004 contractions, 29,591 machine rows, CPU
-height 2^15, memory 2^18, proved in 1.8 s and verified in 1.2 s; Hoon's `++dec` at 12
-(product 11) and at 0 (the underflow crash, `errT`, a weak head normal form, so provable
-too) recompute and count correctly but exceed the memory table's 2^21 cells by 2.7%, since
-`encLit` encodes a battery's nested formula literals once per nesting level and ski-air
-loads the term without sharing; `release/nock/RESULTS.md` has ski-air's output for all
-three, the files, and the rows-per-contraction ratios (2.46–2.47, sumto's 2.435).
-`release/nock/produce.sh` makes the release and `verify.sh` checks it, both from a clean
-checkout with lean-ski beside it.
+Three Nock programs proved on lean-ski's circuit, with no Nock circuit, as corpus rows of
+lean-ski's base circuit (`ski-air CORPUS OUTDIR`): the spec's count-up `dec` at subject 7,
+product 6 (`countup_dec_7`: 12,004 contractions, 29,591 machine rows, CPU height 2^15,
+memory 2^18); Hoon's `++dec`, the gate pushed by `[1 …]`, at sample 12, product 11
+(`hoon_dec_12`: 33,043 contractions, 81,895 rows, CPU 2^17, memory 2^18); and the same at
+sample 0, the underflow crash, product `errT` (`hoon_dec_0`: 4,606 contractions, 11,364
+rows, CPU 2^14, memory 2^17). Each proved in 0.8–2.4 s and verified in 0.7–1.2 s; the
+whole run peaked at 1.32 GB. The Hoon rows are `share (compiled f s)`: as a tree,
+`compiled f s` is 2,154,393 cells, 2.7% over the memory table's 2^21, since `encLit`
+encodes a battery's nested formula literals once per nesting level and ski-air loads a
+term without sharing (M4a's refusal, `heights [17, 22, 22] out of bounds`); `share` binds
+the 28 repeated subterms of 1,024 cells or more with λs, 60,217 cells, and the βs add 17%
+to the run (3× on the short crash run). `release/nock/RESULTS.md` has ski-air's output,
+the before/after table, the threshold sweep and the rows-per-contraction ratios
+(2.47–2.48, sumto's 2.435). `release/nock/produce.sh` makes the release and `verify.sh`
+checks it, both from a clean checkout with lean-ski beside it.
 
 What an accepted proof of a row says, by which theorems:
 
 - **The statement is Lean's.** The verifier (`verify.sh`) never takes the term from the
-  file: `lake exe nockstatement --check` recomputes `compiled f s = nockToSki f ⬝ encLit s`
-  from the public formula and subject and compares. So the term proved is the compiler's
-  on the formula, by construction.
-- **The term evaluates to the product's encoding** (`Nock2Ski/Embed.lean`):
-  `compiled_value : NockEval s f (.val p) → ∃ ep, Enc p ep ∧ WSteps (compiled f s) ep`,
-  an instance of `embed_value`; and `compiled_crash : NockEval s f .exit → WSteps
-  (compiled f s) errT`. lean-nock's `countUp_correct` and `HoonOne.dec_correct`,
-  `dec_underflow` supply the `NockEval` hypotheses for these three programs.
+  file: `lake exe nockstatement --check` recomputes `share (compiled f s)` (`--unshared`:
+  `compiled f s = nockToSki f ⬝ encLit s`) from the public formula and subject and
+  compares. So the term proved is the compiler's on the formula, by construction.
+- **The term evaluates to the product's encoding** (`Nock2Ski/Embed.lean`,
+  `Nock2Ski/Share.lean`): `compiled_value : NockEval s f (.val p) → ∃ ep, Enc p ep ∧
+  WSteps (compiled f s) ep`, an instance of `embed_value`, and `compiled_crash : NockEval s
+  f .exit → WSteps (compiled f s) errT`; `shared_value` and `shared_crash` are the same of
+  `share (compiled f s)`, by `share_red : WSteps (share t) t` (one β per binding,
+  `abs_beta_close`; the substituted result is literally `t`). lean-nock's `countUp_correct`
+  and `HoonOne.dec_correct`, `dec_underflow` supply the `NockEval` hypotheses for the three
+  programs.
 - **An accepted proof is an evaluation** (lean-ski, `Ski/Circuit/BaseSound.lean`):
   `Circuit.export_sound : sameAirsB Rs (baseAirs t) = true → Accepted Rs ts → ∃ C Mm Pg,
   ts = [C, Mm, Pg] ∧ Accepts (memOf Mm) t C.h (rowOf C) ∧ ∃ v, decode … = some v ∧ Eval t v`.
@@ -224,15 +257,20 @@ What an accepted proof of a row says, by which theorems:
   STARK's acceptance is the second (Plonky3's soundness assumed, as in lean-ski's release).
   `lake exe aircheck` accepts the witness table ski-air wrote, `Air.checkA`, hence
   `Air.Accepts` and `checkB_eval`'s evaluation, independently of the STARK.
-- **Together**: an accepted proof of the row `countup_dec_7` is a proof that
-  `compiled countUp 7` has a weak head normal form `v` (`Eval t v`, `export_sound`), and
-  `compiled_value` with `countUp_correct` says the term weak-head-reduces to an encoding of
-  6. `Eval.deterministic` (lean-ski, `Ski/Basic.lean`) identifies `v` with that encoding
-  once the encoding is known to be a weak head normal form; that lemma (`Enc p ep → Whnf
-  ep`, true since encodings are abstractions) is not yet stated in Lean, and with it the
-  chain is: *an accepted proof of the row is a proof that the Nock formula evaluates on
-  the subject to the product, with the statement recomputed by Lean.* The product itself
-  is read from the proof only through `decode` of the final state, the base circuit's
-  outcome; binding the Nock product `6` as a public value is M4's probe step
+- **The join** (`Nock2Ski/Share.lean`): `Eval t v` is head reduction to a weak head normal
+  form; `shared_value`'s `WSteps` is weak reduction, anywhere in the term. `enc_whnf : Enc
+  p ep → Whnf ep` (every encoding is `S ⬝ _ ⬝ _` or `K ⬝ _`), so `Eval ep ep`; lean-ski's
+  `eval_back : WSteps t u → Eval u v → ∃ v', Eval t v' ∧ WSteps v' v` gives `Eval t v'` with
+  `WSteps v' ep`, and `Eval.deterministic` makes `v' = v`. That is `eval_enc : Enc p ep →
+  WSteps t ep → Eval t v → WSteps v ep`, and the rows' statements are
+  `shared_value_eval : NockEval s f (.val p) → Eval (share (compiled f s)) v → ∃ ep, Enc p
+  ep ∧ WSteps v ep`, `shared_crash_eval : NockEval s f .exit → Eval (share (compiled f s))
+  v → WSteps v errT`, and `compiled_value_eval`, `compiled_crash_eval` for a `plain` row.
+- **Together**: *an accepted proof of a row is a proof that the Nock formula evaluates on
+  the subject to the product, with the statement recomputed by Lean*: the proof's final
+  state `v` (the `decode` of `export_sound`) weakly reduces to an encoding of Nock's
+  product, both weak head normal forms, so `v` is that encoding up to reduction inside its
+  fields (`Whnf.wstep`), `Cell`-, `Atom`- or `Err`-headed as the product is. Binding the
+  product as a public value, read from `v` by probing, is M4's probe step
   (`air_probe_decodes`), and a hidden subject (`encNoun s`, `embed_value_encNoun`) is its
   composed-predicate step.
