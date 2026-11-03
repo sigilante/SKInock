@@ -94,6 +94,25 @@ Started 2026-11-03. Open question C5 of `../OPEN-QUESTIONS.md`. Companion paper:
   use, paid once per forced copy. Lower-overhead binding (B/C-style combinators, or scoping
   each binding at its uses' common ancestor) would cut the contraction cost if it matters.
   Python's hash-consing is the DAG analogue; Avon's `dag` form carries it.
+- **M4c done** (`Nock2Ski/Pred.lean`, `PredText.lean`, `bench/NockPred.lean`,
+  `release/nock/hidden/`, 2026-11-04): a Nock program over a **hidden** atom, proved in zero
+  knowledge on lean-ski's composed predicate circuit, no Nock circuit. The statement "I know
+  an atom `n` of `k` bits with `*[n f] = p`": verifier `nockPredV f k = share (λ x ρ. eqn
+  (nockToSki f (Atom (toBitsT k ρ))) x)`, `x = encNoun p`, `toBitsT k` converting the
+  circuit's `boolsT` bits to the canonical `bitsT` list (`toBitsT_red`, `trim_bits`).
+  `nock_pred_complete` (from `embed_value_encNoun`, `eqn_enc`); `nock_pred_sound`: an
+  accepted proof shows bits of value `n < 2^k` with `eqn (nockToSki f ⬝ encNoun (.atom n))
+  (encNoun p) ↠ K`, hence any Nock value on `n` is `p` and Nock does not crash on `n`
+  (`eqn_err`); Nock's termination on `n` is the converse simulation, not proved. `lake exe
+  nockpred` writes the statement in `ComposedText.publicTextC`'s format and the witness,
+  `--check` is the verifier's Lean half; `ski-air composed-prove`/`composed-verify` prove and
+  check. Count-up `dec` at hidden 7 → 6: 42,221 rows, CPU 2^16, memory 2^17, 5.3 s, 762 KB
+  proof, verified in 1 s; Hoon's `++dec` with the sample from the subject, hidden 12 → 11:
+  101,927 rows, 2^17, 2^18, 10.0 s, 818 KB (the shared verifier 63,223 cells). Found: the
+  two libraries cannot be imported together (`Outcome` in `Ski/Words.lean:157` and
+  `Nock/Eval.lean:62`; `Diverges` in `Nock/Fuel.lean:678` and `Ski/Basic.lean:136`), so the
+  composition with `Circuit.predExport_sound` is by inspection and `boolsT`, `predStmt`,
+  `publicTextC` are copied; a namespace in either repository would close it.
 - **Remaining** (M3's other items, M4–M7): `embed_diverges` (needs fuel adequacy on both
   sides); `fragment_static` is now moot for correctness (the fallback is proved) and is a
   cost statement; the Λ front end; the statement path and the circuit.
@@ -252,7 +271,10 @@ the jetted one, per program, at several atom sizes.
   instantiated at the formula.
 - Public evaluation: the jet circuit (`compj`) with the transported jet table.
   Hidden subject: the composed circuit general in its statement (`compAirsG`), bits
-  constrained to `K` or `K I`, the Sudoku and split8 machinery unchanged.
+  constrained to `K` or `K I`, the Sudoku and split8 machinery unchanged. (M4c: done as
+  `nockpred`, the predicate statement `predicate (nockPredV f k) (encNoun p) k`, one
+  hidden atom of `k` literal bits converted by `toBitsT k`; a cell-shaped hidden subject
+  would put the bits under a public skeleton the same way, atom by atom.)
 - Three statements for the demo: `dec n = m` with `n` hidden; `++dec` on a cell crashes
   (the error outcome is provable, and it is the co-design paper's point that crashes are
   observable); `add a b = c` with `a` and `b` hidden, jetted.
@@ -300,7 +322,7 @@ realized across ISAs. It is §8's stretch item; the direct route is enough for t
 | M1 | nouns as the Scott sum; tagged axis pulls; `encNoun`, `decNoun`, opcode 3/4/5 terms with their specs | `pull_tagged`, `inc_spec`, `eq_spec` kernel-checked | 1–2 weeks |
 | M2 | the compiler over opcodes 0–9 on the Hoon-shaped fragment; `embed_value` and `embed_crash` | count-up `dec` and `++dec` run through `runF` to the right outcomes; theorems closed | 3–4 weeks |
 | M3 | the interpreter fallback pinned and simulated; `embed_value` strong; then `embed_diverges`, `fragment_static` | `nockI_value`, `nockI_crash`; the 63 tests interpreted; `countUp_zero_diverges` carried to SKI | 1–2 weeks |
-| M4 | `nock statement` exe; the verifier's Lean check; the three statements proved on the circuit; rows measured (M4a done: `nockstatement`, count-up `dec` proved on the base circuit, `release/nock/verify.sh` passing) | `release/nock/` with `verify.sh` passing | 2 weeks |
+| M4 | `nock statement` exe; the verifier's Lean check; the three statements proved on the circuit; rows measured (M4a done: `nockstatement`, count-up `dec` proved on the base circuit; M4b: sharing, Hoon's `++dec`; M4c: hidden subjects on the composed predicate circuit, `nockpred`; left: the probe step for a decoded public product, and `add` with two hidden atoms) | `release/nock/` with `verify.sh` passing | 2 weeks |
 | M5 | `jet_transport` for `dec` and `add`; jetted proofs; the rows table | the loop collapses; theorem closed | 2–3 weeks |
 | M6 | Zorp comparison; paper draft | numbers in the table; draft to USTJ | 2 weeks |
 | M7 (stretch) | Λ → SKIlark front end, co-derivation across ISAs | `composition` shared | open |

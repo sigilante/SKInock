@@ -29,17 +29,32 @@
 #      table (Air.checkA, so Air.Accepts: the table is an evaluation of
 #      the term it names).
 #
-# Stages: `release/nock/produce.sh [STAGE…]` of rows, prove; both by
-# default.  One job at a time.
+#   4. Hidden subjects (M4c, release/nock/hidden): `lake exe nockpred --log
+#      R M NAME FORMULA PRODUCT K` writes the predicate statement of
+#      hidden/programs.txt's program (name, subject, product, bits, log
+#      CPU height, log memory height, formula): "some K literal bits are an
+#      atom n with *[n f] = p", the verifier `nockPredV f K`
+#      (Nock2Ski/Pred.lean), x = encNoun p, in the format of lean-ski's
+#      composed predicate circuit (`ComposedText.publicTextC`); `nockpred
+#      --witness` writes the K bits of the subject, which stay in a
+#      temporary directory; `ski-air composed-prove PUBLIC WITNESS PROOF`
+#      proves it in zero knowledge (Lean checks the statement's bytes
+#      first: `lake exe composed statement -` in lean-ski) and writes
+#      NAME.proof; its stdout line is hidden/results.txt's.
+#
+# Stages: `release/nock/produce.sh [STAGE…]` of rows, prove, hidden; all
+# by default.  One job at a time.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 LEAN_SKI=${LEAN_SKI:-../lean-ski}
 R=release/nock
-STAGES=" ${*:-rows prove} "
+STAGES=" ${*:-rows prove hidden} "
 want() { case "$STAGES" in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 for st in $STAGES; do
-    case " rows prove " in *" $st "*) ;; *) echo "no stage $st" >&2; exit 2 ;; esac
+    case " rows prove hidden " in *" $st "*) ;; *) echo "no stage $st" >&2; exit 2 ;; esac
 done
+tmp=$(mktemp -d)
+trap '/bin/rm -rf "$tmp"' EXIT
 A=$LEAN_SKI/bench/plonky3/target/release/ski-air
 [ -x "$A" ] || (cd "$LEAN_SKI/bench/plonky3" && cargo build --release --locked --quiet)
 
@@ -64,4 +79,19 @@ echo "--- Lean: each witness table accepted (aircheck)"
 for row in $(awk '{print $1}' "$R/corpus.txt"); do
     (cd "$LEAN_SKI" && lake exe aircheck "$OLDPWD/$R/out/$row.txt")
 done
+fi
+
+if want hidden; then
+echo "--- Lean + ski-air: Nock programs over a hidden atom (the composed predicate circuit)"
+lake build nockpred > /dev/null
+: > "$R/hidden/results.txt"
+while IFS=$'\t' read -r name subject product bits logr logm formula; do
+    [ -n "$name" ] || continue
+    D=$R/hidden/$name
+    mkdir -p "$D"
+    lake exe nockpred --log "$logr" "$logm" "$name" "$formula" "$product" "$bits" > "$D/public.txt"
+    # the witness: the prover's secret, never written under release/
+    lake exe nockpred --witness "$name" "$subject" "$bits" > "$tmp/$name.witness"
+    "$A" composed-prove "$D/public.txt" "$tmp/$name.witness" "$D/$name.proof" | tee -a "$R/hidden/results.txt"
+done < "$R/hidden/programs.txt"
 fi

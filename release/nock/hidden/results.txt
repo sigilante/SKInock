@@ -1,0 +1,2 @@
+proved 42221 rows, 84181 memory cells, 1 segments, in 5.30 s; proof 762024 bytes -> release/nock/hidden/countup_hidden_7/countup_hidden_7.proof
+proved 101927 rows, 183911 memory cells, 1 segments, in 10.04 s; proof 817725 bytes -> release/nock/hidden/hoon_dec_hidden_12/hoon_dec_hidden_12.proof

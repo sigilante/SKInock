@@ -202,6 +202,36 @@ product is the oracle's. The interpreter fallback
   14,116 with the read-out, copy mode); interpreted, the reference tests cost about ten
   times their compiled runs (test 0, `[[4 0 1] [0 1]]` on 42: 181 head contractions
   compiled, 2,294 interpreted).
+- `Nock2Ski/Pred.lean` (M4c): the predicate statement over a hidden atom. `bitsK k n`, the
+  `k` low bits of `n`; `trim`, the trailing `false`s stripped, with `trim_bits : trim l =
+  bits (val l)` (canonical bits are `bits` of their value, `bits_val_canon`); `consTrimT`
+  and `toBitsT k`, the closed terms converting the circuit's `k` bits (lean-ski's `boolsT`:
+  a `pairT` chain of Scott Booleans, the last alone) to the runtime's canonical `bitsT`,
+  with `toBitsT_red : toBitsT k ⬝ boolsT bs ↠ bitsT (trim bs)` for `bs` of length `k`;
+  the verifier `nockPredV f k = share (λ x ρ. eqn (nockToSki f (Atom (toBitsT k ρ))) x)`
+  by bracket abstraction, `nockPredV_beta`; `nock_pred_complete`, `nock_pred_sound`,
+  `nock_pred_sound_val`, `nock_pred_sound_crash` and `eqn_err : eqn Err b ↠ F` (below,
+  "Proofs"). `boolsT` is a copy of lean-ski's `CompM.boolsT`: `Ski.Predicate` and
+  `Ski.Circuit.CompPred` cannot be imported beside lean-nock, since `Ski.Composed` reaches
+  `Ski.Words`, whose root-level `inductive Outcome` (`Ski/Words.lean:157`) clashes with
+  lean-nock's (`Nock/Eval.lean:62`); likewise `Nock.Fuel`'s `Diverges` with `Ski.Basic`'s,
+  so `Nock.Comp` (`countUp_correct`) is not imported either.
+- `Nock2Ski/PredText.lean` (M4c): the statement's text for `nockpred`, copies of lean-ski's
+  `combBT`, `encO`, `predStmt`, `addStmts`, `cHeap`, `publicTextC` (the predicate case),
+  `cellText`, `logOK`, `privateOK` over lean-ski's own `slotHeap`, `pbuild` and `build`,
+  for the same reason; the rendering is checked against the originals at every use, since
+  ski-air pipes the statement's bytes to lean-ski's `lake exe composed statement -` before
+  it proves or verifies.
+- `bench/NockPred.lean`, `lake exe nockpred` (M4c): `nockpred [--log R M] NAME FORMULA
+  PRODUCT K` prints the predicate statement `predicate (nockPredV f K) (encNoun p) K` over
+  a one-cell region at CPU and memory heights `2^R` and `2^M`, in the format `ski-air
+  composed-prove PUBLIC WITNESS PROOF` and `composed-verify PUBLIC PROOF` consume;
+  `--witness NAME SUBJECT K` prints the `K` bits of the atom and the region; `--check NAME
+  FORMULA PRODUCT K < public.txt` recomputes the verifier from the formula and compares
+  (the statement's verifier, `x`, bit count, region, heights, and the whole text), exit 1
+  otherwise, the verifier's Lean check as `skilark statement` is lean-ski's; `--run NAME
+  FORMULA PRODUCT SUBJECT K` runs the verifier on the bits in the clear with `runF` and
+  reports the contractions and whether it reaches `K`; `--cells FORMULA K` the sizes.
 - `bench/NockStatement.lean`, `lake exe nockstatement` (M4a, M4b): `nockstatement NAME
   FORMULA SUBJECT` prints the corpus row ski-air reads, `NAME COUNT PREFIXTERM`, for
   `share (compiled f s)` (`--unshared`: `compiled f s`): the term in lean-ski's prefix form
@@ -216,7 +246,7 @@ product is the oracle's. The interpreter fallback
   check to run before ski-air (its tables hold 2^21 cells). `scripts/lean-check.sh` runs
   the first two as its M4a/M4b gate.
 
-## Proofs (`release/nock/`, M4a, M4b)
+## Proofs (`release/nock/`, M4a, M4b, M4c)
 
 Three Nock programs proved on lean-ski's circuit, with no Nock circuit, as corpus rows of
 lean-ski's base circuit (`ski-air CORPUS OUTDIR`): the spec's count-up `dec` at subject 7,
@@ -272,5 +302,66 @@ What an accepted proof of a row says, by which theorems:
   product, both weak head normal forms, so `v` is that encoding up to reduction inside its
   fields (`Whnf.wstep`), `Cell`-, `Atom`- or `Err`-headed as the product is. Binding the
   product as a public value, read from `v` by probing, is M4's probe step
-  (`air_probe_decodes`), and a hidden subject (`encNoun s`, `embed_value_encNoun`) is its
-  composed-predicate step.
+  (`air_probe_decodes`); the hidden subject is M4c's, below.
+
+### Hidden subjects (`release/nock/hidden/`, M4c)
+
+Two programs over an atom the prover keeps secret, proved in zero knowledge on lean-ski's
+composed predicate circuit (`Ski/Predicate.lean`, `Ski/Circuit/CompPred.lean`), with no
+Nock circuit: the statement "I know an atom `n` of 8 bits with `*[n f] = p`" for the
+spec's count-up `dec` (`countup_hidden_7`: `p = 6`, witness 7; 42,221 machine rows,
+84,181 memory cells, CPU 2^16, memory 2^17, proved in 5.3 s, proof 762 KB, verified in
+1 s) and for Hoon's `++dec` taking its sample from the subject (`hoon_dec_hidden_12`:
+`p = 11`, witness 12; 101,927 rows, 183,911 cells, 2^17, 2^18, 10.0 s, 818 KB, 1 s).
+`release/nock/RESULTS.md` has the table. The statement is lean-ski's predicate shape: the
+verifier `V`, a closed term, applied by the circuit to the public `x` and the `k` literal
+bits `ρ` in its layout (`boolsT`: a `pairT` chain, the last bit alone, each cell
+constrained to `K` or `K I`), must reach `K`. Here
+
+    V = nockPredV f k = share (λ x ρ. eqn (nockToSki f (Atom (toBitsT k ρ))) x),  x = encNoun p
+
+`toBitsT k` converting the `k` bits to the runtime's canonical bit list (trailing zeros
+stripped: `toBitsT_red`, `trim_bits`), so the compiled formula runs on exactly `encNoun
+(.atom n)` for `n` the bits' value, and `eqn` (`eqn_enc`) answers `K` exactly when the
+product's encoding is `encNoun p`'s. What is proved (`Nock2Ski/Pred.lean`):
+
+- **The statement is Lean's.** `nockpred --check` recomputes `nockPredV f k` and
+  `encNoun p` from the public formula and product and compares the statement, and ski-air
+  has lean-ski's `lake exe composed statement` confirm the bytes are exactly the composed
+  machine's text before it proves or verifies.
+- **Completeness**, `nock_pred_complete : 0 < k → n < 2^k → NockEval (.atom n) f (.val p)
+  → Eval (nockPredV f k ⬝ encNoun p ⬝ boolsT (bitsK k n)) K`: from `nockPredV_beta`
+  (`share_red` and `absN_beta_close`), `toBitsT_red` with `trim_bitsK`,
+  `embed_value_encNoun` and `eq_enc`'s `eqn_enc`. lean-nock's `countUp_correct 6` is the hypothesis for the
+  first statement; for the second, `HoonOne.dec_correct 11 ctx` is the battery's run on the
+  core with sample 12, and the formula's opcode 8, 10 and 9 steps around it are three
+  `NockEval` constructors (neither is composed in Lean here: `Nock.Comp` and `Nock.HoonOne`
+  import `Nock.Fuel`, which clashes with `Ski.Basic`, below); `nockpred --run` shows the
+  acceptance in the clear (17,141 and 41,249 contractions).
+- **Soundness**, `nock_pred_sound : 0 < k → bs.length = k → Eval (nockPredV f k ⬝ encNoun
+  p ⬝ boolsT bs) K → ∃ n, n < 2^k ∧ WSteps (eqn ⬝ (nockToSki f ⬝ encNoun (.atom n)) ⬝
+  encNoun p) K ∧ (∀ q, NockEval (.atom n) f (.val q) → q = p) ∧ ¬ NockEval (.atom n) f
+  .exit`. The hypothesis is what lean-ski's `Circuit.predExport_sound` concludes of an
+  accepted proof of `predAirs V x k W` (the bits `bs` are the proof's memory, `slotBits`),
+  with Plonky3's soundness assumed as in lean-ski's release. The first conjunct is the
+  SKI-level fact, the one every lean-ski statement makes about its term: *the SKI
+  compilation of `f`, on the hidden atom, is `eqn`-equal to `p`'s encoding*. The last two
+  carry it to Nock as far as the one-directional simulation allows: by
+  `embed_value_encNoun` and Church–Rosser (`wsteps_K_iff`), any Nock value on `n` is `p`,
+  since `eqn` answers `F` on unequal encodings and `F` never reaches `K` (`F_not_K`); by
+  `embed_crash_encNoun` and `eqn_err`, Nock does not crash on `n`.
+- **Not proved**: that Nock terminates on `n`. The converse simulation (a SKI value implies
+  a Nock value) needs fuel adequacy on both sides (`embed_diverges`, the open M3 item), so
+  the Nock reading of an accepted proof is "`*[n f]` is `p` if it is anything, and it is
+  not a crash".
+- **The join is read across two Lean environments.** `Ski.Predicate` and
+  `Ski.Circuit.CompPred` cannot be imported beside lean-nock: `Ski.Composed` reaches
+  `Ski.Words` (through `Ski.AirProbe`, `Ski.ProbeTree`, `Ski.Decode`), whose root-level
+  `inductive Outcome` (`Ski/Words.lean:157`) clashes with lean-nock's `Outcome`
+  (`Nock/Eval.lean:62`); and `Nock.Fuel`'s `Diverges` (`Nock/Fuel.lean:678`) with
+  `Ski.Basic`'s (`Ski/Basic.lean:136`). So `boolsT` in `Pred.lean` is a copy of
+  `CompM.boolsT`, `PredText.lean` copies the statement's rendering (checked against the
+  original at every use by ski-air), and `nock_pred_sound`'s hypothesis is
+  `predExport_sound`'s conclusion by inspection, not by one `obtain`. Namespacing either
+  library's `Outcome` (and `Diverges`) would close it; neither repository is modified
+  here. Zero knowledge is lean-ski's `comp_zk`, for any composed statement.

@@ -1,4 +1,4 @@
-# release/nock: Nock programs on lean-ski's base circuit (M4a, M4b; 2026-11-04)
+# release/nock: Nock programs on lean-ski's circuits (M4a, M4b, M4c; 2026-11-04)
 
 Three Nock programs compiled to SKI by `Nock2Ski.compiled` and offered to
 lean-ski's base circuit as corpus rows (`ski-air CORPUS OUTDIR`,
@@ -92,6 +92,67 @@ contractions, at 128 78,849 and 79,002, at 512 58,921 and 35,433, at
 and 28,413 (two bindings).  The count-up row is kept `plain`: it is M4a's
 row, unchanged, and it shows both forms proved.
 
+## Hidden subjects: the composed predicate circuit (M4c, 2026-11-04)
+
+Two programs over an atom the prover keeps secret, on lean-ski's composed
+predicate circuit (`Ski/Predicate.lean`, `Ski/Circuit/CompPred.lean`), the
+statement "I know an atom `n` of 8 bits with `*[n f] = p`" (`hidden/`;
+`hidden/programs.txt`: name, subject, product, bits, log CPU height, log
+memory height, formula).  The verifier is `nockPredV f 8 = share (λ x ρ.
+eqn (nockToSki f (Atom (toBitsT 8 ρ))) x)` (`Nock2Ski/Pred.lean`), the
+public `x` is `encNoun p`, and the 8 bits are the circuit's slot cells,
+constrained to `K` or `K I` and blinded.  Hoon's `++dec` takes its sample
+from the subject (`[8 [1 core] [9 2 [10 [6 [0 3]] [0 2]]]]`).  `lake exe
+nockpred` writes the statement and the witness; `ski-air composed-prove`
+proved each (lean-ski's `lake exe composed statement` checked the
+statement's bytes first); `composed-verify` checks the proof from its
+file.
+
+| statement | subject | product | verifier (tree cells) | shared cells | bindings | contractions in the clear | machine rows | memory cells | CPU | memory | prove s | proof bytes | verify s |
+|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| `countup_hidden_7` | 7 (hidden) | 6 | 143,623 | 34,091 | 10 | 17,141 | 42,221 | 84,181 | 2^16 | 2^17 | 5.30 | 762,024 | 0.97 |
+| `hoon_dec_hidden_12` | 12 (hidden) | 11 | 2,158,241 | 63,223 | 30 | 41,249 | 101,927 | 183,911 | 2^17 | 2^18 | 10.04 | 817,725 | 0.99 |
+
+`hidden/results.txt` is ski-air's stdout:
+
+```
+proved 42221 rows, 84181 memory cells, 1 segments, in 5.30 s; proof 762024 bytes -> release/nock/hidden/countup_hidden_7/countup_hidden_7.proof
+proved 101927 rows, 183911 memory cells, 1 segments, in 10.04 s; proof 817725 bytes -> release/nock/hidden/hoon_dec_hidden_12/hoon_dec_hidden_12.proof
+```
+
+The hidden stage of `produce.sh` took 22 s and peaked at 1.73 GB.  The
+contractions in the clear are `nockpred --run`'s, lean-ski's `runF` on `V
+x (boolsT bits)` to `K`; against the base rows (12,004 for count-up `dec`
+at 7, 33,043 for Hoon's at 12) the verifier adds the sharing's βs on the
+count-up term (it is shared here, 12,962 as a row), the bit conversion
+(`toBitsT 8`, 979 cells) and `eqn` on the product.  The machine rows per
+contraction are 2.46–2.47, as the base rows'.  The proof is 0.8 MB at
+lean-ski's released configuration; `composed-verify` runs Lean's statement
+check (about 1 s) and the STARK verifier (under a second).
+
+`verify.sh`, step 4, on each: `nockpred --check` accepts the statement
+and refuses it for the product + 1; lean-ski's `composed statement`
+accepts the bytes; `composed-verify` accepts the proof and refuses it with
+one byte changed (`REJECTED: verify: Verification(InvalidOpeningArgument
+…)`).
+
+What an accepted proof says (`Nock2Ski/Pred.lean`, and `README.md`,
+"Proofs"): the memory holds 8 bits, of value `n < 256`, with `eqn
+(nockToSki f ⬝ encNoun (.atom n)) (encNoun p) ↠ K` (`nock_pred_sound`); so
+if Nock evaluates `f` on `n` to any value, that value is `p`
+(`nock_pred_sound_val`), and Nock does not crash on `n`
+(`nock_pred_sound_crash`).  The converse direction, that Nock terminates on
+`n` at all, is the simulation's missing half (`embed_diverges`).  The
+statement is complete: `nock_pred_complete` gives the acceptance from
+`NockEval (.atom n) f (.val p)` and `n < 2^k`; lean-nock's `countUp_correct
+6` is the hypothesis for the first statement, and `HoonOne.dec_correct 11
+ctx` with the formula's opcode 8, 10 and 9 steps around the battery for
+the second (not composed in Lean here, since `Nock.Fuel` clashes with
+`Ski.Basic` as below).  The join to
+lean-ski's `Circuit.predExport_sound` is read across the two environments:
+`Ski.Predicate` cannot be imported beside lean-nock (both define a
+root-level `Outcome`; `Ski/Words.lean:157`, `Nock/Eval.lean:62`).
+
 ## Rows per contraction
 
 | row | contractions | machine rows | rows / contraction |
@@ -128,6 +189,12 @@ For the crash row, `shared_crash_eval : WSteps v errT` under
   ski-air's input.  `verify.sh` recomputes each with `nockstatement
   --check` and trusts no term from the file.
 - `results.txt`: ski-air's stdout for `corpus.txt`, quoted above.
+- `hidden/programs.txt`, `hidden/NAME/public.txt`, `hidden/NAME/NAME.proof`,
+  `hidden/results.txt` (M4c): the hidden-subject statements, their proofs
+  (the composed path writes and verifies a proof file) and ski-air's
+  lines.  The witness (the subject's bits) is written to a temporary
+  directory and never under `release/`; `programs.txt` records the
+  subject so that `produce.sh` reproduces the run.
 - `out/` (not committed; `produce.sh` and `verify.sh` regenerate it):
   `NAME.txt`, the witness table of each row in Lean's format, the file
   `aircheck` accepts.  **There are no proof files.**  ski-air's base path

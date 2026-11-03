@@ -22,3 +22,7 @@ root = "bench.NormCheck"
 [[lean_exe]]
 name = "nockstatement"
 root = "bench.NockStatement"
+
+[[lean_exe]]
+name = "nockpred"
+root = "bench.NockPred"

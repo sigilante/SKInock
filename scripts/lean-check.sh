@@ -28,6 +28,16 @@ while IFS=$'\t' read -r name subject product form formula; do
     case "$form" in shared) flag=() ;; plain) flag=(--unshared) ;; *) echo "$name: form is plain or shared"; exit 1 ;; esac
     lake exe nockstatement --check "${flag[@]}" "$name" "$formula" "$subject" < release/nock/corpus.txt 2> /dev/null
 done < release/nock/programs.txt
+# M4c gate: each hidden-subject statement (release/nock/hidden) recomputes
+# from its formula and product (`nockpred --check`: the verifier is
+# `nockPredV f K`, x is `encNoun p`), and the verifier accepts the
+# subject's bits in the clear (`nockpred --run`, lean-ski's runF reaching K:
+# `nock_pred_complete` at the released programs)
+lake build nockpred
+while IFS=$'\t' read -r name subject product bits logr logm formula; do
+    lake exe nockpred --check "$name" "$formula" "$product" "$bits" < "release/nock/hidden/$name/public.txt" 2> /dev/null
+    lake exe nockpred --run "$name" "$formula" "$product" "$subject" "$bits" 2> /dev/null
+done < release/nock/hidden/programs.txt
 tmp="$(mktemp -d)"; trap 'command rm -rf "$tmp"' EXIT
 cat > "$tmp/Axioms.lean" <<'LEAN'
 import Nock2Ski
@@ -101,5 +111,15 @@ import Nock2Ski
 #print axioms Nock2Ski.shared_crash_eval
 #print axioms Nock2Ski.compiled_value_eval
 #print axioms Nock2Ski.compiled_crash_eval
+-- M4c: the predicate statement over a hidden atom
+#print axioms Nock2Ski.trim_bitsK
+#print axioms Nock2Ski.consTrimT_red
+#print axioms Nock2Ski.toBitsT_red
+#print axioms Nock2Ski.nockPredV_beta
+#print axioms Nock2Ski.nock_pred_complete
+#print axioms Nock2Ski.eqn_err
+#print axioms Nock2Ski.nock_pred_sound_val
+#print axioms Nock2Ski.nock_pred_sound_crash
+#print axioms Nock2Ski.nock_pred_sound
 LEAN
 lake env lean "$tmp/Axioms.lean"
