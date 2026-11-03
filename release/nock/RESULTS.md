@@ -1,4 +1,4 @@
-# release/nock: Nock programs on lean-ski's circuits (M4a, M4b, M4c; 2026-11-04)
+# release/nock: Nock programs on lean-ski's circuits (M4a, M4b, M4c, M4d; 2026-11-04)
 
 Three Nock programs compiled to SKI by `Nock2Ski.compiled` and offered to
 lean-ski's base circuit as corpus rows (`ski-air CORPUS OUTDIR`,
@@ -153,6 +153,72 @@ lean-ski's `Circuit.predExport_sound` is read across the two environments:
 `Ski.Predicate` cannot be imported beside lean-nock (both define a
 root-level `Outcome`; `Ski/Words.lean:157`, `Nock/Eval.lean:62`).
 
+## Cell-shaped hidden subjects: the public skeleton (M4d, 2026-11-04)
+
+Hoon's compiled `++add` (`urbit/benchmark/desk/bar/add.nock`, the gate's
+formula with the subject `[a b]` stripped) over **two** hidden atoms: the
+statement "I know atoms `a` and `b` of `k` bits each with `*[[a b] f] =
+p`".  The subject is a public **skeleton** with hidden atoms at its leaves
+(`Nock2Ski/PredSkel.lean`, `Skel`: `hole w`, `lit n`, `cell l r`), here
+`[?k ?k]`; the circuit holds one comb of `N = 2k` bits, `a`'s then `b`'s,
+and the verifier
+
+    nockPredS f sk = share (λ x ρ. eqn (nockToSki f (skelT N sk 0 ρ)) x),  skelT [?k ?k] ρ = Cell (Atom (toBitsT k (takeT k ρ))) (Atom (toBitsT k (dropT k ρ)))
+
+cuts the comb with `takeT`/`dropT` (`sliceT N off w`: the whole comb for a
+single hole, `dropT off` alone for the last hole, `takeT w` after `dropT
+off` otherwise), converts each slice with M4c's `toBitsT`, and rebuilds the
+subject with `cellT` and `atomT` (`skel_red`: the result is exactly `encNoun
+(sk.fill bs)`).  A one-hole skeleton is M4c's verifier term for term
+(`nockPredS_hole`), so `nockpred` takes a skeleton everywhere (`8` is
+`?8`) and the M4c files above are unchanged.  Hoon's `add` loops `dec`,
+which loops `inc`, so the cost grows with `a` (about `a²/2` inner steps):
+
+| statement | subject | product | bits | verifier (tree cells) | shared cells | bindings | contractions in the clear | machine rows | memory cells | CPU | memory | prove s | proof bytes | verify s | peak RSS |
+|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| `hoon_add_hidden_3_4` | `[3 4]` (hidden) | 7 | 2 × 4 | 11,083,553 | 84,389 | 41 | 38,189 | 94,646 | 197,147 | 2^17 | 2^18 | 10.71 | 823,677 | 1.43 | 1.89 GB |
+| `hoon_add_hidden_6_57` | `[6 57]` (hidden) | 63 | 2 × 6 | 11,084,201 | 85,037 | 41 | 91,007 | 225,556 | 352,360 | 2^18 | 2^19 | 20.22 | 878,738 | 1.44 | 3.43 GB |
+
+`hidden/results.txt`'s lines:
+
+```
+proved 94646 rows, 197147 memory cells, 1 segments, in 10.71 s; proof 823677 bytes -> release/nock/hidden/hoon_add_hidden_3_4/hoon_add_hidden_3_4.proof
+proved 225556 rows, 352360 memory cells, 1 segments, in 20.22 s; proof 878738 bytes -> release/nock/hidden/hoon_add_hidden_6_57/hoon_add_hidden_6_57.proof
+```
+
+The tree is 11.1 M cells because `add`'s core carries `dec` and `inc` as
+nested batteries, each literal compiled once per nesting level (`encLit`,
+M4a's finding); `share` binds the 41 repeated subterms of 1,024 cells or
+more and the loaded verifier is 84–85 K cells, 2.6 times the `dec`
+statement's.  The skeleton itself costs 1,122 cells around the bits
+(`nockpred --cells`).  Rows per contraction are 2.478 on both rows,
+memory cells written 2.95 per contraction.  Python's count of the same
+program at `[3 4]` is 26,543 contractions (aviary, copy mode); Lean's
+38,189 adds the sharing's βs, the two slices and conversions, and `eqn` on
+the product.
+
+**What did not fit.**  `[20 30] = 50` at `k = 6` runs in 638,260
+contractions in the clear (about 1.58 M rows), over the composed
+statement's cap: `ComposedText.logOK` admits heights to 2^20 (ski-air's
+`MAX_LOG_HEIGHT` is 21, but a composed statement names its heights and
+Lean refuses `log` above 20).  `[12 30] = 42` (262,583 contractions, about
+650 K rows and 850 K memory cells) fits 2^20 tables but not this machine's
+memory budget.  `[8 30] = 38` (138,008 contractions) was proved at 2^19
+and 2^19: 342,149 rows, 489,923 memory cells, 27.4 s, 860,754 bytes,
+verified in 1.44 s, but the prover peaked at 5.10 GB, so it is not
+released; `[6 57]` at 2^18 and 2^19 (3.43 GB) is the largest `k = 6`
+instance under 4 GB.  The hidden stage's lines above are the two released
+runs' (13.7 s and 23.2 s wall).
+
+What an accepted proof says (`Nock2Ski/PredSkel.lean`, and `README.md`,
+"Cell-shaped hidden subjects"): the memory holds `2k` bits whose halves
+are atoms `a, b < 2^k` with `eqn (nockToSki f ⬝ encNoun [a b]) (encNoun p)
+↠ K` (`nock_pred2_sound`), so any Nock value of `f` on `[a b]` is `p` and
+Nock does not crash on `[a b]`; `nock_pred2_complete` gives the acceptance
+from `NockEval [a b] f (.val p)` and `a, b < 2^k`.  Both are instances of
+the skeleton theorems `nock_predS_sound` and `nock_predS_complete`, stated
+for any skeleton (`sk.ok`: every hole has a bit) over `sk.fill bs`.
+
 ## Rows per contraction
 
 | row | contractions | machine rows | rows / contraction |
@@ -190,11 +256,14 @@ For the crash row, `shared_crash_eval : WSteps v errT` under
   --check` and trusts no term from the file.
 - `results.txt`: ski-air's stdout for `corpus.txt`, quoted above.
 - `hidden/programs.txt`, `hidden/NAME/public.txt`, `hidden/NAME/NAME.proof`,
-  `hidden/results.txt` (M4c): the hidden-subject statements, their proofs
-  (the composed path writes and verifies a proof file) and ski-air's
-  lines.  The witness (the subject's bits) is written to a temporary
-  directory and never under `release/`; `programs.txt` records the
-  subject so that `produce.sh` reproduces the run.
+  `hidden/results.txt` (M4c, M4d): the hidden-subject statements (name,
+  subject, product, skeleton, log CPU height, log memory height, formula),
+  their proofs (the composed path writes and verifies a proof file) and
+  ski-air's lines.  The skeleton column is public: `8` is one hidden atom
+  of 8 bits, `[?4 ?4]` a cell of two hidden atoms of 4 bits each.  The
+  witness (the subject's bits) is written to a temporary directory and
+  never under `release/`; `programs.txt` records the subject so that
+  `produce.sh` reproduces the run.
 - `out/` (not committed; `produce.sh` and `verify.sh` regenerate it):
   `NAME.txt`, the witness table of each row in Lean's format, the file
   `aircheck` accepts.  **There are no proof files.**  ski-air's base path

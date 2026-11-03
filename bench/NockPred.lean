@@ -1,38 +1,46 @@
 import Nock2Ski.PredText
+import Nock2Ski.PredSkel
 import Nock2Ski.NounText
 import Ski.Fuel
 
 /-!
-# nockpred: a Nock program over a hidden atom as a predicate statement
+# nockpred: a Nock program over a hidden subject as a predicate statement
 
-The statement "I know an atom `n` of `K` bits with `*[n f] = p`", for the
-public formula `f` and product `p`, on lean-ski's composed predicate
-circuit (`Ski/Predicate.lean`, `Ski/Circuit/CompPred.lean`): the verifier
-`nockPredV f K` (`Nock2Ski/Pred.lean`), the public `x = encNoun p`, and
-`K` literal bits, the subject's, which the circuit constrains to `K` or
-`K I` and keeps hidden.
+The statement "I know a subject `s` of the shape SKEL, its atoms hidden,
+with `*[s f] = p`", for the public formula `f` and product `p`, on
+lean-ski's composed predicate circuit (`Ski/Predicate.lean`,
+`Ski/Circuit/CompPred.lean`).  SKEL is a public skeleton in noun notation
+whose leaves are holes `?W`, a hidden atom of `W` bits each, or public
+atoms: `8` (or `?8`) is one hidden atom of 8 bits, M4c's statement
+(`nockPredV f 8`, `Nock2Ski/Pred.lean`); `[?4 ?4]` is a cell of two hidden
+atoms of 4 bits each, M4d's (`nockPred2V f 4`, `Nock2Ski/PredSkel.lean`).
+The verifier is `nockPredS f SKEL`, the public `x = encNoun p`, and the
+circuit's literal bits, `N` of them (the holes' widths summed, laid out
+left to right), are the subject's, constrained to `K` or `K I` and kept
+hidden.
 
-- `nockpred [--log R M] NAME FORMULA PRODUCT K` prints `public.txt`: the
-  statement in the format `ski-air composed-prove PUBLIC WITNESS PROOF`
-  and `composed-verify PUBLIC PROOF` consume (lean-ski's
+- `nockpred [--log R M] NAME FORMULA PRODUCT SKEL` prints `public.txt`:
+  the statement in the format `ski-air composed-prove PUBLIC WITNESS
+  PROOF` and `composed-verify PUBLIC PROOF` consume (lean-ski's
   `ComposedText.publicTextC`), at CPU and memory heights `2^R` and `2^M`
   (default 2^11, which no Nock program fits; `--log`).  Sizes to stderr.
-- `nockpred --witness NAME SUBJECT K` prints the witness: the `K` bits of
-  the atom `SUBJECT`, least significant first, one per line, then the
-  one-cell region.  The prover keeps it.
-- `nockpred --check NAME FORMULA PRODUCT K < public.txt` recomputes the
-  verifier from the formula and compares: the statement on stdin must be
-  `predicate (nockPredV f K) (encNoun p) K` over a one-cell region, and
-  its text exactly the one Lean renders at its heights.  Exit 0 and a
-  `STATEMENT` line, or 1.  The verifier's Lean check, as `skilark
-  statement` is for SKIlark's predicate; ski-air's own call of lean-ski's
-  `composed statement` is the second, independent check of the same bytes.
-- `nockpred --run NAME FORMULA PRODUCT SUBJECT K` runs the verifier on the
-  product and the subject's bits with lean-ski's `runF` and reports the
-  head contraction count and whether it reaches `K`: the statement tried
-  in the clear before it is proved.
-- `nockpred --cells FORMULA K` prints the verifier's cells as a tree and
-  shared.
+- `nockpred --witness NAME SUBJECT SKEL` prints the witness: the bits of
+  the subject's atoms under the skeleton, least significant first, hole by
+  hole, one per line, then the one-cell region.  The prover keeps it.
+- `nockpred --check NAME FORMULA PRODUCT SKEL < public.txt` recomputes the
+  verifier from the formula and the skeleton and compares: the statement
+  on stdin must be `predicate (nockPredS f SKEL) (encNoun p) N` over a
+  one-cell region, and its text exactly the one Lean renders at its
+  heights.  Exit 0 and a `STATEMENT` line, or 1.  The verifier's Lean
+  check, as `skilark statement` is for SKIlark's predicate; ski-air's own
+  call of lean-ski's `composed statement` is the second, independent
+  check of the same bytes.
+- `nockpred --run NAME FORMULA PRODUCT SUBJECT SKEL` runs the verifier on
+  the product and the subject's bits with lean-ski's `runF` and reports
+  the head contraction count and whether it reaches `K`: the statement
+  tried in the clear before it is proved.
+- `nockpred --cells FORMULA SKEL` prints the verifier's cells as a tree
+  and shared.
 -/
 
 open Nock2Ski Nock2Ski.PredText Nock2Ski.NounText Term
@@ -40,11 +48,13 @@ open Nock2Ski Nock2Ski.PredText Nock2Ski.NounText Term
 namespace NockPred
 
 def usage : String :=
-  "usage: nockpred [--log R M] NAME FORMULA PRODUCT K       > public.txt\n" ++
-  "       nockpred --witness NAME SUBJECT K                 > witness.txt\n" ++
-  "       nockpred --check NAME FORMULA PRODUCT K           < public.txt\n" ++
-  "       nockpred --run NAME FORMULA PRODUCT SUBJECT K\n" ++
-  "       nockpred --cells FORMULA K"
+  "usage: nockpred [--log R M] NAME FORMULA PRODUCT SKEL    > public.txt\n" ++
+  "       nockpred --witness NAME SUBJECT SKEL              > witness.txt\n" ++
+  "       nockpred --check NAME FORMULA PRODUCT SKEL        < public.txt\n" ++
+  "       nockpred --run NAME FORMULA PRODUCT SUBJECT SKEL\n" ++
+  "       nockpred --cells FORMULA SKEL\n" ++
+  "SKEL: a hidden atom of W bits is ?W (a bare W is ?W); [?4 ?4] a cell of two; a bare\n" ++
+  "      noun in a skeleton is public"
 
 def die (msg : String) (code : UInt32 := 2) : IO UInt32 := do
   IO.eprintln msg
@@ -67,14 +77,76 @@ def treeSize (t : Term) : Nat := Id.run do
 def isName (s : String) : Bool :=
   !s.isEmpty && s.all (fun c => c.isAlphanum || c == '_')
 
-/-- The bit count: `1 ≤ K`, and `K + 1` private cells fit the circuit's
-    `2^8` (`privateOK`); and at most 64, so `2^K` is a small number. -/
-def parseK (k : String) : Except String Nat := do
-  let some k := k.toNat? | throw s!"{k}: the bit count is not a number"
-  if k = 0 then throw "the bit count is 0"
-  if 64 < k then throw s!"the bit count {k} is above 64"
-  if !privateOK k W then throw s!"{k} bits and a region of {W} are more than 2^8 private cells"
-  pure k
+-- ---------------------------------------------------------------------------
+-- Skeletons in text
+-- ---------------------------------------------------------------------------
+
+/-- Parse a skeleton: `[a b c]` notation, right-nested; `?W` a hole of `W`
+    bits, digits a public atom; a bare number `W` is `?W`. -/
+partial def parseSkel (s : String) : Except String Skel :=
+  match s.toNat? with
+  | some w => .ok (.hole w)
+  | none =>
+    let toks := (s.replace "[" " [ " |>.replace "]" " ] ").splitOn " " |>.filter (· ≠ "")
+    let rec item : List String → Except String (Skel × List String)
+      | [] => .error "unexpected end"
+      | "[" :: rest => do
+        let rec items (ts : List String) (acc : List Skel) : Except String (List Skel × List String) :=
+          match ts with
+          | "]" :: r => .ok (acc.reverse, r)
+          | [] => .error "unclosed ["
+          | _ => do
+            let (n, r) ← item ts
+            items r (n :: acc)
+        let (xs, r) ← items rest []
+        match xs.reverse with
+        | [] | [_] => .error "a cell needs two parts"
+        | last :: before =>
+          .ok (before.foldl (fun acc x => Skel.cell x acc) last, r)
+      | "]" :: _ => .error "unexpected ]"
+      | t :: rest =>
+        if t.startsWith "?" then
+          match (t.drop 1).toNat? with
+          | some w => .ok (.hole w, rest)
+          | none => .error s!"not a hole: {t}"
+        else
+          match (t.replace "." "").toNat? with
+          | some n => .ok (.lit (.atom n), rest)
+          | none => .error s!"not a number or a hole: {t}"
+    match item toks with
+    | .ok (n, []) => .ok n
+    | .ok (_, _) => .error "trailing input"
+    | .error e => .error e
+
+partial def showSkel : Skel → String
+  | .hole w => s!"?{w}"
+  | .lit n => showNoun n
+  | .cell h t =>
+    let rec parts : Skel → List String
+      | .cell h t => showSkel h :: parts t
+      | n => [showSkel n]
+    "[" ++ " ".intercalate (showSkel h :: parts t) ++ "]"
+
+/-- The holes' widths. -/
+def holes : Skel → List Nat
+  | .hole w => [w]
+  | .lit _ => []
+  | .cell l r => holes l ++ holes r
+
+/-- The skeleton checked: at least one hole, each of 1 to 64 bits (so `2^W`
+    is a small number), and `N + 1` private cells within the circuit's
+    `2^8` (`privateOK`). -/
+def parseSkeleton (s : String) : Except String Skel := do
+  let sk ← match parseSkel s with
+    | .ok sk => pure sk
+    | .error e => throw s!"{s}: not a skeleton: {e}"
+  let ws := holes sk
+  if ws.isEmpty then throw s!"{showSkel sk}: a skeleton with no hole hides nothing"
+  if ws.any (· = 0) then throw s!"{showSkel sk}: a hole of 0 bits"
+  if ws.any (64 < ·) then throw s!"{showSkel sk}: a hole above 64 bits"
+  if !privateOK sk.width W then
+    throw s!"{showSkel sk}: {sk.width} bits and a region of {W} are more than 2^8 private cells"
+  pure sk
 
 /-- The statement's nouns: the formula and the product. -/
 def parseStatement (formula product : String) : IO (Except String (Noun × Noun)) := do
@@ -87,52 +159,52 @@ def parseStatement (formula product : String) : IO (Except String (Noun × Noun)
   if !isFormula f then IO.eprintln s!"note: {showNoun f} is not a formula; it compiles to the crash"
   return .ok (f, p)
 
-/-- The subject: an atom below `2^k`. -/
-def parseSubject (subject : String) (k : Nat) : Except String Nat := do
+/-- The subject's bits under the skeleton. -/
+def parseSubject (subject : String) (sk : Skel) : Except String (Noun × List Bool) := do
   match parseNoun subject with
   | .error e => throw s!"subject: {e}"
-  | .ok (.cell _ _) => throw "the subject is a cell; the statement hides an atom"
-  | .ok (.atom n) =>
-    if 2 ^ k ≤ n then throw s!"the subject {n} does not fit {k} bits"
-    pure n
+  | .ok s =>
+    match sk.bitsOf s with
+    | .ok bs => pure (s, bs)
+    | .error e => throw s!"subject {showNoun s} under {showSkel sk}: {e}"
 
 /-- The verifier, with its sizes to stderr. -/
-def verifierOf (name : String) (f : Noun) (k : Nat) : IO Term := do
-  let v0 := nockPredV0 f k
-  let v := nockPredV f k
-  IO.eprintln s!"{name}: verifier of {treeSize v0} cells, shared {treeSize v} ({shareCount shareMin v0} bindings); x = encNoun p"
+def verifierOf (name : String) (f : Noun) (sk : Skel) : IO Term := do
+  let v0 := nockPredS0 f sk
+  let v := nockPredS f sk
+  IO.eprintln s!"{name}: verifier of {treeSize v0} cells, shared {treeSize v} ({shareCount shareMin v0} bindings); x = encNoun p; subject {showSkel sk}, {sk.width} bits"
   pure v
 
-def emit (lg : Nat × Nat) (name formula product k : String) : IO UInt32 := do
+def emit (lg : Nat × Nat) (name formula product skel : String) : IO UInt32 := do
   if !isName name then return ← die s!"{name}: a name is letters, digits and underscores"
-  let k ← match parseK k with
-    | .ok k => pure k
+  let sk ← match parseSkeleton skel with
+    | .ok sk => pure sk
     | .error e => return ← die e
   if !logOK lg then return ← die s!"heights 2^{lg.1} and 2^{lg.2}: each log height is in [9, 20]"
   let (f, p) ← match ← parseStatement formula product with
     | .ok fp => pure fp
     | .error e => return ← die e
-  let V ← verifierOf name f k
-  let text := publicText V (encNoun p) k lg
-  IO.eprintln s!"{name}: statement over {k} bits, heights 2^{lg.1} and 2^{lg.2}, {(text.splitOn "\n").length - 1} lines"
+  let V ← verifierOf name f sk
+  let text := publicText V (encNoun p) sk.width lg
+  IO.eprintln s!"{name}: statement over {sk.width} bits, heights 2^{lg.1} and 2^{lg.2}, {(text.splitOn "\n").length - 1} lines"
   IO.print text
   pure 0
 
-def witness (name subject k : String) : IO UInt32 := do
+def witness (name subject skel : String) : IO UInt32 := do
   if !isName name then return ← die s!"{name}: a name is letters, digits and underscores"
-  let k ← match parseK k with
-    | .ok k => pure k
+  let sk ← match parseSkeleton skel with
+    | .ok sk => pure sk
     | .error e => return ← die e
-  let n ← match parseSubject subject k with
-    | .ok n => pure n
+  let (_, bs) ← match parseSubject subject sk with
+    | .ok sb => pure sb
     | .error e => return ← die e
-  IO.print (witnessText (bitsK k n) [.S])
+  IO.print (witnessText bs [.S])
   pure 0
 
-def check (name formula product k : String) : IO UInt32 := do
+def check (name formula product skel : String) : IO UInt32 := do
   if !isName name then return ← die s!"{name}: a name is letters, digits and underscores"
-  let k ← match parseK k with
-    | .ok k => pure k
+  let sk ← match parseSkeleton skel with
+    | .ok sk => pure sk
     | .error e => return ← die e
   let (f, p) ← match ← parseStatement formula product with
     | .ok fp => pure fp
@@ -141,66 +213,66 @@ def check (name formula product k : String) : IO UInt32 := do
   let h ← match parseHeader text with
     | .ok h => pure h
     | .error e => IO.println s!"NOT A PREDICATE STATEMENT: {e}"; return 1
-  let V ← verifierOf name f k
-  if h.n != k then IO.println s!"NOT THIS STATEMENT: over {h.n} bits, not {k}"; return 1
+  let V ← verifierOf name f sk
+  if h.n != sk.width then IO.println s!"NOT THIS STATEMENT: over {h.n} bits, not {sk.width}"; return 1
   if h.W != W then IO.println s!"NOT THIS STATEMENT: a region of {h.W} cells, not {W}"; return 1
   if !logOK h.lg then IO.println s!"NOT A STATEMENT: heights 2^{h.lg.1} and 2^{h.lg.2} out of [9, 20]"; return 1
   if h.x != encNoun p then IO.println s!"NOT THIS STATEMENT: x is not encNoun {showNoun p}"; return 1
-  if h.V != V then IO.println s!"NOT THIS STATEMENT: the verifier is not nockPredV of {showNoun f} over {k} bits"; return 1
-  if text != publicText V (encNoun p) k h.lg then
+  if h.V != V then IO.println s!"NOT THIS STATEMENT: the verifier is not nockPredS of {showNoun f} over {showSkel sk}"; return 1
+  if text != publicText V (encNoun p) sk.width h.lg then
     IO.println "NOT A STATEMENT: the text is not the statement's (its heap is not the composed machine's)"; return 1
-  IO.println s!"STATEMENT {name}: some {k} literal bits are an atom n with *[n {showNoun f}] = {showNoun p}, by eqn on nockToSki (heights 2^{h.lg.1} and 2^{h.lg.2})"
+  IO.println s!"STATEMENT {name}: some {sk.width} literal bits are the atoms of a subject s of shape {showSkel sk} with *[s {showNoun f}] = {showNoun p}, by eqn on nockToSki (heights 2^{h.lg.1} and 2^{h.lg.2})"
   pure 0
 
 def FUEL : Nat := 1 <<< 26
 
-def run (name formula product subject k : String) : IO UInt32 := do
+def run (name formula product subject skel : String) : IO UInt32 := do
   if !isName name then return ← die s!"{name}: a name is letters, digits and underscores"
-  let k ← match parseK k with
-    | .ok k => pure k
+  let sk ← match parseSkeleton skel with
+    | .ok sk => pure sk
     | .error e => return ← die e
   let (f, p) ← match ← parseStatement formula product with
     | .ok fp => pure fp
     | .error e => return ← die e
-  let n ← match parseSubject subject k with
-    | .ok n => pure n
+  let (s, bs) ← match parseSubject subject sk with
+    | .ok sb => pure sb
     | .error e => return ← die e
-  let V ← verifierOf name f k
-  let t := V ⬝ encNoun p ⬝ boolsT (bitsK k n)
+  let V ← verifierOf name f sk
+  let t := V ⬝ encNoun p ⬝ boolsT bs
   match runF FUEL t with
   | none => IO.println s!"{name}: no weak head normal form within {FUEL} contractions"; return 1
   | some (v, c) =>
     if v == K then
-      IO.println s!"{name}: ACCEPTS in {c} contractions: the verifier reaches K on the {k} bits of {n} (bits {(bitsK k n).map fun b => if b then 1 else 0})"
+      IO.println s!"{name}: ACCEPTS in {c} contractions: the verifier reaches K on the {bs.length} bits of {showNoun s} under {showSkel sk} (bits {bs.map fun b => if b then 1 else 0})"
       return 0
     else
       IO.println s!"{name}: REFUSES in {c} contractions: the verifier reaches {PredText.termText v |>.take 40}, not K"
       return 1
 
-def cells (formula k : String) : IO UInt32 := do
-  let k ← match parseK k with
-    | .ok k => pure k
+def cells (formula skel : String) : IO UInt32 := do
+  let sk ← match parseSkeleton skel with
+    | .ok sk => pure sk
     | .error e => return ← die e
   let f ← match parseNoun formula with
     | .ok f => pure f
     | .error e => return ← die s!"formula: {e}"
   let c := nockToSki f
-  let v0 := nockPredV0 f k
-  IO.println s!"nockToSki f: {treeSize c} cells; eqnFix {treeSize eqnFix}; toBitsT {k}: {treeSize (toBitsT k)}"
-  IO.println s!"verifier: {treeSize v0} cells as a tree, {treeSize (nockPredV f k)} shared ({shareCount shareMin v0} bindings at shareMin {shareMin})"
+  let v0 := nockPredS0 f sk
+  IO.println s!"nockToSki f: {treeSize c} cells; eqnFix {treeSize eqnFix}; subject {showSkel sk}: {treeSize (skelT sk.width sk 0 K) - 1} cells around the bits"
+  IO.println s!"verifier: {treeSize v0} cells as a tree, {treeSize (nockPredS f sk)} shared ({shareCount shareMin v0} bindings at shareMin {shareMin})"
   pure 0
 
 def main (args : List String) : IO UInt32 := do
   match args with
-  | ["--log", r, m, name, formula, product, k] =>
+  | ["--log", r, m, name, formula, product, skel] =>
     match r.toNat?, m.toNat? with
-    | some r, some m => emit (r, m) name formula product k
+    | some r, some m => emit (r, m) name formula product skel
     | _, _ => die usage
-  | ["--witness", name, subject, k] => witness name subject k
-  | ["--check", name, formula, product, k] => check name formula product k
-  | ["--run", name, formula, product, subject, k] => run name formula product subject k
-  | ["--cells", formula, k] => cells formula k
-  | [name, formula, product, k] => emit defaultLog name formula product k
+  | ["--witness", name, subject, skel] => witness name subject skel
+  | ["--check", name, formula, product, skel] => check name formula product skel
+  | ["--run", name, formula, product, subject, skel] => run name formula product subject skel
+  | ["--cells", formula, skel] => cells formula skel
+  | [name, formula, product, skel] => emit defaultLog name formula product skel
   | _ => die usage
 
 end NockPred

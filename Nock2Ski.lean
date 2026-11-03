@@ -15,4 +15,5 @@ import Nock2Ski.InterpEnc
 import Nock2Ski.Embed
 import Nock2Ski.Share
 import Nock2Ski.Pred
+import Nock2Ski.PredSkel
 import Nock2Ski.PredText

@@ -28,15 +28,16 @@ while IFS=$'\t' read -r name subject product form formula; do
     case "$form" in shared) flag=() ;; plain) flag=(--unshared) ;; *) echo "$name: form is plain or shared"; exit 1 ;; esac
     lake exe nockstatement --check "${flag[@]}" "$name" "$formula" "$subject" < release/nock/corpus.txt 2> /dev/null
 done < release/nock/programs.txt
-# M4c gate: each hidden-subject statement (release/nock/hidden) recomputes
-# from its formula and product (`nockpred --check`: the verifier is
-# `nockPredV f K`, x is `encNoun p`), and the verifier accepts the
+# M4c/M4d gate: each hidden-subject statement (release/nock/hidden)
+# recomputes from its formula, product and public skeleton (`nockpred
+# --check`: the verifier is `nockPredS f SKEL`, `nockPredV f K` for the
+# one-atom skeleton `K`, x is `encNoun p`), and the verifier accepts the
 # subject's bits in the clear (`nockpred --run`, lean-ski's runF reaching K:
-# `nock_pred_complete` at the released programs)
+# `nock_pred_complete` and `nock_pred2_complete` at the released programs)
 lake build nockpred
-while IFS=$'\t' read -r name subject product bits logr logm formula; do
-    lake exe nockpred --check "$name" "$formula" "$product" "$bits" < "release/nock/hidden/$name/public.txt" 2> /dev/null
-    lake exe nockpred --run "$name" "$formula" "$product" "$subject" "$bits" 2> /dev/null
+while IFS=$'\t' read -r name subject product skel logr logm formula; do
+    lake exe nockpred --check "$name" "$formula" "$product" "$skel" < "release/nock/hidden/$name/public.txt" 2> /dev/null
+    lake exe nockpred --run "$name" "$formula" "$product" "$subject" "$skel" 2> /dev/null
 done < release/nock/hidden/programs.txt
 tmp="$(mktemp -d)"; trap 'command rm -rf "$tmp"' EXIT
 cat > "$tmp/Axioms.lean" <<'LEAN'
@@ -121,5 +122,16 @@ import Nock2Ski
 #print axioms Nock2Ski.nock_pred_sound_val
 #print axioms Nock2Ski.nock_pred_sound_crash
 #print axioms Nock2Ski.nock_pred_sound
+-- M4d: a cell-shaped hidden subject, the public skeleton
+#print axioms Nock2Ski.dropT_red
+#print axioms Nock2Ski.takeT_red
+#print axioms Nock2Ski.sliceT_red
+#print axioms Nock2Ski.skel_red
+#print axioms Nock2Ski.nockPredS_beta
+#print axioms Nock2Ski.nockPredS_hole
+#print axioms Nock2Ski.nock_predS_complete
+#print axioms Nock2Ski.nock_pred2_complete
+#print axioms Nock2Ski.nock_predS_sound
+#print axioms Nock2Ski.nock_pred2_sound
 LEAN
 lake env lean "$tmp/Axioms.lean"

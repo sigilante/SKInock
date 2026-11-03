@@ -29,18 +29,23 @@
 #      table (Air.checkA, so Air.Accepts: the table is an evaluation of
 #      the term it names).
 #
-#   4. Hidden subjects (M4c, release/nock/hidden): `lake exe nockpred --log
-#      R M NAME FORMULA PRODUCT K` writes the predicate statement of
-#      hidden/programs.txt's program (name, subject, product, bits, log
-#      CPU height, log memory height, formula): "some K literal bits are an
-#      atom n with *[n f] = p", the verifier `nockPredV f K`
-#      (Nock2Ski/Pred.lean), x = encNoun p, in the format of lean-ski's
-#      composed predicate circuit (`ComposedText.publicTextC`); `nockpred
-#      --witness` writes the K bits of the subject, which stay in a
-#      temporary directory; `ski-air composed-prove PUBLIC WITNESS PROOF`
-#      proves it in zero knowledge (Lean checks the statement's bytes
-#      first: `lake exe composed statement -` in lean-ski) and writes
-#      NAME.proof; its stdout line is hidden/results.txt's.
+#   4. Hidden subjects (M4c, M4d, release/nock/hidden): `lake exe nockpred
+#      --log R M NAME FORMULA PRODUCT SKEL` writes the predicate statement
+#      of hidden/programs.txt's program (name, subject, product, skeleton,
+#      log CPU height, log memory height, formula): "some N literal bits
+#      are the atoms of a subject s of shape SKEL with *[s f] = p", the
+#      verifier `nockPredS f SKEL` (Nock2Ski/PredSkel.lean), x = encNoun p,
+#      in the format of lean-ski's composed predicate circuit
+#      (`ComposedText.publicTextC`).  The skeleton is public: `8` is one
+#      hidden atom of 8 bits (M4c, `nockPredV f 8`), `[?4 ?4]` a cell of
+#      two hidden atoms of 4 bits each (M4d, `nockPred2V f 4`), N the
+#      widths summed.  `nockpred --witness` writes the subject's bits, hole
+#      by hole, which stay in a temporary directory; `ski-air
+#      composed-prove PUBLIC WITNESS PROOF` proves it in zero knowledge
+#      (Lean checks the statement's bytes first: `lake exe composed
+#      statement -` in lean-ski) and writes NAME.proof; its stdout line is
+#      hidden/results.txt's.  The two `add` rows take 14 s and 23 s and
+#      peak at 1.9 GB and 3.4 GB.
 #
 # Stages: `release/nock/produce.sh [STAGE…]` of rows, prove, hidden; all
 # by default.  One job at a time.
@@ -82,16 +87,16 @@ done
 fi
 
 if want hidden; then
-echo "--- Lean + ski-air: Nock programs over a hidden atom (the composed predicate circuit)"
+echo "--- Lean + ski-air: Nock programs over a hidden subject (the composed predicate circuit)"
 lake build nockpred > /dev/null
 : > "$R/hidden/results.txt"
-while IFS=$'\t' read -r name subject product bits logr logm formula; do
+while IFS=$'\t' read -r name subject product skel logr logm formula; do
     [ -n "$name" ] || continue
     D=$R/hidden/$name
     mkdir -p "$D"
-    lake exe nockpred --log "$logr" "$logm" "$name" "$formula" "$product" "$bits" > "$D/public.txt"
+    lake exe nockpred --log "$logr" "$logm" "$name" "$formula" "$product" "$skel" > "$D/public.txt"
     # the witness: the prover's secret, never written under release/
-    lake exe nockpred --witness "$name" "$subject" "$bits" > "$tmp/$name.witness"
+    lake exe nockpred --witness "$name" "$subject" "$skel" > "$tmp/$name.witness"
     "$A" composed-prove "$D/public.txt" "$tmp/$name.witness" "$D/$name.proof" | tee -a "$R/hidden/results.txt"
 done < "$R/hidden/programs.txt"
 fi

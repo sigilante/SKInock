@@ -255,7 +255,7 @@ jets licensed by theorems. A live run of the same programs on both provers is fu
   check to run before ski-air (its tables hold 2^21 cells). `scripts/lean-check.sh` runs
   the first two as its M4a/M4b gate.
 
-## Proofs (`release/nock/`, M4a, M4b, M4c)
+## Proofs (`release/nock/`, M4a, M4b, M4c, M4d)
 
 Three Nock programs proved on lean-ski's circuit, with no Nock circuit, as corpus rows of
 lean-ski's base circuit (`ski-air CORPUS OUTDIR`): the spec's count-up `dec` at subject 7,
@@ -374,3 +374,54 @@ product's encoding is `encNoun p`'s. What is proved (`Nock2Ski/Pred.lean`):
   `predExport_sound`'s conclusion by inspection, not by one `obtain`. Namespacing either
   library's `Outcome` (and `Diverges`) would close it; neither repository is modified
   here. Zero knowledge is lean-ski's `comp_zk`, for any composed statement.
+
+### Cell-shaped hidden subjects (`release/nock/hidden/`, M4d)
+
+Hoon's compiled `++add` (`urbit/benchmark/desk/bar/add.nock`) over two hidden atoms, the
+statement "I know atoms `a` and `b` of `k` bits each with `*[[a b] f] = p`":
+`hoon_add_hidden_3_4` (`p = 7`, witness `[3 4]`, `k = 4`; 94,646 machine rows, 197,147
+memory cells, CPU 2^17, memory 2^18, proved in 10.7 s, proof 824 KB, verified in 1.4 s,
+prover peak 1.9 GB) and `hoon_add_hidden_6_57` (`p = 63`, witness `[6 57]`, `k = 6`;
+225,556 rows, 352,360 cells, 2^18, 2^19, 20.2 s, 879 KB, 1.4 s, 3.4 GB).
+`release/nock/RESULTS.md` has the table and the instances that did not fit (`[20 30]` at
+`k = 6` is 638,260 contractions, past the composed statement's 2^20 height cap; `[8 30]`
+proved at 2^19 but peaked at 5.1 GB). The subject is a public **skeleton** with hidden
+atoms at its leaves (`Nock2Ski/PredSkel.lean`): `Skel` is `hole w` (a hidden atom of `w`
+bits), `lit n` (a public noun) or `cell l r`; the circuit holds one comb of `N` bits, the
+holes' widths summed, laid out left to right, and the verifier
+
+    V = nockPredS f sk = share (λ x ρ. eqn (nockToSki f (skelT N sk 0 ρ)) x),  x = encNoun p
+
+cuts the comb into the holes' slices (`dropT k`: the comb after `k` bits, `λρ. ρ (K (dropT
+(k-1)))`; `takeT k`: the comb of the first `k`, `λρ. ρ (λ b r. pairT b (takeT (k-1) r))`;
+`sliceT N off w` uses the comb itself for a single hole, `dropT off` for the last hole and
+`takeT w` after `dropT off` otherwise), converts each with M4c's `toBitsT w`, and rebuilds
+the subject with `cellT` and `atomT` around them. `[?k ?k]` is `pairSkel k`, the verifier
+`nockPred2V f k`; a one-hole skeleton is M4c's verifier term for term (`nockPredS_hole :
+nockPredS f (.hole k) = nockPredV f k`), so `nockpred` takes a skeleton in place of the bit
+count everywhere (`8` means `?8`) and the M4c files are unchanged. What is proved:
+
+- **The slices are `take` and `drop`**: `dropT_red : k < bs.length → dropT k ⬝ boolsT bs ↠
+  boolsT (bs.drop k)`, `takeT_red : 0 < k → k < bs.length → takeT k ⬝ boolsT bs ↠ boolsT
+  (bs.take k)`, `sliceT_red`; and **the rebuilt subject is the filled skeleton's
+  encoding**, `skel_red : bs.length = N → sk.ok → off + sk.width ≤ N → skelT N sk off
+  (boolsT bs) ↠ encNoun (sk.fill (bs.drop off))`, where `sk.fill bs` fills the holes left
+  to right with their slices' values (`sk.ok`: every hole has a bit, as `toBitsT`
+  requires).
+- **Completeness**, `nock_predS_complete : sk.ok → bs.length = sk.width → NockEval (sk.fill
+  bs) f (.val p) → Eval (nockPredS f sk ⬝ encNoun p ⬝ boolsT bs) K`, and its instance
+  `nock_pred2_complete : 0 < k → a < 2^k → b < 2^k → NockEval [a b] f (.val p) → Eval
+  (nockPred2V f k ⬝ encNoun p ⬝ boolsT (bitsK k a ++ bitsK k b)) K` (`pairSkel_fill`:
+  the two halves of the witness are `a` and `b`). `nockpred --run` shows the acceptance
+  in the clear (38,189 and 91,007 contractions).
+- **Soundness**, `nock_predS_sound : sk.ok → bs.length = sk.width → Eval (nockPredS f sk ⬝
+  encNoun p ⬝ boolsT bs) K → WSteps (eqn ⬝ (nockToSki f ⬝ encNoun (sk.fill bs)) ⬝ encNoun
+  p) K ∧ (∀ q, NockEval (sk.fill bs) f (.val q) → q = p) ∧ ¬ NockEval (sk.fill bs) f
+  .exit`, and `nock_pred2_sound : 0 < k → bs.length = 2k → Eval (nockPred2V f k ⬝ encNoun
+  p ⬝ boolsT bs) K → ∃ a b, a < 2^k ∧ b < 2^k ∧ …` the same of `[a b]`. The last two
+  conjuncts are M4c's `nock_pred_sound_val` and `nock_pred_sound_crash`, now stated over
+  any subject. The hypothesis, the join to lean-ski's `Circuit.predExport_sound`, and what
+  is not proved (Nock's termination on the hidden subject) are as in M4c.
+- **The witness side**: `Skel.bitsOf sk s` gives the bits of a subject under the skeleton
+  when it fits (`nockpred --witness`); it is not proved inverse to `fill`, since the
+  theorems are stated on `fill` of the bits the circuit holds.

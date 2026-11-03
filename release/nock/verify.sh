@@ -16,11 +16,13 @@
 #      results.txt row for row in contractions, rows, budget and memory
 #      (the times vary).
 #   3. Lean accepts each witness table ski-air wrote (`lake exe aircheck`).
-#   4. The hidden-subject statements (release/nock/hidden, M4c): for each
-#      program of hidden/programs.txt, Lean recomputes the verifier from
-#      the public formula and compares the statement (`lake exe nockpred
-#      --check NAME FORMULA PRODUCT K < public.txt`: `predicate (nockPredV
-#      f K) (encNoun p) K` at the recorded heights, its text the composed
+#   4. The hidden-subject statements (release/nock/hidden, M4c and M4d):
+#      for each program of hidden/programs.txt, Lean recomputes the
+#      verifier from the public formula and the public skeleton (`8`: one
+#      hidden atom of 8 bits; `[?4 ?4]`: a cell of two hidden atoms of 4
+#      bits each) and compares the statement (`lake exe nockpred --check
+#      NAME FORMULA PRODUCT SKEL < public.txt`: `predicate (nockPredS f
+#      SKEL) (encNoun p) N` at the recorded heights, its text the composed
 #      machine's), refuses it for the product + 1, and lean-ski's own check
 #      accepts the bytes (`lake exe composed statement`); ski-air
 #      composed-verify checks the proof against the statement, and refuses
@@ -88,15 +90,15 @@ for row in $(awk '{print $1}' "$R/corpus.txt"); do
         && ok "$row's table names the corpus row's term" || no "$row's table names another term"
 done
 
-echo "--- 4. Nock programs over a hidden atom: the composed predicate circuit (release/nock/hidden)"
+echo "--- 4. Nock programs over a hidden subject: the composed predicate circuit (release/nock/hidden)"
 lake build nockpred > /dev/null
 (cd "$LEAN_SKI" && lake build composed > /dev/null)
 n=0
-while IFS=$'\t' read -r name subject product bits logr logm formula; do
+while IFS=$'\t' read -r name subject product skel logr logm formula; do
     [ -n "$name" ] || continue
     n=$((n+1))
     D=$R/hidden/$name
-    if lake exe nockpred --check "$name" "$formula" "$product" "$bits" < "$D/public.txt" > "$tmp/pc.log" 2> /dev/null; then
+    if lake exe nockpred --check "$name" "$formula" "$product" "$skel" < "$D/public.txt" > "$tmp/pc.log" 2> /dev/null; then
         ok "$(head -c 120 "$tmp/pc.log")..."
     else
         no "$name: $(head -n 1 "$tmp/pc.log")"
@@ -104,7 +106,7 @@ while IFS=$'\t' read -r name subject product bits logr logm formula; do
     [ "$(sed -n 3p "$D/public.txt")" = "log $logr $logm" ] && ok "$name: heights 2^$logr and 2^$logm, as programs.txt records" || no "$name: the heights are not programs.txt's"
     case "$product" in
     ''|*[!0-9]*) ;;
-    *)  if lake exe nockpred --check "$name" "$formula" "$((product + 1))" "$bits" < "$D/public.txt" > "$tmp/pc2.log" 2> /dev/null; then
+    *)  if lake exe nockpred --check "$name" "$formula" "$((product + 1))" "$skel" < "$D/public.txt" > "$tmp/pc2.log" 2> /dev/null; then
             no "$name: the statement read as product $((product + 1))"
         else
             ok "$name: not the statement for product $((product + 1)) ($(head -n 1 "$tmp/pc2.log"))"

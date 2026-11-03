@@ -317,13 +317,14 @@ theorem eqn_err (b : Term) : WSteps (eqnFix ⬝ errT ⬝ b) (boolT false) := by
   exact (eqn_unfold _ _).trans e
 
 /-- **The SKI-level verdict carried to Nock, values**: if `eqn` accepts the
-    compiled formula's result on `encNoun (.atom n)` against `encNoun p`,
-    then any Nock value of `f` on `n` is `p`. -/
-theorem nock_pred_sound_val {f p q : Noun} {n : Nat}
-    (h : WSteps (eqnFix ⬝ (nockToSki f ⬝ encNoun (.atom n)) ⬝ encNoun p) K)
-    (hq : NockEval (.atom n) f (.val q)) : q = p := by
+    compiled formula's result on `encNoun s` against `encNoun p`, then any
+    Nock value of `f` on `s` is `p` (stated over any subject `s`, for
+    M4c's atom and M4d's cell-shaped skeleton alike). -/
+theorem nock_pred_sound_val {f p q s : Noun}
+    (h : WSteps (eqnFix ⬝ (nockToSki f ⬝ encNoun s) ⬝ encNoun p) K)
+    (hq : NockEval s f (.val q)) : q = p := by
   obtain ⟨eq, hqe, he⟩ := embed_value_encNoun hq
-  have h2 : WSteps (eqnFix ⬝ (nockToSki f ⬝ encNoun (.atom n)) ⬝ encNoun p) (boolT (decide (q = p))) :=
+  have h2 : WSteps (eqnFix ⬝ (nockToSki f ⬝ encNoun s) ⬝ encNoun p) (boolT (decide (q = p))) :=
     (WSteps.left _ (WSteps.right _ he)).trans (eqn_enc hqe (enc_encNoun p))
   have hK := (Compose.wsteps_K_iff h2).mp h
   by_cases hqp : q = p
@@ -331,11 +332,11 @@ theorem nock_pred_sound_val {f p q : Noun} {n : Nat}
   · rw [decide_eq_false hqp] at hK
     exact absurd hK Compose.F_not_K
 
-/-- **Crashes**: the same acceptance excludes a Nock crash on `n`. -/
-theorem nock_pred_sound_crash {f p : Noun} {n : Nat}
-    (h : WSteps (eqnFix ⬝ (nockToSki f ⬝ encNoun (.atom n)) ⬝ encNoun p) K) :
-    ¬ NockEval (.atom n) f .exit := fun hc => by
-  have h2 : WSteps (eqnFix ⬝ (nockToSki f ⬝ encNoun (.atom n)) ⬝ encNoun p) (boolT false) :=
+/-- **Crashes**: the same acceptance excludes a Nock crash on `s`. -/
+theorem nock_pred_sound_crash {f p s : Noun}
+    (h : WSteps (eqnFix ⬝ (nockToSki f ⬝ encNoun s) ⬝ encNoun p) K) :
+    ¬ NockEval s f .exit := fun hc => by
+  have h2 : WSteps (eqnFix ⬝ (nockToSki f ⬝ encNoun s) ⬝ encNoun p) (boolT false) :=
     (WSteps.left _ (WSteps.right _ (embed_crash_encNoun hc))).trans (eqn_err _)
   exact Compose.F_not_K ((Compose.wsteps_K_iff h2).mp h)
 
