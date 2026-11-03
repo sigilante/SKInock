@@ -13,7 +13,13 @@ Started 2026-11-03. Open question C5 of `../OPEN-QUESTIONS.md`. Companion paper:
   duplicated code per nesting level and reached 1.1 M atoms).
 - **M0 done**: lean-nock builds on Lean 4.31.0 on its `lean-4.31` branch (four edits, all
   six gates pass, uncommitted there); skinock's Lake package requires both by path.
-- **In progress**: the interpreter fallback `nockI` for formulas built from data (§2.3's
+- **Measured** (§7 item 1, first numbers): 150–270 contractions per Nock step on aviary's
+  copy mode, 110–170 on Avon's share mode, across dec, add, factorial, fibonacci, ackermann
+  and bigslot; Avon runs dec 10,000 (16.8 M contractions) in 0.3 s from the `dag` form.
+  Opcode 12 crashes, as Vere does outside `+mock`.
+- **Done since**: the interpreter fallback `nockI` (about 8× the compiled code; every
+  reference test also passes with the formula supplied as data).
+- **In progress**: for formulas built from data (§2.3's
   dynamic case); Lean M1 (`Nock2Ski/Noun.lean`, `Prims.lean`); Avon jets for `inc` and `eq`
   with the Avon agent (terms pinned in `terms/`).
 - **Design change against §2.2**: the embedding is *strict*, not lazy. Nock evaluates every
