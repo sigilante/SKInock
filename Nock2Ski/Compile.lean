@@ -354,6 +354,24 @@ decreasing_by
   all_goals omega
 end
 
+/-- A malformed formula (lean-nock's `Malformed`) compiles to the crash. -/
+theorem nockToSki_malformed {f : Noun} (h : Malformed f = true) : nockToSki f = K ⬝ errT := by
+  cases f with
+  | atom _ => rw [nockToSki.eq_def]
+  | cell hd t =>
+    cases hd with
+    | cell _ _ => simp [Malformed] at h
+    | atom op =>
+      match op, t with
+      | 0, .atom _ | 0, .cell _ _ | 1, _ | 3, _ | 4, _ => simp [Malformed] at h
+      | 2, .cell _ _ | 5, .cell _ _ | 7, .cell _ _ | 8, .cell _ _ | 9, .cell _ _ | 11, .cell _ _
+      | 6, .cell _ (.cell _ _) | 10, .cell (.cell _ _) _ => simp [Malformed] at h
+      | 2, .atom _ | 5, .atom _ | 7, .atom _ | 8, .atom _ | 9, .atom _ | 11, .atom _ =>
+        rw [nockToSki.eq_def]; rfl
+      | 6, .atom _ | 6, .cell _ (.atom _) => rw [nockToSki.eq_def]; rfl
+      | 10, .atom _ | 10, .cell (.atom _) _ => rw [nockToSki.eq_def]; rfl
+      | _ + 12, _ => rw [nockToSki.eq_def]; rfl
+
 /-- A program on a subject: the compiled formula applied to the subject
     encoded as the runtime encodes its literal, formula-shaped cells with
     their code (`compile.py`'s `subj := lit(subject)`).  `encNoun s`, the

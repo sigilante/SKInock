@@ -12,7 +12,7 @@ export PATH="$HOME/.elan/bin:$PATH"
 lake build
 # M2 gate: every urbit/benchmark norm test (63) and the M2 programs agree
 lake build normcheck
-lake exe normcheck | tail -2
+lake exe normcheck | grep -E "^(norm|programs):"
 tmp="$(mktemp -d)"; trap 'command rm -rf "$tmp"' EXIT
 cat > "$tmp/Axioms.lean" <<'LEAN'
 import Nock2Ski
@@ -47,5 +47,19 @@ import Nock2Ski
 -- M2: the compiler
 #print axioms Nock2Ski.malformed_eq
 #print axioms Nock2Ski.axisPath_eq_axisSteps
+#print axioms Nock2Ski.nockToSki_malformed
+-- M2: the encoding relation and the primitives over it
+#print axioms Nock2Ski.enc_encLit
+#print axioms Nock2Ski.eq_enc
+#print axioms Nock2Ski.fasO_axisPath
+#print axioms Nock2Ski.haxO_axisPath
+#print axioms Nock2Ski.pick_enc
+-- M2: the simulation
+#print axioms Nock2Ski.editT_enc
+#print axioms Nock2Ski.embed
+#print axioms Nock2Ski.embed_crash
+#print axioms Nock2Ski.embed_value
+#print axioms Nock2Ski.compiled_crash
+#print axioms Nock2Ski.compiled_value
 LEAN
 lake env lean "$tmp/Axioms.lean"
