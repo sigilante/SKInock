@@ -133,3 +133,24 @@ def test_op10_evaluates_the_target_before_the_patch():
         run(N.parse("[2 [0 2] [0 3]]"), (s, f), max_steps=100_000, code=False)
     # and the patch is still evaluated: a crashing patch over a good tree crashes
     assert run(N.parse("[10 [2 [0 0]] [0 1]]"), s).value is None
+
+
+def test_op12_scry():
+    # Without a resolver opcode 12 is malformed (lean-nock, Vere outside +mock): a crash.
+    f = N.parse("[12 [1 0] [1 [1 2]]]")
+    assert run(f, 7).value is None
+    try:
+        N.nock(7, f); assert False
+    except N.Crash:
+        pass
+    # With a fact table it resolves, structurally on (ref, path); a miss crashes;
+    # both operands are evaluated first.
+    facts = [((0, N.parse("[1 2]")), 42), ((0, 5), N.parse("[9 9]"))]
+    assert run(f, 7, scry=facts).value == 42
+    assert N.nock(7, f, resolver=dict(facts)) == 42
+    assert run(N.parse("[12 [1 0] [1 5]]"), 7, scry=facts).value == N.parse("[9 9]")
+    assert run(N.parse("[12 [1 0] [1 6]]"), 7, scry=facts).value is None
+    assert run(N.parse("[12 [1 0] [0 0]]"), 7, scry=facts).value is None
+    assert run(N.parse("[12 [0 1] [1 [1 2]]]"), 0, scry=facts).value == 42
+    # through the interpreter: the scry formula supplied as data
+    assert run(N.parse("[2 [0 2] [0 3]]"), (7, f), scry=facts, code=False).value == 42

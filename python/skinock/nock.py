@@ -105,9 +105,10 @@ def is_formula(n: Noun) -> bool:
 
 # ---------------------------------------------------------------- evaluator
 
-def malformed(f: Noun) -> bool:
+def malformed(f: Noun, scry: bool = False) -> bool:
     """lean-nock's `Malformed`: the shallow shape check a node makes before
-    evaluating its operands."""
+    evaluating its operands.  With `scry`, `[12 ref path]` is well formed
+    (the extension a resolver gives it)."""
     if not is_cell(f):
         return True
     op, t = f
@@ -121,6 +122,8 @@ def malformed(f: Noun) -> bool:
         return not (is_cell(t) and is_cell(t[1]))
     if op == 10:
         return not (is_cell(t) and is_cell(t[0]))
+    if op == 12 and scry:
+        return not is_cell(t)
     return True
 
 
@@ -155,9 +158,12 @@ def edit(axis: int, v: Noun, t: Noun) -> Noun:
 
 
 class Evaluator:
-    def __init__(self, fuel: int | None = None):
+    """`resolver`: None (opcode 12 crashes) or a dict {(ref, path): value}."""
+
+    def __init__(self, fuel: int | None = None, resolver: dict | None = None):
         self.steps = 0
         self.fuel = fuel
+        self.resolver = resolver
 
     def tick(self):
         self.steps += 1
@@ -174,7 +180,7 @@ class Evaluator:
 
     def _nock(self, s: Noun, f: Noun) -> Noun:
         self.tick()
-        if malformed(f):
+        if malformed(f, scry=self.resolver is not None):
             raise Crash("malformed formula")
         op, rest = f
         if is_cell(op):
@@ -226,8 +232,14 @@ class Evaluator:
             if is_cell(hint):
                 self.nock(s, hint[1])
             return self.nock(s, body)
+        if op == 12:
+            ref = self.nock(s, rest[0])
+            path = self.nock(s, rest[1])
+            if (ref, path) in self.resolver:
+                return self.resolver[(ref, path)]
+            raise Crash("scry miss")
         raise Crash(f"opcode {op}")
 
 
-def nock(s: Noun, f: Noun, fuel: int | None = None) -> Noun:
-    return Evaluator(fuel).nock(s, f)
+def nock(s: Noun, f: Noun, fuel: int | None = None, resolver: dict | None = None) -> Noun:
+    return Evaluator(fuel, resolver).nock(s, f)

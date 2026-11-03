@@ -29,7 +29,8 @@ class Compiler:
     (`codeN s = …`), so every distinct sub-noun and every formula body is
     emitted once and shared in the term."""
 
-    def __init__(self, code: bool = True):
+    def __init__(self, code: bool = True, scry: bool = False):
+        self.scry = scry
         self.k = 0
         self.code = code          # False: a literal formula is a plain Cell, never a Form
         self.memo: dict = {}      # noun -> name
@@ -95,9 +96,13 @@ class Compiler:
 
     # ---- formulas
     def formula(self, f: N.Noun, s: str) -> str:
-        if N.malformed(f):
+        if N.malformed(f, scry=self.scry):
             return "Err"
         op, rest = f
+        if op == 12:
+            x, p = self.fresh("x"), self.fresh("p")
+            return (f"(force {self.formula(rest[0], s)} (\\{x}. (force {self.formula(rest[1], s)} "
+                    f"(\\{p}. (scry {x} {p})))))")
         if N.is_cell(op):
             x, y = self.fresh("x"), self.fresh("y")
             return (f"(force {self.formula(op, s)} (\\{x}. (force {self.formula(rest, s)} "
@@ -149,14 +154,28 @@ class Compiler:
         return "Err"
 
 
-def program(formula: N.Noun, subject: N.Noun | None = None, code: bool = True) -> str:
-    """The SKIjack source: the library, `run s = …`, and `main := run subj`.
-    With `code=False` literal cells are plain `Cell`s (no `Form`), so a
-    formula reaching opcode 2 or 9 from data is interpreted by `nockI`."""
-    c = Compiler(code)
+def scry_def(c: "Compiler", facts) -> str:
+    """`scry x p = …`: a resolver over a fact table [((ref, path), value)…],
+    compared structurally with `eq`; a miss is a crash (lean-nock's
+    semantics for opcode 12, Vere's outside `+mock`)."""
+    body = "Err"
+    for (ref, path), value in reversed(list(facts or [])):
+        body = (f"(ifn (eq x {c.lit(ref)}) (ifn (eq p {c.lit(path)}) {c.lit(value)} {body}) {body})")
+    return f"scry x p = {body}"
+
+
+def program(formula: N.Noun, subject: N.Noun | None = None, code: bool = True,
+            scry=None) -> str:
+    """The SKIjack source: the library, the resolver, `run s = …`, and
+    `main := run subj`.  With `code=False` literal cells are plain `Cell`s
+    (no `Form`), so a formula reaching opcode 2 or 9 from data is interpreted
+    by `nockI`.  `scry` is None (opcode 12 crashes) or a fact table
+    [((ref, path), value)…] that opcode 12 consults."""
+    c = Compiler(code, scry=scry is not None)
     run = f"run s = {c.formula(formula, 's')}"
+    sc = scry_def(c, scry)
     tail = []
     if subject is not None:
         tail.append(f"subj := {c.lit(subject)}")
         tail.append("main := run subj")
-    return "\n".join([LIB, *c.defs, run, *tail]) + "\n"
+    return "\n".join([LIB, *c.defs, sc, run, *tail]) + "\n"

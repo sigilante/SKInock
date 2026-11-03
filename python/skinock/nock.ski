@@ -18,7 +18,6 @@ eqn a b = a |> { Atom p (b |> { Atom q (eqb p q) ; Cell h t F ; Form h t c F ; E
 loob x = x |> { T (Atom Nil) ; F (Atom (Cons T Nil)) }
 eq a b = loob (eqn a b)
 ifn c y n = c |> { Atom b (b |> { Nil y ; Cons x r (r |> { Nil (x |> { T n ; F Err }) ; Cons z q Err }) }) ; Cell h t Err ; Form h t c Err ; Err Err }
-app f x = f |> { Atom b Err ; Cell h t (nockP x h t) ; Form h t c (c x) ; Err Err }
 
 -- The interpreter fallback: a Nock 4K evaluator over the noun sum, for a
 -- formula built from data at run time (a plain Cell reaching opcode 2 or 9).
@@ -26,7 +25,7 @@ app f x = f |> { Atom b Err ; Cell h t (nockP x h t) ; Form h t c (c x) ; Err Er
 -- of an autocons, both operands of 2, 5 and 10, the pushed value of 8, the
 -- subject of 7 and 9 and the hint of a dynamic 11 are forced before use;
 -- the branches of 6 are lazy.  A Form met in formula position runs its code.
-op === O0 | O1 | O2 | O3 | O4 | O5 | O6 | O7 | O8 | O9 | O10 | O11 | Obad
+op === O0 | O1 | O2 | O3 | O4 | O5 | O6 | O7 | O8 | O9 | O10 | O11 | O12 | Obad
 
 -- opcode bits (least significant first, canonical) to a case tag
 decop b = b |> { Nil O0 ; Cons x r (x |> { T (decop1 r) ; F (decop0 r) }) }
@@ -35,7 +34,7 @@ decop0 r = r |> { Nil Obad ; Cons y r2 (y |> { T (decop10 r2) ; F (decop00 r2) }
 decop11 r = r |> { Nil O3 ; Cons z r3 (z |> { T (r3 |> { Nil O7 ; Cons w r4 Obad }) ; F (r3 |> { Nil Obad ; Cons w r4 (w |> { T (r4 |> { Nil O11 ; Cons u r5 Obad }) ; F Obad }) }) }) }
 decop01 r = r |> { Nil Obad ; Cons z r3 (z |> { T (r3 |> { Nil O5 ; Cons w r4 Obad }) ; F (r3 |> { Nil Obad ; Cons w r4 (w |> { T (r4 |> { Nil O9 ; Cons u r5 Obad }) ; F Obad }) }) }) }
 decop10 r = r |> { Nil O2 ; Cons z r3 (z |> { T (r3 |> { Nil O6 ; Cons w r4 Obad }) ; F (r3 |> { Nil Obad ; Cons w r4 (w |> { T (r4 |> { Nil O10 ; Cons u r5 Obad }) ; F Obad }) }) }) }
-decop00 r = r |> { Nil Obad ; Cons z r3 (z |> { T (r3 |> { Nil O4 ; Cons w r4 Obad }) ; F (r3 |> { Nil Obad ; Cons w r4 (w |> { T (r4 |> { Nil O8 ; Cons u r5 Obad }) ; F Obad }) }) }) }
+decop00 r = r |> { Nil Obad ; Cons z r3 (z |> { T (r3 |> { Nil O4 ; Cons w r4 (w |> { T (r4 |> { Nil O12 ; Cons u r5 Obad }) ; F Obad }) }) ; F (r3 |> { Nil Obad ; Cons w r4 (w |> { T (r4 |> { Nil O8 ; Cons u r5 Obad }) ; F Obad }) }) }) }
 
 -- a dynamic axis: reverse the bits to most-significant-first, drop the
 -- leading 1, then descend (F = head, T = tail); axis 0 and into an atom = Err
@@ -48,21 +47,28 @@ editP p v t = p |> { Nil v ; Cons x r (force (hd t) (\h. force (tl t) (\u. x |> 
 editB b v t = b |> { Nil Err ; Cons x r (editP (path (Cons x r)) v t) }
 
 -- the evaluator: nockI subject formula
-nockI s f = f |> { Atom b Err ; Cell h t (nockP s h t) ; Form h t c (c s) ; Err Err }
-nockP s h t = h |> { Atom b (nockO (decop b) s t) ; Cell a d (autocons s h t) ; Form a d c (autocons s h t) ; Err Err }
-autocons s h t = force (nockI s h) (\x. force (nockI s t) (\y. Cell x y))
+-- `ev` is the evaluator itself, passed down so that only nockI is recursive
+-- (lean-ski's front end ties self-recursion, not mutual recursion).
+nockI s f = f |> { Atom b Err ; Cell h t (nockP nockI s h t) ; Form h t c (c s) ; Err Err }
+nockP ev s h t = h |> { Atom b (nockO ev (decop b) s t) ; Cell a d (autocons ev s h t) ; Form a d c (autocons ev s h t) ; Err Err }
+autocons ev s h t = force (ev s h) (\x. force (ev s t) (\y. Cell x y))
+appI ev g x = g |> { Atom b Err ; Cell h t (nockP ev x h t) ; Form h t c (c x) ; Err Err }
 cel2 t k = t |> { Atom b Err ; Cell h u (k h u) ; Form h u c (k h u) ; Err Err }
-nockO o s t = o |> {
+nockO ev o s t = o |> {
   O0 (t |> { Atom b (slotB b s) ; Cell h u Err ; Form h u c Err ; Err Err }) ;
   O1 t ;
-  O2 (cel2 t (\b. \c. force (nockI s b) (\x. force (nockI s c) (\g. app g x)))) ;
-  O3 (cel (nockI s t)) ;
-  O4 (inc (nockI s t)) ;
-  O5 (cel2 t (\b. \c. force (nockI s b) (\x. force (nockI s c) (\y. eq x y)))) ;
-  O6 (cel2 t (\b. \yn. cel2 yn (\y. \n. ifn (nockI s b) (nockI s y) (nockI s n)))) ;
-  O7 (cel2 t (\b. \c. force (nockI s b) (\x. nockI x c))) ;
-  O8 (cel2 t (\b. \c. force (nockI s b) (\x. nockI (Cell x s) c))) ;
-  O9 (cel2 t (\ax. \c. force (nockI s c) (\core. ax |> { Atom b (app (slotB b core) core) ; Cell h u Err ; Form h u k Err ; Err Err }))) ;
-  O10 (cel2 t (\bc. \d. cel2 bc (\ax. \c. force (nockI s d) (\u. force (nockI s c) (\v. ax |> { Atom b (editB b v u) ; Cell h w Err ; Form h w k Err ; Err Err }))))) ;
-  O11 (cel2 t (\h. \body. h |> { Atom b (nockI s body) ; Cell a d (force (nockI s d) (\x. nockI s body)) ; Form a d k (force (nockI s d) (\x. nockI s body)) ; Err Err })) ;
+  O2 (cel2 t (\b. \c. force (ev s b) (\x. force (ev s c) (\g. appI ev g x)))) ;
+  O3 (cel (ev s t)) ;
+  O4 (inc (ev s t)) ;
+  O5 (cel2 t (\b. \c. force (ev s b) (\x. force (ev s c) (\y. eq x y)))) ;
+  O6 (cel2 t (\b. \yn. cel2 yn (\y. \n. ifn (ev s b) (ev s y) (ev s n)))) ;
+  O7 (cel2 t (\b. \c. force (ev s b) (\x. nockI x c))) ;
+  O8 (cel2 t (\b. \c. force (ev s b) (\x. nockI (Cell x s) c))) ;
+  O9 (cel2 t (\ax. \c. force (ev s c) (\core. ax |> { Atom b (appI ev (slotB b core) core) ; Cell h u Err ; Form h u k Err ; Err Err }))) ;
+  O10 (cel2 t (\bc. \d. cel2 bc (\ax. \c. force (ev s d) (\u. force (ev s c) (\v. ax |> { Atom b (editB b v u) ; Cell h w Err ; Form h w k Err ; Err Err }))))) ;
+  O12 (cel2 t (\ref. \pth. force (ev s ref) (\x. force (ev s pth) (\p. scry x p)))) ;
+  O11 (cel2 t (\h. \body. h |> { Atom b (ev s body) ; Cell a d (force (ev s d) (\x. nockI s body)) ; Form a d k (force (ev s d) (\x. nockI s body)) ; Err Err })) ;
   Obad Err }
+
+-- apply a formula noun: a Form runs its code, a plain cell is interpreted
+app f x = f |> { Atom b Err ; Cell h t (nockI x f) ; Form h t c (c x) ; Err Err }
