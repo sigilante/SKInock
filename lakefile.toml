@@ -18,3 +18,7 @@ name = "Nock2Ski"
 [[lean_exe]]
 name = "normcheck"
 root = "bench.NormCheck"
+
+[[lean_exe]]
+name = "nockstatement"
+root = "bench.NockStatement"

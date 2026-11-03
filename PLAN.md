@@ -54,6 +54,26 @@ Started 2026-11-03. Open question C5 of `../OPEN-QUESTIONS.md`. Companion paper:
   declarations, each equation's term is defined as the file's (so the two sides of `x_eq`
   share the kernel's work), and the kernel-heavy theorems are spread over a chain of modules
   so that each `lean` process stays within about 4 GB.
+- **M4a done** (`bench/NockStatement.lean`, `release/nock/`): the first Nock program proved on
+  lean-ski's base circuit with no Nock circuit. `lake exe nockstatement NAME FORMULA SUBJECT`
+  prints the corpus row of `compiled f s` (prefix term and head contraction count, `runF`'s,
+  which is ski-air's machine's: `--count-term` on lean-ski's `sumto_us.term` gives its
+  reference 10297); `--check` recomputes a row from the formula against a corpus on stdin, the
+  verifier's Lean half. `release/nock/produce.sh` writes the rows and runs `ski-air`;
+  `verify.sh` recomputes them, re-proves (the base path has no verify-only entry point and
+  writes no proof file: the proof is made and checked in-process) and has `aircheck` accept
+  the table. Count-up `dec` at 7: 12,004 contractions, 29,591 rows (2.465 per contraction,
+  sumto's 2.435), CPU height 2^15, memory 2^18, proved in 1.8 s, verified in 1.2 s. Hoon's
+  `++dec` at 12 and at 0 (the crash) recompute and count correctly (28,324 and 1,468
+  contractions, 2.47 and 2.46 rows each) but are refused for their heights: `encLit`
+  encodes a battery's nested formula literals once per nesting level, so the term is
+  2,154,393 cells, 2.7% over the memory table's 2^21, and ski-air loads it without sharing
+  (`heights [17, 22, 22] out of bounds`). Sharing nested code in the compiler (Python's DAG
+  of the same program is about 6,000 nodes) is the fix, and it moves the pinned terms, so it
+  is M4's. Left for M4 proper: decoded products via probes (`air_probe_decodes`), hidden
+  subjects via the composed predicate circuit on `encNoun s`, and the joining lemma that an
+  `Enc` is a weak head normal form, so `Eval.deterministic` identifies the circuit's result
+  with `embed_value`'s encoding.
 - **Remaining** (M3's other items, M4–M7): `embed_diverges` (needs fuel adequacy on both
   sides); `fragment_static` is now moot for correctness (the fallback is proved) and is a
   cost statement; the Λ front end; the statement path and the circuit.
@@ -260,7 +280,7 @@ realized across ISAs. It is §8's stretch item; the direct route is enough for t
 | M1 | nouns as the Scott sum; tagged axis pulls; `encNoun`, `decNoun`, opcode 3/4/5 terms with their specs | `pull_tagged`, `inc_spec`, `eq_spec` kernel-checked | 1–2 weeks |
 | M2 | the compiler over opcodes 0–9 on the Hoon-shaped fragment; `embed_value` and `embed_crash` | count-up `dec` and `++dec` run through `runF` to the right outcomes; theorems closed | 3–4 weeks |
 | M3 | the interpreter fallback pinned and simulated; `embed_value` strong; then `embed_diverges`, `fragment_static` | `nockI_value`, `nockI_crash`; the 63 tests interpreted; `countUp_zero_diverges` carried to SKI | 1–2 weeks |
-| M4 | `nock statement` exe; the verifier's Lean check; the three statements proved on the circuit; rows measured | `release/nock/` with `verify.sh` passing | 2 weeks |
+| M4 | `nock statement` exe; the verifier's Lean check; the three statements proved on the circuit; rows measured (M4a done: `nockstatement`, count-up `dec` proved on the base circuit, `release/nock/verify.sh` passing) | `release/nock/` with `verify.sh` passing | 2 weeks |
 | M5 | `jet_transport` for `dec` and `add`; jetted proofs; the rows table | the loop collapses; theorem closed | 2–3 weeks |
 | M6 | Zorp comparison; paper draft | numbers in the table; draft to USTJ | 2 weeks |
 | M7 (stretch) | Λ → SKIlark front end, co-derivation across ISAs | `composition` shared | open |

@@ -1,5 +1,6 @@
 import Nock2Ski.Compile
 import Ski.Fuel
+import Nock2Ski.NounText
 
 /-!
 # normcheck: the reference tests through the Lean compiler
@@ -27,49 +28,9 @@ crash anywhere in it is the `Err` marker.  This is `Ski/Open.lean`'s
 probing idiom made executable; nothing here is proved, the exe is a gate.
 -/
 
-open Nock2Ski Term
+open Nock2Ski Term Nock2Ski.NounText
 
 namespace NormCheck
-
--- ---------------------------------------------------------------------------
--- `[a b c]` notation
--- ---------------------------------------------------------------------------
-
-/-- Parse `[a b c]` notation, right-nested; digits may carry dots. -/
-partial def parseNoun (s : String) : Except String Noun :=
-  let toks := (s.replace "[" " [ " |>.replace "]" " ] ").splitOn " " |>.filter (· ≠ "")
-  let rec item : List String → Except String (Noun × List String)
-    | [] => .error "unexpected end"
-    | "[" :: rest => do
-      let rec items (ts : List String) (acc : List Noun) : Except String (List Noun × List String) :=
-        match ts with
-        | "]" :: r => .ok (acc.reverse, r)
-        | [] => .error "unclosed ["
-        | _ => do
-          let (n, r) ← item ts
-          items r (n :: acc)
-      let (xs, r) ← items rest []
-      match xs.reverse with
-      | [] | [_] => .error "a cell needs two parts"
-      | last :: before =>
-        .ok (before.foldl (fun acc x => Noun.cell x acc) last, r)
-    | "]" :: _ => .error "unexpected ]"
-    | t :: rest =>
-      match (t.replace "." "").toNat? with
-      | some n => .ok (Noun.atom n, rest)
-      | none => .error s!"not a number: {t}"
-  match item toks with
-  | .ok (n, []) => .ok n
-  | .ok (_, _) => .error "trailing input"
-  | .error e => .error e
-
-partial def showNoun : Noun → String
-  | .atom n => toString n
-  | .cell h t =>
-    let rec parts : Noun → List String
-      | .cell h t => showNoun h :: parts t
-      | n => [showNoun n]
-    "[" ++ " ".intercalate (showNoun h :: parts t) ++ "]"
 
 -- ---------------------------------------------------------------------------
 -- Head reduction of open terms, with fuel

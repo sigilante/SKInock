@@ -170,6 +170,7 @@ product is the oracle's. The interpreter fallback
   term computes exactly Nock's value and crashes exactly where Nock crashes, on all of
   Nock 4K, compiled or interpreted. `compiled f s = nockToSki f ⬝ encLit s`. Axioms as M1;
   no `sorry`.
+- `Nock2Ski/NounText.lean`: the `[a b c]` parser and printer the exes share.
 - `bench/NormCheck.lean`, `lake exe normcheck`: the 63 reference tests and the M2 programs
   (the spec's count-up `dec`, Hoon's `++dec` on a gate in the subject and on one pushed by
   `[1 …]`) through `nockToSki`, read back by probing at fresh variables, against the
@@ -180,3 +181,58 @@ product is the oracle's. The interpreter fallback
   14,116 with the read-out, copy mode); interpreted, the reference tests cost about ten
   times their compiled runs (test 0, `[[4 0 1] [0 1]]` on 42: 181 head contractions
   compiled, 2,294 interpreted).
+- `bench/NockStatement.lean`, `lake exe nockstatement` (M4a): `nockstatement NAME FORMULA
+  SUBJECT` prints the corpus row ski-air reads, `NAME COUNT PREFIXTERM`, for
+  `compiled f s`: the term in lean-ski's prefix form (a backtick for application) and its
+  head contractions to weak head normal form by lean-ski's `runF`, the count ski-air's
+  machine checks before it proves a row (`--count-term` on lean-ski's
+  `release/sumto/sumto_us.term` prints its reference 10297). `nockstatement --check NAME
+  FORMULA SUBJECT < corpus.txt` recomputes the row from the formula and compares it with
+  the named row on stdin, count and term, exit 1 on a mismatch: the verifier's Lean half,
+  which trusts no term from a file. `scripts/lean-check.sh` runs both as its M4a gate.
+
+## Proofs (`release/nock/`, M4a)
+
+The first Nock program proved on lean-ski's circuit, with no Nock circuit: the spec's
+count-up `dec` at subject 7, product 6, as the corpus row `countup_dec_7` of lean-ski's
+base circuit (`ski-air CORPUS OUTDIR`): 12,004 contractions, 29,591 machine rows, CPU
+height 2^15, memory 2^18, proved in 1.8 s and verified in 1.2 s; Hoon's `++dec` at 12
+(product 11) and at 0 (the underflow crash, `errT`, a weak head normal form, so provable
+too) recompute and count correctly but exceed the memory table's 2^21 cells by 2.7%, since
+`encLit` encodes a battery's nested formula literals once per nesting level and ski-air
+loads the term without sharing; `release/nock/RESULTS.md` has ski-air's output for all
+three, the files, and the rows-per-contraction ratios (2.46–2.47, sumto's 2.435).
+`release/nock/produce.sh` makes the release and `verify.sh` checks it, both from a clean
+checkout with lean-ski beside it.
+
+What an accepted proof of a row says, by which theorems:
+
+- **The statement is Lean's.** The verifier (`verify.sh`) never takes the term from the
+  file: `lake exe nockstatement --check` recomputes `compiled f s = nockToSki f ⬝ encLit s`
+  from the public formula and subject and compares. So the term proved is the compiler's
+  on the formula, by construction.
+- **The term evaluates to the product's encoding** (`Nock2Ski/Embed.lean`):
+  `compiled_value : NockEval s f (.val p) → ∃ ep, Enc p ep ∧ WSteps (compiled f s) ep`,
+  an instance of `embed_value`; and `compiled_crash : NockEval s f .exit → WSteps
+  (compiled f s) errT`. lean-nock's `countUp_correct` and `HoonOne.dec_correct`,
+  `dec_underflow` supply the `NockEval` hypotheses for these three programs.
+- **An accepted proof is an evaluation** (lean-ski, `Ski/Circuit/BaseSound.lean`):
+  `Circuit.export_sound : sameAirsB Rs (baseAirs t) = true → Accepted Rs ts → ∃ C Mm Pg,
+  ts = [C, Mm, Pg] ∧ Accepts (memOf Mm) t C.h (rowOf C) ∧ ∃ v, decode … = some v ∧ Eval t v`.
+  ski-air's verifier exports the AIRs it verifies with and has `lake exe circuit compare`
+  check them against `Circuit.baseAirs t` for the public term, the first hypothesis; the
+  STARK's acceptance is the second (Plonky3's soundness assumed, as in lean-ski's release).
+  `lake exe aircheck` accepts the witness table ski-air wrote, `Air.checkA`, hence
+  `Air.Accepts` and `checkB_eval`'s evaluation, independently of the STARK.
+- **Together**: an accepted proof of the row `countup_dec_7` is a proof that
+  `compiled countUp 7` has a weak head normal form `v` (`Eval t v`, `export_sound`), and
+  `compiled_value` with `countUp_correct` says the term weak-head-reduces to an encoding of
+  6. `Eval.deterministic` (lean-ski, `Ski/Basic.lean`) identifies `v` with that encoding
+  once the encoding is known to be a weak head normal form; that lemma (`Enc p ep → Whnf
+  ep`, true since encodings are abstractions) is not yet stated in Lean, and with it the
+  chain is: *an accepted proof of the row is a proof that the Nock formula evaluates on
+  the subject to the product, with the statement recomputed by Lean.* The product itself
+  is read from the proof only through `decode` of the final state, the base circuit's
+  outcome; binding the Nock product `6` as a public value is M4's probe step
+  (`air_probe_decodes`), and a hidden subject (`encNoun s`, `embed_value_encNoun`) is its
+  composed-predicate step.
