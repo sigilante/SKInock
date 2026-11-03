@@ -38,6 +38,18 @@ estimated few hundred compute rows plus memory in NockVMROM.
   counts above drop about 5.5× (`README.md`), and the loop of `++dec` collapses entirely under
   a transported `dec` jet, which is the number that would close most of the gap on loops.
 
+## Why the live run is not here
+
+Checked 2026-11-04 in `~/Code/zorp/nockchain-official`: the released prover
+(`hoon/common/nock-prover.hoon` over `hoon/common/stark/prover.hoon`) takes a
+`prover-input` whose versions `%0` and `%1` are the mining puzzle (a block header digest, a
+nonce and a proof-of-work length), not a `[subject formula]` pair; the NockVM tables of the
+paper live under `hoon/common/v2/table/prover/{compute,memory}.hoon` and are reached only
+through that puzzle. Proving the programs here natively would need a Hoon harness that feeds
+an arbitrary computation to those tables, plus `hoonc` and the `nockapp` runtime with
+`zkvm-jetpack` built from source (`make build-hoonc`). That is a separate engineering task,
+the paper's M6 proper, and it is not part of this artifact.
+
 ## Caveats
 
 The two row counts are not the same unit: Zorp counts evaluation nodes of the Nock tree, we
