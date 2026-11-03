@@ -24,8 +24,16 @@ def bits(n: int) -> str:
 
 
 class Compiler:
-    def __init__(self):
+    """Emits SKIjack source.  Literals are hash-consed into named definitions
+    (`litN := …`) and a literal formula's code into a named equation
+    (`codeN s = …`), so every distinct sub-noun and every formula body is
+    emitted once and shared in the term."""
+
+    def __init__(self, code: bool = True):
         self.k = 0
+        self.code = code          # False: a literal formula is a plain Cell, never a Form
+        self.memo: dict = {}      # noun -> name
+        self.defs: list[str] = []
 
     def fresh(self, base="s"):
         self.k += 1
@@ -33,13 +41,24 @@ class Compiler:
 
     # ---- literals
     def lit(self, n: N.Noun) -> str:
-        if isinstance(n, int):
+        if isinstance(n, int) and n < 2:
             return f"(Atom {bits(n)})"
-        h, t = self.lit(n[0]), self.lit(n[1])
-        if N.is_formula(n):
-            s = self.fresh()
-            return f"(Form {h} {t} (\\{s}. {self.formula(n, s)}))"
-        return f"(Cell {h} {t})"
+        if n in self.memo:
+            return self.memo[n]
+        name = self.fresh("lit")
+        self.memo[n] = name
+        if isinstance(n, int):
+            self.defs.append(f"{name} := Atom {bits(n)}")
+        else:
+            h, t = self.lit(n[0]), self.lit(n[1])
+            if self.code and N.is_formula(n):
+                code = self.fresh("code")
+                s = self.fresh()
+                self.defs.append(f"{code} {s} = {self.formula(n, s)}")
+                self.defs.append(f"{name} := Form {h} {t} {code}")
+            else:
+                self.defs.append(f"{name} := Cell {h} {t}")
+        return name
 
     # ---- projections of a static axis, lazily (consumers force)
     def axis(self, axis: int, s: str) -> str:
@@ -62,13 +81,16 @@ class Compiler:
             if i == len(path):
                 return v
             h, tl_ = self.fresh("h"), self.fresh("t")
+            # the rebuilt subtree is forced before the Cell is built, so a
+            # crash under the path cannot hide in a field of the product
+            i_ = self.fresh("i")
             if path[i] == "0":
                 inner = go(i + 1, h)
                 return (f"(force (hd {cur}) (\\{h}. (force (tl {cur}) (\\{tl_}. "
-                        f"(Cell {inner} {tl_})))))")
+                        f"(force {inner} (\\{i_}. (Cell {i_} {tl_})))))))")
             inner = go(i + 1, tl_)
             return (f"(force (hd {cur}) (\\{h}. (force (tl {cur}) (\\{tl_}. "
-                    f"(Cell {h} {inner})))))")
+                    f"(force {inner} (\\{i_}. (Cell {h} {i_})))))))")
         return go(0, t)
 
     # ---- formulas
@@ -124,11 +146,14 @@ class Compiler:
         return "Err"
 
 
-def program(formula: N.Noun, subject: N.Noun | None = None) -> str:
-    """The SKIjack source: the library, `run s = …`, and `main := run subj`."""
-    c = Compiler()
-    src = [LIB, f"run s = {c.formula(formula, 's')}"]
+def program(formula: N.Noun, subject: N.Noun | None = None, code: bool = True) -> str:
+    """The SKIjack source: the library, `run s = …`, and `main := run subj`.
+    With `code=False` literal cells are plain `Cell`s (no `Form`), so a
+    formula reaching opcode 2 or 9 from data is interpreted by `nockI`."""
+    c = Compiler(code)
+    run = f"run s = {c.formula(formula, 's')}"
+    tail = []
     if subject is not None:
-        src.append(f"subj := {c.lit(subject)}")
-        src.append("main := run subj")
-    return "\n".join(src) + "\n"
+        tail.append(f"subj := {c.lit(subject)}")
+        tail.append("main := run subj")
+    return "\n".join([LIB, *c.defs, run, *tail]) + "\n"

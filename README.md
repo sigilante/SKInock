@@ -45,8 +45,13 @@ coincide with Nock's.
 **Products** are read behaviourally (`run.py`): the term is applied to one marker atom per
 constructor and reduced to weak head normal form, recursively; on Avon (`avon.py`) a show
 term over free atoms rebuilds the noun as a first-order term and the normal form is parsed.
-A dynamic formula built from data (a plain `Cell` reaching opcode 2 or 9) is a crash for
-now; the interpreter fallback of the plan is not built.
+A dynamic formula built from data (a plain `Cell` reaching opcode 2 or 9) goes to the
+interpreter fallback `nockI s f` in `nock.ski`: a Nock 4K evaluator over the noun sum,
+opcodes 0–11 and autocons, with the same strictness and order as the compiled code,
+dispatching on the opcode's bits and walking dynamic axes from the most significant bit.
+A `Form` met in formula position runs its code, so `Form` keeps its fast path.
+`Program(f, s, code=False)` encodes every literal as a plain `Cell`, which forces the
+interpreter and is how the tests re-run the reference suite through it.
 
 `nock.py` is the reference: a parser and printer for `[a b c]` notation, `is_formula`, and
 an evaluator in Vere's order that counts steps, the oracle `check.py` and `bench.py`

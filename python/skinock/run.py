@@ -34,8 +34,8 @@ class Result:
 class Program:
     """A compiled Nock formula, reusable over subjects."""
 
-    def __init__(self, formula: N.Noun, subject: N.Noun):
-        self.src = program(formula, subject)
+    def __init__(self, formula: N.Noun, subject: N.Noun, code: bool = True):
+        self.src = program(formula, subject, code)
         self.exp = skijack.compile(self.src, check=False, generate_forms=False)
         self.env = self.exp.env
         self.main = self.exp.terms["main"]
@@ -90,5 +90,5 @@ class Program:
         return Result(v, steps, self.atoms)
 
 
-def run(formula: N.Noun, subject: N.Noun, max_steps: int = 5_000_000) -> Result:
-    return Program(formula, subject).run(max_steps)
+def run(formula: N.Noun, subject: N.Noun, max_steps: int = 5_000_000, code: bool = True) -> Result:
+    return Program(formula, subject, code).run(max_steps)
