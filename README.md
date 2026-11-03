@@ -58,6 +58,25 @@ interpreter and is how the tests re-run the reference suite through it.
 an evaluator in Vere's order that counts steps, the oracle `check.py` and `bench.py`
 compare against.
 
+## Measurements (2026-11-03)
+
+urbit/benchmark's Hoon-compiled programs at scaled subjects, products checked against the
+Python evaluator. Contractions are aviary's (copy mode, arguments shared but reductions
+not); Avon's share mode (Turner graph reduction) is about two thirds of that.
+
+| program | subject | product | Nock steps | contractions | per step | DAG nodes |
+|---|---|---|--:|--:|--:|--:|
+| dec | 5 / 20 / 100 | 4 / 19 / 99 | 72 / 222 / 1,022 | 14,116 / 52,600 / 278,710 | 196 / 237 / 273 | 6,050 |
+| add | [3 4] / [20 30] | 7 / 50 | 167 / 2,683 | 29,147 / 604,817 | 175 / 225 | 8,991 |
+| factorial | 3 / 5 | 6 / 120 | 829 / 34,189 | 155,170 / 7,857,983 | 187 / 230 | 19,779 |
+| fibonacci | 5 / 8 | 5 / 21 | 1,127 / 7,955 | 203,302 / 1,524,933 | 180 / 192 | 22,635 |
+| ackermann | [1 2] / [2 2] | 4 / 7 | 215 / 1,191 | 32,693 / 191,907 | 152 / 161 | 16,113 |
+| bigslot | 0 | 0 | 53,233 | 14,037,181 | 264 | |
+
+Avon, share mode: dec 100 in 170,905, factorial 5 in 5,092,073, fibonacci 8 in 1,017,378,
+bigslot in 8,742,789 contractions, all with the right product. The interpreter fallback
+(`nockI`, formulas as data) costs about 8× the compiled code on the same programs.
+
 ## The Lean package
 
 `lakefile.toml` requires lean-ski and lean-nock by path; `Nock2Ski/Basic.lean` imports
