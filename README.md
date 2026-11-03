@@ -231,6 +231,19 @@ jets licensed by theorems. A live run of the same programs on both provers is fu
   for the same reason; the rendering is checked against the originals at every use, since
   ski-air pipes the statement's bytes to lean-ski's `lake exe composed statement -` before
   it proves or verifies.
+- `Nock2Ski/Head.lean` (M4e): counted head reduction `StepsN` and the head length `HLen`
+  (lean-ski's `Ski/Converse.lean` lemmas `StepsN.wtail`, `StepsN.app_left`, copied), the
+  symbolic head reducer `hred` over open terms with `hred_stepsN`, the checks `pendCheck`,
+  `contCheck` with their soundness, and the primitives' head reductions
+  (`hlen_force_pend`, `hlen_force_enc`, `hlen_cel_pend`, `hlen_inc_pend`, `hlen_ifn_*`,
+  `hlen_eqn_pend`) by `decide +kernel`.
+- `Nock2Ski/Pending.lean` (M4e): `Pending n s f`, a `NockEval` derivation cut off after `n`
+  costed steps, and `pending_of_noOut`: a run with no outcome is pending at every `n`.
+  Over `Nock.Eval` alone (no `Nock.Fuel`).
+- `Nock2Ski/Converse.lean` (M4e): `pending_both`, `embed_terminates`, `nockI_terminates`,
+  `embed_outcome`, `embed_complete`, `embed_diverges`, `compiled_terminates`,
+  `shared_terminates`, `nock_of_eqn_K`, `nock_pred_sound_nock`, `nock_predS_sound_nock`,
+  `nock_pred2_sound_nock` (below, "Proofs").
 - `bench/NockPred.lean`, `lake exe nockpred` (M4c): `nockpred [--log R M] NAME FORMULA
   PRODUCT K` prints the predicate statement `predicate (nockPredV f K) (encNoun p) K` over
   a one-cell region at CPU and memory heights `2^R` and `2^M`, in the format `ski-air
@@ -255,7 +268,7 @@ jets licensed by theorems. A live run of the same programs on both provers is fu
   check to run before ski-air (its tables hold 2^21 cells). `scripts/lean-check.sh` runs
   the first two as its M4a/M4b gate.
 
-## Proofs (`release/nock/`, M4a, M4b, M4c, M4d)
+## Proofs (`release/nock/`, M4a, M4b, M4c, M4d, M4e)
 
 Three Nock programs proved on lean-ski's circuit, with no Nock circuit, as corpus rows of
 lean-ski's base circuit (`ski-air CORPUS OUTDIR`): the spec's count-up `dec` at subject 7,
@@ -309,8 +322,12 @@ What an accepted proof of a row says, by which theorems:
   the subject to the product, with the statement recomputed by Lean*: the proof's final
   state `v` (the `decode` of `export_sound`) weakly reduces to an encoding of Nock's
   product, both weak head normal forms, so `v` is that encoding up to reduction inside its
-  fields (`Whnf.wstep`), `Cell`-, `Atom`- or `Err`-headed as the product is. Binding the
-  product as a public value, read from `v` by probing, is M4's probe step
+  fields (`Whnf.wstep`), `Cell`-, `Atom`- or `Err`-headed as the product is. Conversely
+  (M4e, `Nock2Ski/Converse.lean`), an accepted proof of a row shows Nock has an outcome
+  at all: `shared_terminates : Eval (share (compiled f s)) v → ∃ o, NockEval s f o`, and
+  `embed_outcome` reads it off the final state, an encoding of a Nock value or `Err` for a
+  Nock crash, so the row's statement needs no `NockEval` hypothesis from lean-nock. Binding
+  the product as a public value, read from `v` by probing, is M4's probe step
   (`air_probe_decodes`); the hidden subject is M4c's, below.
 
 ### Hidden subjects (`release/nock/hidden/`, M4c)
@@ -359,9 +376,11 @@ product's encoding is `encNoun p`'s. What is proved (`Nock2Ski/Pred.lean`):
   `embed_value_encNoun` and Church–Rosser (`wsteps_K_iff`), any Nock value on `n` is `p`,
   since `eqn` answers `F` on unequal encodings and `F` never reaches `K` (`F_not_K`); by
   `embed_crash_encNoun` and `eqn_err`, Nock does not crash on `n`.
-- **Not proved**: that Nock terminates on `n`. The converse simulation (a SKI value implies
-  a Nock value) needs fuel adequacy on both sides (`embed_diverges`, the open M3 item), so
-  the Nock reading of an accepted proof is "`*[n f]` is `p` if it is anything, and it is
+- **Termination** (M4e, `Nock2Ski/Converse.lean`, below): Nock terminates on `n`, so the
+  Nock reading of an accepted proof is `*[n f] = p` outright: `nock_pred_sound_nock : 0 < k
+  → bs.length = k → Eval (nockPredV f k ⬝ encNoun p ⬝ boolsT bs) K → ∃ n, n < 2^k ∧
+  NockEval (.atom n) f (.val p)`. Until M4e the converse simulation (a SKI value implies a
+  Nock value) was open and the reading was "`*[n f]` is `p` if it is anything, and it is
   not a crash".
 - **The join is read across two Lean environments.** `Ski.Predicate` and
   `Ski.Circuit.CompPred` cannot be imported beside lean-nock: `Ski.Composed` reaches
@@ -420,8 +439,66 @@ count everywhere (`8` means `?8`) and the M4c files are unchanged. What is prove
   .exit`, and `nock_pred2_sound : 0 < k → bs.length = 2k → Eval (nockPred2V f k ⬝ encNoun
   p ⬝ boolsT bs) K → ∃ a b, a < 2^k ∧ b < 2^k ∧ …` the same of `[a b]`. The last two
   conjuncts are M4c's `nock_pred_sound_val` and `nock_pred_sound_crash`, now stated over
-  any subject. The hypothesis, the join to lean-ski's `Circuit.predExport_sound`, and what
-  is not proved (Nock's termination on the hidden subject) are as in M4c.
+  any subject. The hypothesis and the join to lean-ski's `Circuit.predExport_sound` are as
+  in M4c; Nock's termination on the hidden subject is M4e's `nock_predS_sound_nock : sk.ok
+  → bs.length = sk.width → Eval (nockPredS f sk ⬝ encNoun p ⬝ boolsT bs) K → NockEval
+  (sk.fill bs) f (.val p)` and `nock_pred2_sound_nock : … → ∃ a b, a < 2^k ∧ b < 2^k ∧
+  NockEval [a b] f (.val p)`.
 - **The witness side**: `Skel.bitsOf sk s` gives the bits of a subject under the skeleton
   when it fits (`nockpred --witness`); it is not proved inverse to `fill`, since the
   theorems are stated on `fill` of the bits the circuit holds.
+
+### The converse simulation (`Nock2Ski/Converse.lean`, M4e)
+
+`embed_value` and `embed_crash` carry a `NockEval` derivation to the compiled term; the
+hidden-subject statements above needed the other direction, that a compiled term which
+reaches a weak head normal form came from a Nock run with an outcome, and until M4e stated
+the Nock claim conditionally ("`*[n f]` is `p` if it is anything"). M4e proves it:
+
+- **`embed_terminates : Enc s es → Eval (nockToSki f ⬝ es) v → ∃ o, NockEval s f o`**, and
+  `nockI_terminates` for the interpreter on encodings of the subject and the formula.
+  Then `embed_outcome : Enc s es → Eval (nockToSki f ⬝ es) v → (∃ p ep, NockEval s f (.val
+  p) ∧ Enc p ep ∧ WSteps v ep) ∨ (NockEval s f .exit ∧ WSteps v errT)`, `embed_complete`
+  (a weak head normal form that does not reduce to `Err` is an encoding of Nock's value),
+  and PLAN §2.4's `embed_diverges : Enc s es → (Diverges (nockToSki f ⬝ es) ↔ ∀ o, ¬
+  NockEval s f o)`, lean-ski's `Diverges`. The three-valued contract is now exact in both
+  directions, on all of Nock 4K.
+- **The argument** is by contraposition through a measure on each side, not through the
+  fuel interpreters (lean-nock's `Nock.Fuel` cannot be imported beside `Ski.Basic`, and
+  nothing of it is needed: `Nock.Eval` suffices). On the Nock side, `Pending n s f`
+  (`Nock2Ski/Pending.lean`) is a derivation cut off after `n` costed steps: an inductive
+  over `NockEval` whose constructors mirror `NockEval`'s premises, one operand pending and
+  the earlier operands (in lean-nock's order) with values; every constructor costs one
+  except the static hint, which the compiler erases. `pending_of_noOut : (∀ o, ¬ NockEval
+  s f o) → Pending n s f` for every `n`, classically: at a node with no outcome some
+  operand has none. On the SKI side, `HLen t N` (`Nock2Ski/Head.lean`) is "`t` reaches a
+  weak head normal form in exactly `N` head contractions", with lean-ski's three facts
+  (`Ski/Converse.lean`, copied since that module reaches `Ski.Words`): a head reduction of
+  `j` steps leaves `N - j` (`hlen_steps`), a weak reduction anywhere leaves at most `N`
+  (`hlen_wsteps`, from `par_step_le`), and `t ⬝ a` normalizing makes `t` normalize in no
+  more steps (`hlen_app`).
+- **`pending_both : Pending n s f → Enc s es → HLen (nockToSki f ⬝ es) N → n ≤ N`**, and
+  the same of `nockIFix ⬝ es ⬝ ef` for `Enc f ef`, one induction for both halves as
+  `embed_both`. Each case follows `embed_both`'s weak reduction to the point where the
+  pending operand sits as the argument of `force` (`cel`, `inc`, `ifn`), and there the
+  operand's head length is strictly below the node's, because `force X k` head-reduces to
+  `X` applied to its four continuations in at least one contraction. Those head
+  reductions are computed symbolically and kernel-checked: `hred` is lean-ski's `ostep?`
+  iterated at the head of an open term with a count (`hred_stepsN`, by `OStep.close`), and
+  `pendCheck`/`contCheck` are the decidable shape checks `decide +kernel` runs on
+  `forceT.toO ⬝ₒ .var 0 ⬝ₒ .var 1` and its siblings (headed by the operand's variable with
+  four arguments; or by the continuation's variable with one argument that weakly
+  normalizes to the operand's encoding, for `force` on an `Atom`, `Cell` or `Form`),
+  `hlen_force_pend`, `hlen_force_enc`, `hlen_cel_pend`, `hlen_inc_pend`, `hlen_ifn_pend`,
+  `hlen_ifn_zero`, `hlen_ifn_one`, `hlen_eqn_pend`. When the pending operand comes after
+  values, `embed_both` supplies the values' encodings and `hlen_force_enc` the strict
+  step; the interpreter's dispatch needs only the weak-reduction lemmas it already had
+  (`nockO_O2`, `nockOK5_beta`, …), since its strict step is the same `force`. So a term
+  normalizing in `N` steps leaves Nock not pending at `N + 1`, hence with an outcome.
+- **The corollaries**: `nock_of_eqn_K : eqn (nockToSki f ⬝ encNoun s) (encNoun p) ↠ K →
+  NockEval s f (.val p)` (`eqn` forces its first argument, `hlen_eqn_pend`, so the
+  compiled term normalizes and `embed_terminates` gives the outcome, which
+  `nock_pred_sound_crash` and `nock_pred_sound_val` identify), and from it
+  `nock_pred_sound_nock`, `nock_predS_sound_nock`, `nock_pred2_sound_nock` above, and
+  `compiled_terminates`, `shared_terminates` for the base-circuit rows. Axioms:
+  `propext`, `Classical.choice`, `Quot.sound`, the contraposition being classical.

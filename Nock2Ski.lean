@@ -17,3 +17,6 @@ import Nock2Ski.Share
 import Nock2Ski.Pred
 import Nock2Ski.PredSkel
 import Nock2Ski.PredText
+import Nock2Ski.Head
+import Nock2Ski.Pending
+import Nock2Ski.Converse

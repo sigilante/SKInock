@@ -35,8 +35,9 @@ bits shows the atoms (below `2^w` each) on whose cell the compiled formula
 is `eqn`-equal to `p`'s encoding, hence any Nock value on that subject is
 `p` and Nock does not crash on it (`nock_pred_sound_val`,
 `nock_pred_sound_crash`, over any subject).  As in M4c, the join to
-lean-ski's `Circuit.predExport_sound` is read across the two environments,
-and Nock's termination on the hidden subject is not proved.
+lean-ski's `Circuit.predExport_sound` is read across the two environments;
+Nock's termination on the hidden subject is M4e's (`Nock2Ski/Converse.lean`,
+`nock_predS_sound_nock`, `nock_pred2_sound_nock`).
 -/
 
 namespace Nock2Ski

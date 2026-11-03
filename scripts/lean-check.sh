@@ -4,7 +4,8 @@
 # gates), and print the axiom footprint of its theorems.
 #     ./scripts/lean-check.sh
 # Expected: `m0_join` uses no axioms; the specs and the simulation use at
-# most `propext`, `Classical.choice` and `Quot.sound` (from `simp`/`omega`);
+# most `propext`, `Classical.choice` and `Quot.sound` (from `simp`/`omega`;
+# M4e's converse is classical by contraposition, `Classical.choice` proper);
 # the pins (`decide +kernel`) use `propext`, through `parse_pin`'s derived
 # `DecidableEq` of the parsed declarations.  The build runs the
 # kernel-heavy modules one at a time; each stays within about 4 GB.
@@ -133,5 +134,25 @@ import Nock2Ski
 #print axioms Nock2Ski.nock_pred2_complete
 #print axioms Nock2Ski.nock_predS_sound
 #print axioms Nock2Ski.nock_pred2_sound
+-- M4e: the converse simulation, the hidden-subject statements as Nock claims
+#print axioms Nock2Ski.hred_stepsN
+#print axioms Nock2Ski.pendCheck_sound
+#print axioms Nock2Ski.contCheck_sound
+#print axioms Nock2Ski.hlen_force_pend
+#print axioms Nock2Ski.hlen_force_enc
+#print axioms Nock2Ski.hlen_eqn_pend
+#print axioms Nock2Ski.pending_of_noOut
+#print axioms Nock2Ski.pending_both
+#print axioms Nock2Ski.embed_terminates
+#print axioms Nock2Ski.nockI_terminates
+#print axioms Nock2Ski.embed_outcome
+#print axioms Nock2Ski.embed_complete
+#print axioms Nock2Ski.embed_diverges
+#print axioms Nock2Ski.compiled_terminates
+#print axioms Nock2Ski.shared_terminates
+#print axioms Nock2Ski.nock_of_eqn_K
+#print axioms Nock2Ski.nock_pred_sound_nock
+#print axioms Nock2Ski.nock_predS_sound_nock
+#print axioms Nock2Ski.nock_pred2_sound_nock
 LEAN
 lake env lean "$tmp/Axioms.lean"

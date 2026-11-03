@@ -39,13 +39,10 @@ about its term.  Carried to Nock it says: if Nock evaluates `f` on `n` to
 any value `q`, then `q = p` (`nock_pred_sound_val`: `embed_value_encNoun`
 and Church–Rosser, since `eqn` answers `F` on unequal encodings and `F`
 never reaches `K`), and Nock does not crash on `n` (`nock_pred_sound_crash`:
-`eqn` answers `F` on `Err`).  What is **not** proved is that Nock
-terminates on `n`: the converse simulation (SKI value ⇒ Nock value) needs
-fuel adequacy on both sides (`embed_diverges`, PLAN.md M3's open item), so
-an accepted proof leaves open that Nock diverges on the hidden atom while
-the SKI term, which simulates it, found a value anyway — which the
-simulation theorems do not exclude only because they are stated in one
-direction.
+`eqn` answers `F` on `Err`).  That Nock terminates on `n` is the converse
+simulation (SKI value ⇒ Nock value), `embed_terminates` of
+`Nock2Ski/Converse.lean` (M4e); with it, `nock_pred_sound_nock` there
+states the accepted proof as the Nock claim `NockEval (.atom n) f (.val p)`.
 
 **The join to the circuit is by hand.**  lean-ski's `Ski.Predicate` and
 `Ski.Circuit.CompPred` cannot be imported beside lean-nock: `Ski.Composed`

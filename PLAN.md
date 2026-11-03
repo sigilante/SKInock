@@ -103,7 +103,7 @@ Started 2026-11-03. Open question C5 of `../OPEN-QUESTIONS.md`. Companion paper:
   `nock_pred_complete` (from `embed_value_encNoun`, `eqn_enc`); `nock_pred_sound`: an
   accepted proof shows bits of value `n < 2^k` with `eqn (nockToSki f ⬝ encNoun (.atom n))
   (encNoun p) ↠ K`, hence any Nock value on `n` is `p` and Nock does not crash on `n`
-  (`eqn_err`); Nock's termination on `n` is the converse simulation, not proved. `lake exe
+  (`eqn_err`); Nock's termination on `n` is the converse simulation, M4e's. `lake exe
   nockpred` writes the statement in `ComposedText.publicTextC`'s format and the witness,
   `--check` is the verifier's Lean half; `ski-air composed-prove`/`composed-verify` prove and
   check. Count-up `dec` at hidden 7 → 6: 42,221 rows, CPU 2^16, memory 2^17, 5.3 s, 762 KB
@@ -133,9 +133,32 @@ Started 2026-11-03. Open question C5 of `../OPEN-QUESTIONS.md`. Companion paper:
   (`ComposedText.logOK`, though ski-air's `MAX_LOG_HEIGHT` is 21); `[8 30]` proved at 2^19
   and 2^19 (342,149 rows, 27.4 s) but peaked at 5.1 GB and is not released. Left for M4:
   the probe step for a decoded public product.
-- **Remaining** (M3's other items, M4–M7): `embed_diverges` (needs fuel adequacy on both
-  sides); `fragment_static` is now moot for correctness (the fallback is proved) and is a
-  cost statement; the Λ front end; the statement path and the circuit.
+- **M4e done** (`Nock2Ski/Head.lean`, `Pending.lean`, `Converse.lean`, 2026-11-04): the
+  converse simulation, so the hidden-subject statements are Nock claims. `embed_terminates
+  : Enc s es → Eval (nockToSki f ⬝ es) v → ∃ o, NockEval s f o`, `nockI_terminates`,
+  `embed_outcome` (the final state is an encoding of Nock's value or `Err` for its crash,
+  and Nock does one or the other), `embed_complete`, and §2.4's `embed_diverges : Enc s es
+  → (Diverges (nockToSki f ⬝ es) ↔ ∀ o, ¬ NockEval s f o)` with lean-ski's `Diverges`.
+  Not by fuel adequacy on both sides as §2.4 planned (lean-nock's `Nock.Fuel` cannot be
+  imported beside `Ski.Basic`, and `Nock.Eval` suffices), but by contraposition through a
+  measure on each side: `Pending n s f`, a `NockEval` derivation cut off after `n` costed
+  steps (the static hint costs nothing, as the compiler erases it), with `pending_of_noOut`
+  (no outcome → pending at every `n`, classical); and `HLen t N`, the head length to a weak
+  head normal form, with lean-ski's `StepsN.wtail` (weak reduction never lengthens the
+  run, `par_step_le`) and `StepsN.app_left` copied from `Ski/Converse.lean` (which reaches
+  `Ski.Words`). `pending_both : Pending n s f → Enc s es → HLen (nockToSki f ⬝ es) N → n ≤
+  N` and the same of the interpreter, one induction as `embed_both`; the strict step at
+  every node is `force` (`cel`, `inc`, `ifn`) on the pending operand, whose head reduction
+  to the operand applied to its continuations is computed symbolically (`hred`, lean-ski's
+  `ostep?` with a count) and kernel-checked (`pendCheck`, `contCheck`), so the interpreter
+  half needs only its existing weak-reduction lemmas. Corollaries: `nock_of_eqn_K`,
+  `nock_pred_sound_nock : 0 < k → bs.length = k → Eval (nockPredV f k ⬝ encNoun p ⬝ boolsT
+  bs) K → ∃ n, n < 2^k ∧ NockEval (.atom n) f (.val p)`, `nock_predS_sound_nock`,
+  `nock_pred2_sound_nock`, `compiled_terminates`, `shared_terminates`. Axioms `propext`,
+  `Classical.choice`, `Quot.sound`. The three modules build in seconds; nothing heavy.
+- **Remaining** (M3's other items, M4–M7): `fragment_static` is moot for correctness (the
+  fallback is proved) and is a cost statement; the Λ front end; the statement path and the
+  circuit.
 - **M6, analytic**: `release/nock/COMPARISON.md` sets skinock's measured rows against Zorp's
   NockVMROM row accounting (no per-program numbers in their paper; Nockchain's prover is not a
   stand-alone CLI): about 60–100× the trace area per Nock step before jets. The live run
@@ -251,7 +274,8 @@ USTJ 3.2's "no readback" limitation from the other side.
   only up to reduction).
 - `embed_crash`: `NockEval s f .crash` implies reduction to the `Err` outcome.
 - `embed_diverges`: `NockEval s f .diverge` (no outcome) iff the SKI term has no weak head
-  normal form, by the fuel adequacy theorem on each side.
+  normal form. (M4e: proved by contraposition through a pending-run relation and the head
+  length, not through the fuel interpreters; `Nock2Ski/Converse.lean`.)
 - `fragment_static`: on the Hoon-shaped fragment no `nockI` call is emitted, and the
   compiled term's size is linear in the formula's.
 - Determinism and order: lean-nock discharged evaluation order against Vere; the embedding
@@ -347,7 +371,7 @@ realized across ISAs. It is §8's stretch item; the direct route is enough for t
 | M1 | nouns as the Scott sum; tagged axis pulls; `encNoun`, `decNoun`, opcode 3/4/5 terms with their specs | `pull_tagged`, `inc_spec`, `eq_spec` kernel-checked | 1–2 weeks |
 | M2 | the compiler over opcodes 0–9 on the Hoon-shaped fragment; `embed_value` and `embed_crash` | count-up `dec` and `++dec` run through `runF` to the right outcomes; theorems closed | 3–4 weeks |
 | M3 | the interpreter fallback pinned and simulated; `embed_value` strong; then `embed_diverges`, `fragment_static` | `nockI_value`, `nockI_crash`; the 63 tests interpreted; `countUp_zero_diverges` carried to SKI | 1–2 weeks |
-| M4 | `nock statement` exe; the verifier's Lean check; the three statements proved on the circuit; rows measured (M4a done: `nockstatement`, count-up `dec` proved on the base circuit; M4b: sharing, Hoon's `++dec`; M4c: hidden subjects on the composed predicate circuit, `nockpred`; M4d: cell-shaped hidden subjects, `add` over two hidden atoms; left: the probe step for a decoded public product) | `release/nock/` with `verify.sh` passing | 2 weeks |
+| M4 | `nock statement` exe; the verifier's Lean check; the three statements proved on the circuit; rows measured (M4a done: `nockstatement`, count-up `dec` proved on the base circuit; M4b: sharing, Hoon's `++dec`; M4c: hidden subjects on the composed predicate circuit, `nockpred`; M4d: cell-shaped hidden subjects, `add` over two hidden atoms; M4e: the converse simulation, `embed_terminates`, the hidden-subject statements as Nock claims; left: the probe step for a decoded public product) | `release/nock/` with `verify.sh` passing | 2 weeks |
 | M5 | `jet_transport` for `dec` and `add`; jetted proofs; the rows table | the loop collapses; theorem closed | 2–3 weeks |
 | M6 | Zorp comparison; paper draft | numbers in the table; draft to USTJ | 2 weeks |
 | M7 (stretch) | Λ → SKIlark front end, co-derivation across ISAs | `composition` shared | open |
@@ -378,7 +402,8 @@ skinock/
     Noun.lean          the Scott sum, encNoun, tagged pulls (M1)
     Ops.lean           opcodes 3, 4, 5 as terms with specs (M1)
     Compile.lean       nockToSki, the fragment analysis (M2)
-    Embed.lean         embed_value, embed_crash, embed_diverges (M2–M3)
+    Embed.lean         embed_value, embed_crash (M2–M3)
+    Converse.lean      embed_terminates, embed_diverges (M4e)
     Jet.lean           jet_transport (M5)
     Statement.lean     the nock statement path (M4)
   bench/Nock.lean      lake exe nock
