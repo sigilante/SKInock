@@ -142,14 +142,16 @@ What an accepted proof says (`Nock2Ski/Pred.lean`, and `README.md`,
 if Nock evaluates `f` on `n` to any value, that value is `p`
 (`nock_pred_sound_val`), and Nock does not crash on `n`
 (`nock_pred_sound_crash`).  The converse direction, that Nock terminates on
-`n` at all, is the simulation's missing half (`embed_diverges`).  The
+`n` at all, was then open; it is now proved (`embed_diverges`, M4e), and
+`nock_pred_sound_nock` states the Nock claim.  The
 statement is complete: `nock_pred_complete` gives the acceptance from
 `NockEval (.atom n) f (.val p)` and `n < 2^k`; lean-nock's `countUp_correct
 6` is the hypothesis for the first statement, and `HoonOne.dec_correct 11
 ctx` with the formula's opcode 8, 10 and 9 steps around the battery for
 the second (not composed in Lean at release time, since `Nock.Fuel`
 clashed with `Ski.Basic` as below).  The join to lean-ski's
-`Circuit.predExport_sound` was read across the two environments:
+`Circuit.predExport_sound` was at release time read across two environments (since
+lean-nock's `namespace Nock` it is the theorem `pred_proof_nock`):
 `Ski.Predicate` could not be imported beside lean-nock (both defined a
 root-level `Outcome`; `Ski/Words.lean:157`, `Nock/Eval.lean:62`).  Since
 lean-nock's `namespace Nock` both are theorems: `Nock2Ski/Circuit.lean`'s

@@ -122,7 +122,9 @@ accounting (one compute row per Nock node, two tables, 395-wide over Goldilocks)
 measured here (about 2.45 rows per contraction, 150–270 contractions per Nock step): two to three
 orders of magnitude more rows per Nock step in narrower tables, roughly 60–100× the trace area
 before jets, bought with a three-rule circuit audited once, semantics outside the circuit, and
-jets licensed by theorems. A live run of the same programs on both provers is future work.
+jets licensed by theorems. The live run on count-up dec is in `release/nock/ZORP-RUN.md`:
+about 280× fewer raw compute rows natively, on a released prover whose scope is the mining
+puzzle (opcode 9 and the general memory table are Zorp's pending work).
 
 ## The Lean package
 

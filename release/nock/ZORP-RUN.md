@@ -28,8 +28,8 @@ release, taken for the row comparison, not findings to report.
 | peak RSS, prove | 946 MB (`/usr/bin/time -l`) | 1.32 GB for the whole five-row run |
 | verify | rejected: the released memory table covers only computations over a fixed subject (below); the puzzle control verifies | 1.15 s, verified |
 
-The native prover spends about 230× fewer compute rows than skinock on this
-program (106 against 29,591) and about 7,500× fewer memory rows (35 against
+The native prover spends about 280× fewer compute rows than skinock on this
+program (106 raw against 29,591; about 230× against its padded 128) and about 7,500× fewer memory rows (35 against
 262,144 padded, though skinock's memory table is padded to the loaded term,
 139,919 cells, so about 4,000× on raw cells). This is the measured form of
 `COMPARISON.md`'s "two to three orders of magnitude": the rows there were

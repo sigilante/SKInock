@@ -53,7 +53,7 @@ compute rows (one per evaluation node; 105 nodes once opcode 9, which the releas
 interpreter does not implement, is desugared by the spec's macro) and 35 memory rows,
 padded to 128 and 64, a 74,655-byte proof in about 1.9 s at 946 MB, against 29,591 and
 262,144 rows here. That is the measured form of the two-to-three orders of magnitude
-estimated above: 230× on compute rows. Two caveats from the run: the native proof is at 50
+estimated above: about 280× on raw compute rows (230× against the native table padded to 128). Two caveats from the run: the native proof is at 50
 bits of security (`security-level=_50`) against 100 here, and it does not verify, because
 the released memory table only records fetches against the initial subject (every loop
 changes the subject); the puzzle itself, pushed through the same harness, verifies. That is
