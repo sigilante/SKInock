@@ -97,5 +97,114 @@ must match the tree that the graph denotes. `hoonDecFires_pins` pins every case 
 evaluation: both cells `Form`s, an atom core with non-canonical bits, `[B atom]` under a
 `Form`, and the declines.
 
-Measurement (the Hoon `++dec` benchmark, fired against unfired on Avon) is pending zori's
-jet for this term.
+Measurement of the term applied directly to a core is in the next section.
+
+## In whole programs (2026-11-04)
+
+Avon master 7dc994b runs `jetT hoonDecBodyF` natively (kind `hoon-dec` in `--pins`). It
+fires when the term is applied directly to a core. It has never fired inside a whole
+compiled program, for three separate reasons.
+
+**1. A program does not contain the licensed term.** `jetT f = S (K toCellT) (nockToSki f)`
+exists only as a pinning device. A compiled program contains the **bare arm**
+`nockToSki hoonDecBodyF`. It appears as the code field of the body's `Form` (`encLit` of the
+battery) and inside the compiled hint `force (H s) (K (C s))`. The arm's outputs on the fire
+shapes, `encNoun (atom n)` and `errT`, contain no `Form`, so `toCell` is the identity on them
+and the same family holds for the bare arm, with the same fire check
+(`Nock2Ski/HoonDecFree.lean`):
+
+    hoon_dec_bare_enc          : Enc s es → HoonDecDom s → nockToSki hoonDecBodyF ⬝ es ↠ encOut (hoonDecC s)
+    hoon_dec_bare_cl           : CellLike s B X → CellLike X ⟨n+1⟩ C → nockToSki hoonDecBodyF ⬝ s ↠ ⟨n⟩
+    hoon_dec_bare_cl_zero      : CellLike s B X → CellLike X ⟨0⟩ C   → nockToSki hoonDecBodyF ⬝ s ↠ Err
+    hoon_dec_bare_err_atom b   :                                      nockToSki hoonDecBodyF ⬝ atomT b ↠ Err
+    hoon_dec_bare_err_noSample : CellLike s B (atomT b)             → nockToSki hoonDecBodyF ⬝ s ↠ Err
+    hoon_dec_bare_fire_sound   : hoonDecFire? t = some u → nockToSki hoonDecBodyF ⬝ t ↠ u
+    hoon_dec_bare_fire_sound_red : t ↠ t' → hoonDecFire? t' = some u → nockToSki hoonDecBodyF ⬝ t ↠ u
+    hoon_dec_fire_sound_red      : t ↠ t' → hoonDecFire? t' = some u → jetT hoonDecBodyF ⬝ t ↠ u
+
+`hoon_dec_bare_enc` uses the fact that the only encoding of an atom is `encNoun`
+(`Enc.atom_inv`). The others are the pre-`toCell` lemmas of the `jetT` family
+(`hoon_dec_body_cl`, `hoon_dec_body_cl_zero`, `dec_body_err`), restated. All of them use
+`propext`, `Classical.choice` and `Quot.sound`, as the `jetT` family does.
+
+`terms/nockToSki-hoonDecBodyF.dag` (and `.prefix`), written by `scripts/PinDec.lean`, is
+the bare term: 64,918 atoms and 1,386 DAG nodes. sha256 of the dag file is
+`875515052b4f4eaada5a91cd71e2ebc49851571786bd5b27982806550dd1b3cf`. Avon's full digest
+(`av_pin_digest`) is `d320b173f4b5afcad727a12dde7857b9b698acfc45fea1f6c353d8e87b14a54f`.
+`jetT hoonDecBodyF`'s digest is `a4baf0aa…`. Kind `hoon-dec` is tied to that one digest
+(`av_hoon_dec_register`), so Avon refuses the bare term until it accepts a second digest.
+
+**Where the arm occurs.** The program is `hoon_dec_N`: release/nock/programs.txt's
+`hoon_dec_12` formula with the sample `[1 N]`, at subject 0. Its shared form at N = 12 is
+byte-identical to the corpus row.
+
+| form | atoms | literal occurrences of `nockToSki hoonDecBodyF` |
+|---|--:|--:|
+| unshared, `compiled f 0` (`--unshared`) | 1,077,188 (N = 7) | 3 as tree subterms (1 as a `Form`'s code field). Hash-consed (DAG input), they are 1 node |
+| shared, `share (compiled f 0)` (the corpus row) | 30,100 (N = 7) | **0** |
+
+`share` replaces the repeated subterms inside the arm with variables, so the shared row
+does not contain the arm literally. Its β-reduct does (`share_red : share t ↠ t`), but Avon
+binds pinned terms once, at load (`av_pin_bind`), and never in a reduct. A program that
+should fire therefore has to be loaded unshared, as a DAG.
+
+**2. Avon does not bind a pinned term in a prefix-form input.** Loaded as a backtick-prefix
+tree, even the direct application `jetT hoonDecBodyF ⬝ core` reports "no pinned term occurs".
+The DAG form of the same term binds. The likely cause is `pin_same`'s equality budget of
+`8 · pin_nodes + 4096`, which is 15,376 for `jetT` (1,410 DAG nodes). A tree-loaded copy is
+not hash-consed and has about 130,000 nodes to compare, so `av_pin_bind` unbinds it. For that
+reason every measurement below uses DAG input (Lean's `dagText`, as in `PinDec.lean`). The DAG
+input also changes the unjetted counts slightly: 12,295 against 12,484 for the prefix form at
+N = 7.
+
+**3. At the call the argument is not a core "as it stands".** With the bare term bound (a
+private Avon build that only adds the second digest), the arm is bound once, called once, and
+**declined** at every N. It is applied lazily to an unreduced core. The argument is the redex
+`K (I (K Z)) W`, which reduces to `K Z = cellT bat tl` in two steps. Inside it, the field
+`K tl` is itself the redex `(K K) (K (K Q)) R`, and the sample's cell and bits are further
+redexes. The literal fire check (`av_hoon_dec_read`, `hoonDecFire?`) cannot match it. Reducing
+the argument first is sound by `hoon_dec_bare_fire_sound_red`, because Avon's in-place steps
+are weak reductions `t ↠ t'`. The arm forces exactly these parts anyway: the core, its tail,
+and the sample with its bit list.
+
+**Numbers.** Avon `reduce`, share mode, `--budget=10^11`, normal forms compared byte for byte.
+`unjetted` and `jetT pins` are Avon 7dc994b, the latter with `--pins` listing
+`hoon-dec jetT-hoonDecBodyF.dag`. `bare pins` is the private build with
+`hoon-dec nockToSki-hoonDecBodyF.dag`.
+
+The whole program `hoon_dec_N`, unshared, as a DAG:
+
+| N | unjetted | jetT pins | bare pins | normal forms |
+|--:|--:|--:|--:|---|
+| 7 | 12,295 | 12,295 (no occurrence) | 12,295 (1 bound, 0 fired, 1 declined) | equal |
+| 100 | 170,640 | 170,640 (no occurrence) | 170,640 (1 bound, 0 fired, 1 declined) | equal |
+| 10,000 | 17,040,411 (0.30 s, 58 MB) | 17,040,411 (no occurrence) | 17,040,411 (declined) | equal |
+| 100,000 | 170,406,486 (3.1 s, 453 MB) | n/a | n/a | n/a |
+
+N = 1,000,000 unjetted would take about 1.7·10^9 steps and around 4.5 GB, past this
+machine's budget while the Lean builds run. Jetted it is the same run, since the jet declines.
+
+For the record, the direct application, the term applied to `encNoun [0 [N [0 0]]]`:
+
+| N | `jetT ⬝ core` unjetted | jetted (7dc994b) | `nockToSki ⬝ core` unjetted | jetted (bare pin) | normal forms |
+|--:|--:|--:|--:|--:|---|
+| 7 | 11,331 | 1 | 11,286 | 1 | equal |
+| 100 | 169,676 | 1 | 169,631 | 1 | equal |
+| 10,000 | 17,039,447 (0.31 s) | 1 | 17,039,402 | 1 | equal |
+| 100,000 | 170,405,522 (3.1 s, 502 MB) | 1 | 170,405,477 | 1 | equal |
+| 1,000,000 | not run | 1 | not run | 1 | (unjetted not run) |
+
+At N = 7 and 100 the `jetT` numbers are zori's (`[0 [7 [0 0]]]` 11,331 → 1). With only the
+bare pin, `jetT ⬝ core` fires after 46 steps, because its bare subterm is reached through the
+`S (K toCellT)` wrapper.
+
+**What the jet needs in order to fire in a whole program:**
+
+1. Avon accepts `nockToSki hoonDecBodyF` as a second pinned term of kind `hoon-dec`.
+   `av_hoon_dec_read` and `hoon_dec_build` stay as they are.
+2. `av_pin_bind` binds tree-loaded inputs, or programs are passed as DAGs.
+3. Before the read, `av_hoon_dec_read` reduces the argument in place, under a budget, to the
+   fire shape: the core to `K (S (K K) (S (K K) (S (S I (K bat)) (K tl))))`, `tl` likewise,
+   and the sample and its bit list. If it cannot, it declines. The licence is
+   `hoon_dec_bare_fire_sound_red`.
+4. The program is loaded unshared, or Avon binds pins after the sharing βs.

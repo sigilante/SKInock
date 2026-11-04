@@ -302,5 +302,16 @@ import Nock2Ski
 #print axioms Nock2Ski.hoon_dec_fires_sound
 #print axioms Nock2Ski.hoon_dec_fires
 #print axioms Nock2Ski.hoonDecFires_pins
+-- the bare arm, as a compiled program carries it (no toCell), and the check after reducing the argument
+#print axioms Nock2Ski.hoon_dec_bare_enc
+#print axioms Nock2Ski.hoon_dec_bare_cl
+#print axioms Nock2Ski.hoon_dec_bare_cl_zero
+#print axioms Nock2Ski.hoon_dec_bare_err_atom
+#print axioms Nock2Ski.hoon_dec_bare_err_noSample
+#print axioms Nock2Ski.hoon_dec_bare_fires_sound
+#print axioms Nock2Ski.hoon_dec_bare_err_fires
+#print axioms Nock2Ski.hoon_dec_bare_fire_sound
+#print axioms Nock2Ski.hoon_dec_bare_fire_sound_red
+#print axioms Nock2Ski.hoon_dec_fire_sound_red
 LEAN
 lake env lean "$tmp/Axioms.lean"

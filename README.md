@@ -360,7 +360,11 @@ jets licensed by theorems. A live run of the same programs on both provers is fu
   `Nock2Ski/HoonDecFree.lean` states the jet on real cores, whose battery and context carry
   code: `hoon_dec_enc` over any `Enc`, `hoon_dec_free_cl` for any terms at axes 2 and 7 with
   either cell a `Form`, the `Err` shapes for any bits, and the fire check `hoonDecFire?`
-  with `hoon_dec_fire_sound`.
+  with `hoon_dec_fire_sound`. The `*_bare` family (`hoon_dec_bare_fire_sound`, and so on) is
+  the same for the bare arm `nockToSki hoonDecBodyF`, which is what a compiled program
+  actually contains (`terms/nockToSki-hoonDecBodyF.dag`). `hoon_dec_bare_fire_sound_red`
+  lets the reader reduce the argument first. Why the jet does not yet fire in whole programs,
+  with the measurements: `release/nock/DECJET.md`, "In whole programs".
 
 ## Proofs (`release/nock/`, M4a, M4b, M4c, M4d, M4e, M4f, M4g; M5 below)
 
@@ -860,6 +864,18 @@ projected into or forced. `eqT` and `incT` see only the canonical atoms `⟨m⟩
 from `hoon_dec_fires_sound`, `hoon_dec_err_fires`, `hoonDecSample?_sound` and
 `cellParts?_sound`. `hoonDecSample?_cl` shows the sample check accepts every cell-like
 `[B [⟨m⟩ C]]`. `hoonDecFires_pins` pins all three outcomes by kernel evaluation.
+
+**The bare arm, in whole programs.** A compiled program never contains `jetT hoonDecBodyF`.
+It contains `nockToSki hoonDecBodyF`, the code of the battery's `Form`. The arm's outputs on
+the fire shapes contain no `Form`, so the family holds without `toCell`, with the same check:
+`hoon_dec_bare_enc`, `hoon_dec_bare_cl`, `hoon_dec_bare_cl_zero`, `hoon_dec_bare_err_atom`,
+`hoon_dec_bare_err_noSample`, and `hoon_dec_bare_fire_sound : hoonDecFire? t = some u →
+nockToSki hoonDecBodyF ⬝ t ↠ u`. `hoon_dec_bare_fire_sound_red` (and
+`hoon_dec_fire_sound_red`) adds a reduction `t ↠ t'` of the argument before the check. In
+the Lean-compiled `hoon_dec` program the bare arm occurs 3 times unshared and 0 times shared.
+In the unshared program Avon applies it to an unreduced core and declines.
+`release/nock/DECJET.md` ("In whole programs") has the occurrence counts, the numbers and
+what Avon needs.
 
 **Jetted proofs with the existing machinery** (`release/nock/jets/`, `produce.sh jets`,
 `verify.sh` step 6). lean-ski's supercombinator jets (`Ski/Inst.lean`, `Ski/JetTable.lean`,

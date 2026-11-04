@@ -45,3 +45,8 @@ def main : IO Unit := do
   IO.FS.writeFile "/Users/neal/Code/ski/skinock/terms/jetT-hoonDecBodyF.dag" (dagText h ++ "\n")
   IO.FS.writeFile "/Users/neal/Code/ski/skinock/terms/jetT-hoonDecBodyF.prefix" (enc h ++ "\n")
   IO.println s!"jetT hoonDecBodyF: {size h} atoms; nockToSki hoonDecBodyF: {size (Nock2Ski.nockToSki Nock2Ski.hoonDecBodyF)} atoms"
+  -- the bare arm, as a compiled program carries it (`hoon_dec_bare_fire_sound`)
+  let b := Nock2Ski.nockToSki Nock2Ski.hoonDecBodyF
+  IO.FS.writeFile "/Users/neal/Code/ski/skinock/terms/nockToSki-hoonDecBodyF.dag" (dagText b ++ "\n")
+  IO.FS.writeFile "/Users/neal/Code/ski/skinock/terms/nockToSki-hoonDecBodyF.prefix" (enc b ++ "\n")
+  IO.println s!"nockToSki hoonDecBodyF (bare): {size b} atoms"

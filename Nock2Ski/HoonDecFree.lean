@@ -66,6 +66,16 @@ canonical, `m < 2^32` (`HoonDecFires`), with `encOut (hoonDecOutN m)`:
 `⟨m - 1⟩` for `m ≥ 1`, `Err` at `0`.  `hoon_dec_fire_sound`: whenever it
 fires, `jetT hoonDecBodyF ⬝ t ↠ u`.  `hoonDecSample?_cl`: the sample check
 accepts every cell-like `[B [⟨m⟩ C]]`, whatever `B`, `C` and the codes are.
+
+**The bare arm** (`*_bare`): a compiled program carries `nockToSki
+hoonDecBodyF` (a battery `Form`'s code), never `jetT hoonDecBodyF`.  The
+outputs here contain no `Form`, so the family holds without `toCell`:
+`hoon_dec_bare_enc`, `hoon_dec_bare_cl`, `hoon_dec_bare_cl_zero`,
+`hoon_dec_bare_err_atom`, `hoon_dec_bare_err_noSample`, and
+`hoon_dec_bare_fire_sound : hoonDecFire? t = some u → nockToSki
+hoonDecBodyF ⬝ t ↠ u`, the same check.  `hoon_dec_bare_fire_sound_red` (and
+`hoon_dec_fire_sound_red`) let the reader reduce the argument first: in a
+whole program the arm meets an unreduced core.
 -/
 
 namespace Nock2Ski
@@ -681,5 +691,110 @@ theorem hoonDecFires_pins :
     HoonDecFires (formT S (formT (aT 5) K I) I) ∧
     HoonDecErrFires (formT S (atomT I) K) ∧
     ¬ HoonDecErrFires (cellT S (cellT (aT 0) K)) := by decide +kernel
+
+-- ---------------------------------------------------------------------------
+-- The bare arm: `nockToSki hoonDecBodyF`, no `toCell`
+-- ---------------------------------------------------------------------------
+
+/-! **The bare arm.**  A compiled program carries the arm as the code field
+of its battery `Form`, `nockToSki hoonDecBodyF`, not `jetT hoonDecBodyF =
+S (K toCellT) (nockToSki hoonDecBodyF)`.  On these inputs the arm's output is
+`encNoun (atom n)` or `errT`, neither of which contains a `Form`, so the
+`toCell` copy the licensed term adds is the identity there: the same family
+holds for the bare arm, with the same fire check `hoonDecFire?`. -/
+
+/-- **(a), bare**: on any encoding of a domain subject.  The output is an
+    atom or the crash, and the only encoding of an atom is `encNoun`. -/
+theorem hoon_dec_bare_enc {s : Noun} {es : Term} (hes : Enc s es) (hs : HoonDecDom s) :
+    WSteps (nockToSki hoonDecBodyF ⬝ es) (encOut (hoonDecC s)) := by
+  have h := hoon_dec_leaf s hs
+  have hout : ∀ p, hoonDecC s = .val p → ∃ n, p = atom n := by
+    intro p; unfold hoonDecC; split <;> intro e <;> cases e; exact ⟨_, rfl⟩
+  cases hc : hoonDecC s with
+  | val p =>
+    rw [hc] at h
+    obtain ⟨n, rfl⟩ := hout _ hc
+    obtain ⟨ep, hp, he⟩ := embed_value h hes
+    rw [hp.atom_inv] at he
+    exact he
+  | exit =>
+    rw [hc] at h
+    exact embed_crash h hes
+
+/-- **(b), bare, general**: `[B [⟨n+1⟩ C]]`, each cell a `cellT` or a
+    `formT` with any code. -/
+theorem hoon_dec_bare_cl {s B X C : Term} {n : Nat} (hs : CellLike s B X)
+    (hx : CellLike X (encNoun (atom (n + 1))) C) :
+    WSteps (nockToSki hoonDecBodyF ⬝ s) (encNoun (atom n)) :=
+  hoon_dec_body_cl hs hx
+
+/-- **(b), bare, underflow**: sample `⟨0⟩` gives `Err`. -/
+theorem hoon_dec_bare_cl_zero {s B X C : Term} (hs : CellLike s B X)
+    (hx : CellLike X (encNoun (atom 0)) C) : WSteps (nockToSki hoonDecBodyF ⬝ s) errT :=
+  hoon_dec_body_cl_zero hs hx
+
+/-- **Err (i), bare**: the core an atom, any bit term. -/
+theorem hoon_dec_bare_err_atom (b : Term) : WSteps (nockToSki hoonDecBodyF ⬝ atomT b) errT :=
+  dec_body_err ((WSteps.right _ (tl_atomT b)).trans hd_err)
+
+/-- **Err (ii), bare**: the core `[B atom]`, cell-like, any bit term. -/
+theorem hoon_dec_bare_err_noSample {s B : Term} (b : Term) (hs : CellLike s B (atomT b)) :
+    WSteps (nockToSki hoonDecBodyF ⬝ s) errT :=
+  dec_body_err ((WSteps.right _ hs.tl).trans (hd_atomT b))
+
+/-- **The sample check is sound for the bare arm**. -/
+theorem hoon_dec_bare_fires_sound {t : Term} {m : Nat} (e : hoonDecSample? t = some m) :
+    WSteps (nockToSki hoonDecBodyF ⬝ t) (encOut (hoonDecOutN m)) := by
+  obtain ⟨B, X, C, ht, hx⟩ := hoonDecSample?_sound e
+  cases m with
+  | zero => exact hoon_dec_bare_cl_zero ht hx
+  | succ n => exact hoon_dec_bare_cl ht hx
+
+/-- **`HoonDecErrFires` is sound for the bare arm**. -/
+theorem hoon_dec_bare_err_fires {t : Term} (h : HoonDecErrFires t) :
+    WSteps (nockToSki hoonDecBodyF ⬝ t) errT := by
+  unfold HoonDecErrFires hoonDecErr? at h
+  split at h
+  · rename_i b hb
+    rw [atomBits?_sound hb]
+    exact hoon_dec_bare_err_atom b
+  · split at h
+    · rename_i B x hx
+      cases hb : atomBits? x with
+      | none => rw [hb] at h; cases h
+      | some b =>
+        have hs := cellParts?_sound hx
+        rw [atomBits?_sound hb] at hs
+        exact hoon_dec_bare_err_noSample b hs
+    · cases h
+
+/-- **The whole check is sound for the bare arm**: the same `hoonDecFire?`,
+    whenever it fires, gives the bare arm's own reduct. -/
+theorem hoon_dec_bare_fire_sound {t u : Term} (e : hoonDecFire? t = some u) :
+    WSteps (nockToSki hoonDecBodyF ⬝ t) u := by
+  unfold hoonDecFire? at e
+  split at e
+  · rename_i h
+    cases e
+    exact hoon_dec_bare_err_fires h
+  · split at e
+    · rename_i m hm
+      split at e
+      · cases e; exact hoon_dec_bare_fires_sound hm
+      · cases e
+    · cases e
+
+/-- **The check after reducing the argument**: the reader may first reduce
+    the argument `t` to some `t'` (any weak reduction: Avon's own steps, in
+    place) and run the check on `t'`.  In a whole program the arm is applied
+    to an unreduced core, so this is the form the reader needs there. -/
+theorem hoon_dec_bare_fire_sound_red {t t' u : Term} (ht : WSteps t t')
+    (e : hoonDecFire? t' = some u) : WSteps (nockToSki hoonDecBodyF ⬝ t) u :=
+  (WSteps.right _ ht).trans (hoon_dec_bare_fire_sound e)
+
+/-- The same for the licensed term `jetT hoonDecBodyF`. -/
+theorem hoon_dec_fire_sound_red {t t' u : Term} (ht : WSteps t t')
+    (e : hoonDecFire? t' = some u) : WSteps (jetT hoonDecBodyF ⬝ t) u :=
+  (WSteps.right _ ht).trans (hoon_dec_fire_sound e)
 
 end Nock2Ski
