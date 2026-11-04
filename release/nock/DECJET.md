@@ -385,9 +385,26 @@ thunks (lean-ski branch `dec-thunk`); the loop is measured jetted on the circuit
   The memory is the statement's heap, the compiled program as a tree: a `2^22`-row memory
   table. A first form of `loop_1` (`normT` at each of the 13 occurrences, 2,360,598 cells)
   proved in 129 s and verified in 37 s, a 1.56 MB proof, at a 13.5 GB peak, past this
-  machine's 4 GB budget; no loop proof is released. Open: the Nock claim from
-  `nockloop_close` (the compiler's correctness with the replacement, and its converse) and a
-  shared statement heap.
+  machine's 4 GB budget; no loop proof is released. Open: a shared statement heap.
+
+  The Nock claim is proved (`Nock2Ski/DecLoopSound.lean`; `propext`, `Classical.choice`,
+  `Quot.sound`) for the loop's subjects `[n [0 r]]`:
+
+      nockloop_sound : an accepted proof of nockLoopV decLoopF [n [0 r]] p →
+                       NockEval [n [0 r]] decLoopF (.val p)
+
+  The proof is specific to this loop. No replacement lemma for an arbitrary formula is
+  proved. The word `W` is the autocons `S (S (K force) A0) (S (K consK) B0)`, more than 17,661
+  nodes. Every glue combinator is smaller, and every glue node differs from `W` in its top
+  levels. The test's code, the axes and `encNoun x` are `W`-free, so the replacement
+  commutes with the compiler's shapes. The 13 occurrences are the body's call site in `L`'s
+  code and the codes of the pinned literal `L`'s `Form`s. Only the top `Form`'s code runs
+  (opcode 9), and with the replacement it is `Ct`.
+  - Forward (`iter`, `loop_red`): by induction on `n`, with `normDec_enc` at each call, the
+    replaced loop on `encNoun [n [0 r]]` reaches an encoding of `[0 [0 r]]`.
+  - Converse (`check_eq`, `replaced_sound`): the replaced check is `eqn` of that run against
+    `encNoun p`. By Church–Rosser it reaches `K` only if `p = [0 [0 r]]`, and `decLoop_nock`
+    gives the derivation.
 
   Jetted, a call costs about 3,700 contractions (the normaliser and the loop's own work);
   unjetted the cost is quadratic. The transitions are the CPU's rows; a proof would add the
@@ -396,9 +413,10 @@ thunks (lean-ski branch `dec-thunk`); the loop is measured jetted on the circuit
 **What remains** (lean-ski `todo/dec-norm.md`). DEC reads through thunks (an indirection
 row kind on the need tree and the bit chains, three slots for the tail slot's thunk in the
 `Cell` row, `compare-compd`), with `decpreExport_sound` and `decpre_complete_log` re-proved
-and the released `compDAirsG` proofs re-produced: done. The Nock claim needs the compiler's correctness with the word replaced
-by the normalised call (`normDec_enc` is the per-call fact) to give `nockdec_sound`'s
-analogue. The other circuit-side answer is the machine doing what Avon does: reducing the
+and the released `compDAirsG` proofs re-produced: done. The Nock claim, `nockdec_sound`'s
+analogue for the loop: done, `nockloop_sound` above. This closes `todo/dec-norm.md`'s
+Nock-claim item for this loop (that file is lean-ski's and is not edited here). Still open is
+the loop's proof itself, measured, not proved. The other circuit-side answer is the machine doing what Avon does: reducing the
 argument in place before the row reads it, which needs a machine with update in place
 (lean-ski's `Ski/Graph.lean`, whose circuit is open in PLAN §1).
 

@@ -1046,9 +1046,20 @@ completeness re-proved (the honest DEC rows an indirection row per thunk; `decPr
 
 The jet fires at every call: 17,544 / 35,165 / 98,777 / 192,219 CPU rows and 20 / 64 / 238 /
 508 DEC rows at `N` = 1, 3, 10, 20 (`ski-air compd-measure`), against 20,757 / 57,785 /
-336,681 / 1,152,824 unjetted. Not done: the Nock claim from `nockloop_close` (the compiler's
-correctness with the replacement and its converse; `normDec_enc` is the per-call fact), and
-the proofs, whose `2^22`-row memory table (the statement's heap is the program as a tree, 2.35
+336,681 / 1,152,824 unjetted. `Nock2Ski/DecLoopSound.lean` reads the replaced check as the
+Nock claim for the loop's subjects `[n [0 r]]` (any `n`, any `r`, any `p`):
+
+    nockloop_sound : accepted proof of nockLoopV decLoopF [n [0 r]] p →
+                     NockEval [n [0 r]] decLoopF (.val p)
+
+It goes through the loop itself rather than a replacement lemma for any formula. The word is
+the autocons `S (S (K force) A0) (S (K consK) B0)` and is bigger than every combinator the glue
+uses, so the replacement commutes with the compiler's shapes. Its 13 occurrences are the call
+site in `L`'s code and the codes of the pinned literal `L`'s `Form`s, of which only the top one
+runs. By induction on `n` (`iter`, `normDec_enc` at each call), the replaced loop reaches an
+encoding of `[0 [0 r]]`. Church–Rosser and `eqn` then force `p = [0 [0 r]]`, and
+`decLoop_nock` gives the derivation (axioms `propext`, `Classical.choice`, `Quot.sound`). This
+closes lean-ski's `todo/dec-norm.md` item for this loop. Not done: the proofs, whose `2^22`-row memory table (the statement's heap is the program as a tree, 2.35
 million cells) is past the 4 GB budget (a first form of `loop_1` proved and verified at a
 13.5 GB peak). The released `dec_N` proofs are re-produced on the new DEC table (one DEC row
 more per bit list; lean-ski `todo/dec-norm.md`).

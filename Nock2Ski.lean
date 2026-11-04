@@ -35,3 +35,4 @@ import Nock2Ski.DecLoop
 import Nock2Ski.DecTermNock
 import Nock2Ski.DecNorm
 import Nock2Ski.DecLoopNorm
+import Nock2Ski.DecLoopSound
