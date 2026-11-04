@@ -2,7 +2,7 @@
 # Produce release/nock/decloop: lean-ski's `dec` data jet on a Nock claim,
 # rows jetted against unjetted.  The producer's side; verify.sh is the
 # verifier's.  Run from a clean checkout of skinock with lean-ski beside it
-# (LEAN_SKI, default ../lean-ski) on its `dec-loop` branch (the `decterm`
+# (LEAN_SKI, default ../lean-ski) on its `dec-thunk` branch (the `decterm`
 # statement, Ski/DecTermText.lean and Ski/DecTerm.lean, and ski-air's
 # `decterm J` header), and lean-nock at ../../lean-nock.
 #
@@ -16,7 +16,7 @@
 #             `ski-air compd-prove` proves it (Lean checks the bytes first,
 #             `lake exe composed statement-dec -`) and writes NAME.proof and
 #             the run (NAME.run.txt); lean-ski's `composed check-dec-run`
-#             replays the run (every row a step or DecJet.decRow).  Stdout
+#             replays the run (every row a step or DecJet.decRowI).  Stdout
 #             lines: results.txt.
 #   unjetted  The same check with the bare word in the jet's place
 #             (`nockdec corpus`, rows `dec`), and the Λ loop `while (top ≠
@@ -46,8 +46,10 @@
 #             DecNorm.lean's continuation-passing normaliser, then the
 #             jet): lean-ski's DecJet.decRowI (Ski/DecInd.lean, the row
 #             reading through K-thunks) fires at every call and the run
-#             reaches K (results-norm.txt).  Machine runs, not proofs: the
-#             DEC table does not carry decRowI's reader yet.
+#             reaches K (results-norm.txt).  Machine runs; on the circuit
+#             (lean-ski branch dec-thunk) the loop's statement is `nockdec
+#             emit-loop` and is measured, not proved (its 2^22-row memory
+#             table is past the memory budget; DECJET.md, Route B).
 #
 # Stages: `produce.sh [jetted unjetted probe layout norm]`, all by default.
 set -euo pipefail

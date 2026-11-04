@@ -354,5 +354,10 @@ import Nock2Ski
 #print axioms Nock2Ski.DecNorm.norm_enc
 #print axioms Nock2Ski.DecNorm.normJ_impl
 #print axioms Nock2Ski.DecNorm.normDec_enc
+-- the normalised loop as a decterm statement (DecLoopNorm)
+#print axioms Nock2Ski.closeX
+#print axioms Nock2Ski.checkN_close
+#print axioms Nock2Ski.nockLoopV_vsOK
+#print axioms Nock2Ski.nockloop_close
 LEAN
 lake env lean "$tmp/Axioms.lean"

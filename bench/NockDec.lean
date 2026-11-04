@@ -1,5 +1,6 @@
 import Nock2Ski.DecTermNock
 import Nock2Ski.DecLoop
+import Nock2Ski.DecLoopNorm
 import Nock2Ski.NounText
 import Ski.Fuel
 import Ski.Cost
@@ -30,6 +31,12 @@ same check unjetted, `checkT decF s p` (the bare word in the jet's place):
 `lake exe nockdec check-corpus NAME N < corpus.txt` recomputes that row
 and compares it with the row of that name on stdin.
 
+`lake exe nockdec emit-loop DIR NAME N R M D` writes the `decterm` statement
+of the Λ loop's claim `*[[N [0 0]] decLoopF] = [0 [0 0]]` with every
+occurrence of the compiled word replaced by `normJ J` (route (B),
+`Nock2Ski/DecLoopNorm.lean`: `nockLoopV`, `nockloop_close`), and
+`check-loop NAME N PUBLIC` recomputes it and compares it byte for byte.
+
 `lake exe nockdec loop-formula` prints the formula of the Λ loop `while
 (top ≠ 0) dec` (`Nock2Ski/DecLoop.lean`), for `nockstatement`.
 
@@ -53,6 +60,13 @@ def regionW : Nat := 1
 
 def textOf (n : Nat) (lg : ComposedDText.DLogs) : String :=
   DecTerm.publicTextDG [nockDecV decF (decS n) (decP n)] regionW lg
+
+def loopS (n : Nat) : Noun := .cell (.atom n) (.cell (.atom 0) (.atom 0))
+def loopP : Noun := .cell (.atom 0) (.cell (.atom 0) (.atom 0))
+
+/-- Route (B): the normalised loop's statement. -/
+def loopTextOf (n : Nat) (lg : ComposedDText.DLogs) : String :=
+  DecTerm.publicTextDG [nockLoopV decLoopF (loopS n) loopP] regionW lg
 
 def prefixOf (t : _root_.Term) : String := Id.run do
   let mut out : String := ""
@@ -175,6 +189,22 @@ def main (args : List String) : IO UInt32 := do
     | some (_, k) =>
       if line != s!"{name} {k} {prefixOf t}" then die s!"{name}: not the row of the unjetted check at {N}" 1
       else IO.println s!"{name}: ok, the unjetted check of *[[{N} 0] phi(dec)] = [{N - 1} 0] ({k} contractions), recomputed"; pure 0
+  | ["emit-loop", dir, name, n, r, m, d] =>
+    IO.FS.createDirAll dir
+    IO.FS.writeFile s!"{dir}/{name}.public.txt" (loopTextOf n.toNat! ⟨r.toNat!, m.toNat!, d.toNat!⟩)
+    IO.FS.writeFile s!"{dir}/{name}.witness.txt" "0\nK\n"
+    IO.println s!"wrote {dir}/{name}.public.txt: *[[{n} [0 0]] decLoopF] = [0 [0 0]], the word normalised, heights {r} {m} {d}"
+    pure 0
+  | ["check-loop", name, n, path] =>
+    let text ← IO.FS.readFile path
+    let some (Vs, W, lg) := DecTerm.statementOfTextDG text | die s!"{path}: not a decterm statement" 1
+    let N := n.toNat!
+    if W != regionW then die s!"{path}: region {W}, not {regionW}" 1
+    else if text != loopTextOf N lg then die s!"{path}: not the normalised loop's statement at {N}" 1
+    else if Vs.length != 1 then die s!"{path}: {Vs.length} verifiers" 1
+    else
+      IO.println s!"{name}: ok, the decterm statement of *[[{N} [0 0]] decLoopF] = [0 [0 0]] with the word normalised (heights {lg.rows} {lg.mem} {lg.dec}), recomputed"
+      pure 0
   | ["loop-formula"] => IO.println (showNoun decLoopF); pure 0
   | ["probe", n] => probe n.toNat!
   | _ => die "usage: nockdec emit DIR NAME N [R M D] | check NAME N PUBLIC | corpus NAME N | check-corpus NAME N < CORPUS | loop-formula | probe N"

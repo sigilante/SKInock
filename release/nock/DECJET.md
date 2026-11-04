@@ -317,10 +317,11 @@ of a computation.
 
 **Route B: the row through thunks, and a continuation-passing normaliser (2026-11-04).** The
 row reads through `K R w`; a closed `norm` then exists, and the jet fires at every call of
-the loop on the heap machine. The DEC table does not carry the new reader yet, so the loop is
-not proved jetted.
+the loop on the heap machine and on the circuit, whose DEC table now reads through the
+thunks (lean-ski branch `dec-thunk`); the loop is measured jetted on the circuit, not proved
+(below).
 
-- **The row** (lean-ski `Ski/DecInd.lean`, branch `dec-norm`; `propext`, `Quot.sound`, in
+- **The row** (lean-ski `Ski/DecInd.lean`; `propext`, `Quot.sound`, in
   the audit manifest). `readInd` follows a thunk (`p` holds `f w`, `f` holds `k R`, `k` holds
   `K`) to `R`. The reader follows chains of them at every pointer of the need tree (the
   root, the head atom, a cell's halves, an atom's bit list and each tail) and one at a
@@ -329,7 +330,7 @@ not proved jetted.
 
       decRowI_step    : the row reads back as J ⬝ u ⬝ R, u ↠ encNn s, s in the domain,
                         the next state as v ⬝ R, v ↠ encO (decSpec s)   (↠: K-contraction anywhere)
-      JStepsI.close_K : a run of that head reduction to K, the jet closed to any implementation
+      HSteps.close_K  : a run of that head reduction to K, the jet closed to any implementation
                         of the unchanged contract, is a weak reduction to K   (Church–Rosser)
       decRow_decRowI  : on a subject without thunks the two rows agree
 
@@ -357,6 +358,35 @@ not proved jetted.
 | 3 | 23,459 | 57,785 | 14,139 | 34,805 | 3 |
 | 10 | 136,500 | 336,681 | 39,730 | 97,843 | 10 |
 | 20 | 466,653 | 1,152,824 | 77,294 | 190,465 | 20 |
+
+- **The circuit** (lean-ski branch `dec-thunk`). DEC gains an indirection row kind (`K R w`
+  through three slots; a need or a chain's step passed from the thunk to `R`) and reads the
+  `Cell` row's tail slot through one thunk; the `Cons` row no longer peeks at its tail (a
+  normalised list ends in `K K k`): the last `Cons` marks its step and the chain must end,
+  through any thunks, at a nil that ends a list. Soundness re-proved: `CompDOK.jetRow`
+  concludes `decRowI`, `decpreExport_sound` and `dectermExport_close` hold (backward chains
+  through thunks end: `iterI_bound`). The honest DEC table's completeness is open for the new
+  table. `Nock2Ski/DecLoopNorm.lean`: the statement `nockLoopV` (the word's occurrences
+  `S X (K J)` under one shared `X = normT`; `nockdec emit-loop`, `check-loop`) and
+
+      nockloop_close : an accepted proof → replT (nockToSki decF) (normJ (nockToSki decF))
+                                             (checkT f s p) ↠ K
+
+  On the circuit (`ski-air compd-measure`):
+
+| N | CPU rows | DEC rows | jet calls | memory cells |
+|--:|--:|--:|--:|--:|
+| 1 | 17,544 | 20 | 1 | 2,351,104 |
+| 3 | 35,165 | 64 | 3 | 2,372,203 |
+| 10 | 98,777 | 238 | 10 | 2,448,148 |
+| 20 | 192,219 | 508 | 20 | 2,559,181 |
+
+  The memory is the statement's heap, the compiled program as a tree: a `2^22`-row memory
+  table. A first form of `loop_1` (`normT` at each of the 13 occurrences, 2,360,598 cells)
+  proved in 129 s and verified in 37 s, a 1.56 MB proof, at a 13.5 GB peak, past this
+  machine's 4 GB budget; no loop proof is released. Open: the Nock claim from
+  `nockloop_close` (the compiler's correctness with the replacement, and its converse) and a
+  shared statement heap.
 
   Jetted, a call costs about 3,700 contractions (the normaliser and the loop's own work);
   unjetted the cost is quadratic. The transitions are the CPU's rows; a proof would add the

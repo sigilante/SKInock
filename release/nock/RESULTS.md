@@ -451,17 +451,19 @@ statement, any public verifiers open in the jet's atom) on the claim
 `*[[N 0] phi(dec)] = [N-1 0]`: the verifier `λ β w. checkJ decF s p`, M4c's
 `eqn` check with every occurrence of the compiled word the jet
 (`Nock2Ski/DecTermNock.lean`, `nockdec_sound`).  `decloop/results.txt`,
-ski-air's `compd-prove` lines and lean-ski's `check-dec-run` replay:
+ski-air's `compd-prove` lines and lean-ski's `check-dec-run` replay, on
+lean-ski's DEC table that reads through `K`-thunks (branch `dec-thunk`; one
+DEC row more per bit list than before, its list's end):
 
 | row | N | rows | jet rows | memory cells | heights (CPU, mem, DEC) | prove s | verify s | proof |
 |---|--:|--:|--:|--:|---|--:|--:|--:|
-| `dec_10` | 10 | 2,184 | 8 | 5,705 | 2^12, 2^13, 2^9 | 0.44 | 0.67 | 1,008 KB |
-| `dec_100` | 100 | 3,158 | 11 | 6,962 | 2^12, 2^13, 2^9 | 0.43 | 0.56 | 1,004 KB |
-| `dec_1000` | 1,000 | 4,200 | 14 | 8,298 | 2^13, 2^14, 2^9 | 0.73 | 0.56 | 1,049 KB |
-| `dec_10000` | 10^4 | 5,484 | 18 | 9,904 | 2^13, 2^14, 2^9 | 0.73 | 0.55 | 1,043 KB |
-| `dec_100000` | 10^5 | 6,518 | 21 | 11,191 | 2^13, 2^14, 2^9 | 0.73 | 0.57 | 1,042 KB |
-| `dec_1000000` | 10^6 | 7,570 | 24 | 12,487 | 2^13, 2^14, 2^9 | 0.75 | 0.54 | 1,041 KB |
-| `dec_4294967295` | 2^32 - 1 | 12,233 | 36 | 18,066 | 2^14, 2^15, 2^9 | 1.32 | 0.54 | 1,091 KB |
+| `dec_10` | 10 | 2,184 | 9 | 5,705 | 2^12, 2^13, 2^9 | 0.44 | 0.55 | 1,042 KB |
+| `dec_100` | 100 | 3,158 | 12 | 6,962 | 2^12, 2^13, 2^9 | 0.44 | 0.55 | 1,047 KB |
+| `dec_1000` | 1,000 | 4,200 | 15 | 8,298 | 2^13, 2^14, 2^9 | 0.73 | 0.54 | 1,088 KB |
+| `dec_10000` | 10^4 | 5,484 | 19 | 9,904 | 2^13, 2^14, 2^9 | 0.73 | 0.55 | 1,084 KB |
+| `dec_100000` | 10^5 | 6,518 | 22 | 11,191 | 2^13, 2^14, 2^9 | 0.73 | 0.55 | 1,079 KB |
+| `dec_1000000` | 10^6 | 7,570 | 25 | 12,487 | 2^13, 2^14, 2^9 | 0.76 | 0.54 | 1,089 KB |
+| `dec_4294967295` | 2^32 - 1 | 12,233 | 37 | 18,066 | 2^14, 2^15, 2^9 | 1.31 | 0.57 | 1,130 KB |
 
 One jet call each; the prover under 0.7 GB.  The same check unjetted (the
 bare word in the jet's place, `nockdec corpus`) and the Λ loop `while (top

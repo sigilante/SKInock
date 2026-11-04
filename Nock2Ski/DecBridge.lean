@@ -104,7 +104,7 @@ theorem decC_toNoun {s : DecJet.Nn} (hs : s.wf = true) :
 theorem decpre_proof_nock {p W : Nat} {Rs : List Circuit.AirD} {ts : List Circuit.Table}
     (hs : Circuit.sameAirsB Rs (Circuit.compDAirs p W) = true) (hacc : Circuit.AcceptedP Rs ts) :
     ∃ (s : DecJet.Dom) (r : Noun), NockEval (toNoun s.1) decF (.val (.cell (.atom p) r)) := by
-  obtain ⟨_, _, _, _, _, _, _, s, _, _, d, r, hd, hv⟩ := Circuit.decpreExport_sound dec_impl_lean hs hacc
+  obtain ⟨_, _, _, _, _, _, _, s, _, _, _, _, d, r, hd, hv⟩ := Circuit.decpreExport_sound dec_impl_lean hs hacc
   refine ⟨s, toNoun r, ?_⟩
   have h := leaf_dec (toNoun s.1)
   rw [decC_toNoun s.2.1, hd] at h

@@ -1016,9 +1016,9 @@ goal), and none of up to 9 lays out a cell of two computed fields (405,331,348 t
 stack orders).
 
 **The row through thunks fires** (route B; `release/nock/DECJET.md`, "Route B"). lean-ski's
-`Ski/DecInd.lean` (branch `dec-norm`) gives the row `DecJet.decRowI`, which follows `K R w`
+`Ski/DecInd.lean` gives the row `DecJet.decRowI`, which follows `K R w`
 at every pointer of the subject's need tree and once at a cell's tail slot:
-`decRowI_step` reads it back as a jet step up to `K`-contraction and `JStepsI.close_K`
+`decRowI_step` reads it back as a jet step up to `K`-contraction and `HSteps.close_K`
 closes a run to `K` with any implementation of the unchanged contract. `Nock2Ski/DecNorm.lean`
 gives the continuation-passing normaliser:
 
@@ -1030,5 +1030,23 @@ On lean-ski's heap machine (`lake exe nocknorm run 1 3 10 20`, `release/nock/dec
 results-norm.txt`), the loop's check with every occurrence of the word replaced by
 `S normT (K J)` fires the jet at every call and reaches `K`: 7,051 / 14,139 / 39,730 / 77,294
 contractions at `N` = 1, 3, 10, 20 against 8,434 / 23,459 / 136,500 / 466,653 unjetted on the
-same machine. These are machine runs: the DEC table does not read through thunks yet, so the
-loop is proved unjetted only (lean-ski `todo/dec-norm.md`).
+same machine.
+
+**On the circuit** (lean-ski branch `dec-thunk`): DEC reads through the thunks (an
+indirection row kind; the `Cell` row's tail slot through one thunk; a list's last `Cons` marks
+its step, and the chain ends at a nil that ends a list), its soundness re-proved
+(`CompDOK.jetRow` concludes `decRowI`; `decpreExport_sound`, `dectermExport_close`).
+`Nock2Ski/DecLoopNorm.lean` makes the loop a `decterm` statement, the word's occurrences
+`S X (K J)` under one shared `X = normT` (`nockLoopV`, `lake exe nockdec emit-loop`):
+
+    nockloop_close : accepted proof of nockLoopV f s p →
+                     replT (nockToSki decF) (normJ (nockToSki decF)) (checkT f s p) ↠ K
+
+The jet fires at every call: 17,544 / 35,165 / 98,777 / 192,219 CPU rows and 20 / 64 / 238 /
+508 DEC rows at `N` = 1, 3, 10, 20 (`ski-air compd-measure`), against 20,757 / 57,785 /
+336,681 / 1,152,824 unjetted. Not done: the Nock claim from `nockloop_close` (the compiler's
+correctness with the replacement and its converse; `normDec_enc` is the per-call fact), and
+the proofs, whose `2^22`-row memory table (the statement's heap is the program as a tree, 2.35
+million cells) is past the 4 GB budget (a first form of `loop_1` proved and verified at a
+13.5 GB peak). The released `dec_N` proofs are re-produced on the new DEC table (one DEC row
+more per bit list; lean-ski `todo/dec-norm.md`).
