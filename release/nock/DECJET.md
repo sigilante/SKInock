@@ -365,8 +365,9 @@ thunks (lean-ski branch `dec-thunk`); the loop is measured jetted on the circuit
   normalised list ends in `K K k`): the last `Cons` marks its step and the chain must end,
   through any thunks, at a nil that ends a list. Soundness re-proved: `CompDOK.jetRow`
   concludes `decRowI`, `decpreExport_sound` and `dectermExport_close` hold (backward chains
-  through thunks end: `iterI_bound`). The honest DEC table's completeness is open for the new
-  table. `Nock2Ski/DecLoopNorm.lean`: the statement `nockLoopV` (the word's occurrences
+  through thunks end: `iterI_bound`). Completeness re-proved for the new table: the honest
+  run's jet rows are `decRowI`'s and the honest DEC rows follow `readSubjI`, an indirection row
+  per thunk on the need tree and the bit chains (`decProvides_exists`, `decpre_complete_log`). `Nock2Ski/DecLoopNorm.lean`: the statement `nockLoopV` (the word's occurrences
   `S X (K J)` under one shared `X = normT`; `nockdec emit-loop`, `check-loop`) and
 
       nockloop_close : an accepted proof → replT (nockToSki decF) (normJ (nockToSki decF))
@@ -392,11 +393,10 @@ thunks (lean-ski branch `dec-thunk`); the loop is measured jetted on the circuit
   unjetted the cost is quadratic. The transitions are the CPU's rows; a proof would add the
   DEC rows of each call.
 
-**What remains** (lean-ski `todo/dec-norm.md`). DEC must read through thunks: an indirection
-row kind on the need tree and the bit chains, and three slots for the tail slot's thunk in
-the `Cell` row, in `DecAir.lean` and `decair.rs` (`compare-compd`), with
-`decpreExport_sound` and `decpre_complete_log` re-proved and the released `compDAirsG`
-proofs re-produced. The Nock claim needs the compiler's correctness with the word replaced
+**What remains** (lean-ski `todo/dec-norm.md`). DEC reads through thunks (an indirection
+row kind on the need tree and the bit chains, three slots for the tail slot's thunk in the
+`Cell` row, `compare-compd`), with `decpreExport_sound` and `decpre_complete_log` re-proved
+and the released `compDAirsG` proofs re-produced: done. The Nock claim needs the compiler's correctness with the word replaced
 by the normalised call (`normDec_enc` is the per-call fact) to give `nockdec_sound`'s
 analogue. The other circuit-side answer is the machine doing what Avon does: reducing the
 argument in place before the row reads it, which needs a machine with update in place

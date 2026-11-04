@@ -1035,7 +1035,9 @@ same machine.
 **On the circuit** (lean-ski branch `dec-thunk`): DEC reads through the thunks (an
 indirection row kind; the `Cell` row's tail slot through one thunk; a list's last `Cons` marks
 its step, and the chain ends at a nil that ends a list), its soundness re-proved
-(`CompDOK.jetRow` concludes `decRowI`; `decpreExport_sound`, `dectermExport_close`).
+(`CompDOK.jetRow` concludes `decRowI`; `decpreExport_sound`, `dectermExport_close`) and its
+completeness re-proved (the honest DEC rows an indirection row per thunk; `decProvides_exists`,
+`decpre_complete_log`).
 `Nock2Ski/DecLoopNorm.lean` makes the loop a `decterm` statement, the word's occurrences
 `S X (K J)` under one shared `X = normT` (`nockLoopV`, `lake exe nockdec emit-loop`):
 
