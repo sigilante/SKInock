@@ -29,17 +29,25 @@
 #   probe     `nockdec probe 3`: the compiled loop with the word's 13
 #             occurrences as the jet, in a head machine whose jet fires
 #             only on a subject laid out in memory, as lean-ski's row
-#             does; the run stops at the first call (probe.txt).
+#             does; the run stops at the first call; and the same run with
+#             a reader that also follows K-thunks `K R w` at every slot
+#             (route (B)'s reader), which stops there too (probe.txt).
+#   layout    Why no term can lay the argument out (layout/): exhaustive
+#             searches over SKI terms on a model of lean-ski's write-once
+#             machine (layout/search.c), and the 12-leaf term that hands a
+#             fresh wrapper to a dynamic continuation only as the thunk
+#             `K (K P) w` (layout/deliver.py); lean-ski's Ski/NoLayout.lean
+#             proves the invariant behind them (layout.txt).
 #
-# Stages: `produce.sh [jetted unjetted probe]`, all by default.
+# Stages: `produce.sh [jetted unjetted probe layout]`, all by default.
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
 LEAN_SKI=${LEAN_SKI:-../lean-ski}
 D=release/nock/decloop
-STAGES=" ${*:-jetted unjetted probe} "
+STAGES=" ${*:-jetted unjetted probe layout} "
 want() { case "$STAGES" in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 for st in $STAGES; do
-    case " jetted unjetted probe " in *" $st "*) ;; *) echo "no stage $st" >&2; exit 2 ;; esac
+    case " jetted unjetted probe layout " in *" $st "*) ;; *) echo "no stage $st" >&2; exit 2 ;; esac
 done
 tmp=$(mktemp -d)
 trap '/bin/rm -rf "$tmp"' EXIT
@@ -91,4 +99,10 @@ fi
 if want probe; then
 echo "--- the compiled loop with the word as the jet"
 "$N" probe 3 | tee "$D/probe.txt"
+fi
+
+if want layout; then
+echo "--- why no term lays the argument out"
+"$D/layout/run.sh" "$tmp" | tee "$D/layout.txt"
+(cd "$LEAN_SKI" && lake build Ski.NoLayout > /dev/null) && echo "lean-ski Ski/NoLayout.lean: built (inv_step, inv_reach, S_cont_const)"
 fi

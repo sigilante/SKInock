@@ -258,3 +258,82 @@ one step, as DAG and as prefix. Avon's `tests/test_nockdec.c` checks `hoon_dec_7
 against the unjetted normal form (`tests/data/hoon-dec/`), together with lazy cores
 (`K`/`I`/`S K K` thunks at the core, the tail, the sample and its bits, `Form`s, divergent
 `bat`/`ctx`), lazy stacks, the bare arm and a tree copy of each term.
+
+## Inside a loop, on the circuit: why no term can lay the argument out (2026-11-04)
+
+On Avon the jet fires inside a loop once the argument is reduced in place before the read
+(item 3 above; Avon branch `jet-reduce-arg`, 2f0843b). The circuit has no in-place step: it
+runs lean-ski's write-once heap machine (`Ski/Heap.lean`, `Mach`), and the `dec` row reads
+its subject from memory cell by cell (`DecJet.readNn`). The question was whether a closed
+term `norm` could stand in for the missing step, `J ⬝ (norm ⬝ x)` with `norm ⬝ x` written
+out as an `encNn` the row reads (route A), or whether the row itself must change (route B).
+**Route A is impossible.** That is a property of the machine, not of `norm`.
+
+**What the machine writes.** Its only application-cell write is `y z` in `S x y z ⟶ x z (y
+z)`, where `y` and `z` are the stack entries below `x`, and the next head is `x`. Every
+wrapper of the encoding the row reads (`atomT`'s `S (K K)` cells, `cellT`'s outer `K`, every
+`K h` field slot, a bit list's `Cons`) is an application cell whose function is a constant
+combinator.
+
+**The invariant** (lean-ski `Ski/NoLayout.lean`, branch `dec-norm`, built in the umbrella,
+no `sorry`). Mark the input-dependent cells with a predicate `D`. Then on every reachable
+state two things hold. Along the head and the stack, top first, no input-independent entry
+follows an input-dependent one (`Mono`). And no cell has an input-dependent function over an
+input-independent argument (`CellsOK`).
+
+    inv_step         : Inv D m → mstep m = some m' → ∃ D', D' agrees with D on m's cells ∧ Inv D' m'
+    inv_reach        : Reach m m' → Inv D m → ∃ D', … ∧ Inv D' m'
+    S_cont_const     : Inv D m → stack x :: y :: … → ¬ D y → ¬ D x
+    run_S_cont_const : Inv D m → Reach m m' → (the same at every reachable state)
+
+So the `S` that writes a constant-function cell over a computed field always continues with
+constant code (`S_cont_const`). Constant code cannot be the return address of a traversal.
+Everything input-dependent lies below the fresh cell, and the head is always the top entry.
+So that work is reachable only after the fresh cell is dropped, run, or folded into the
+*function* position of another cell. A dynamic continuation therefore receives a fresh
+wrapper `R` only folded, as a thunk `K R w`. A normaliser must deliver at least one
+sub-result to a dynamic continuation (the rest of the traversal), and a two-field cell
+needs both fields as bare cells. So no term lays out a cell whose two fields are both
+computed.
+
+**Evidence by search** (`decloop/layout/`, recomputed by produce.sh and verify.sh as
+`layout.txt`). `layout/search.c` enumerates every SKI term up to a leaf bound and runs each
+on a model of `Mach`, with two opaque input pointers on the stack:
+
+| goal | terms searched | reach it |
+|---|--:|--:|
+| control: constant `J` receives a fresh `K P` | up to 6 leaves | yes (5 leaves: ``` ``S`SJK ```) |
+| continuation `k` receives `P` from below it | up to 10 leaves | none |
+| `k` receives a fresh `K P` bare, from either order | up to 10 leaves (11 for `[k, P]`, one-off) | none |
+| constant `J` receives `K P (K k)` or `S (K P) (K k)` | up to 9 leaves, J in the alphabet, both orders | none |
+| `k` receives `K P` folded as `K (K P) w` | the 12-leaf term below | yes |
+
+`layout/deliver.py` runs the 12-leaf term `S (K (S (S (K (S (K (S I)) K)) K))) K` on `[k,
+P]`. It parks `k` as `K k`, brings `P` to the top, writes `K P`, parks that as `K (K P)`,
+folds it over the parked `k` and runs the fold. `k` receives `K (K P) w` and never `K P`.
+That is the K-thunk of the loop's diagnosis, and it is now known to be not just
+what elimination hands back but the only form in which a computed cell can reach the rest
+of a computation.
+
+**Route B, and what it costs.** If the row followed `K R w` at the subject and at every slot
+(read `R`), a continuation-passing normaliser could return each sub-result as a thunk the
+row reads, so a closed `norm` could exist. Soundness would rest on the weak reduction `K R w
+↠ R` inside the subject. But this is a circuit change of the whole jet: `DecJet`'s readers
+and their read-back proofs (1,668 lines), the DEC table's need tree and chain levels with
+their soundness and completeness (`Ski/Circuit/CompD*.lean`, 9,759 lines), and the Rust AIR
+(`decair.rs`). It is not done here. The probe also shows that the reader alone would not be
+enough: in the compiled loop the argument is not a `K`-thunk of a laid-out subject.
+
+    PROBE_LINE
+
+so the loop would still need the CPS normaliser, a combinator program of its own with its
+`norm_enc` proof. The other circuit-side answer is the machine doing what Avon does:
+reducing the argument before the row reads it. That needs a machine with update in place
+(lean-ski's `Ski/Graph.lean`, whose circuit is open in PLAN §1) and a row that reads
+through indirections.
+
+**Loop rows.** Unjetted, as before (`results-unjetted.txt`): `loop_1` 76,395 contractions,
+190,814 rows; `loop_3` 96,718 contractions, 242,656 rows. `loop_10` is 239,560 contractions
+and `loop_20` 643,783, quadratic. Their proofs would take about 0.6M and 1.6M rows, past this
+machine's 4 GB budget, so they are not proved. Jetted: none. The run stops at the first call
+for every loop length, because the subject is the same computed stack shape at every call.

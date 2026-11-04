@@ -92,30 +92,59 @@ where
       | _, _ => none
     | _ => none
 
-partial def run (fuel : Nat) (t : OTerm) (stk : List OTerm) (n jets : Nat) : String :=
+/-- Strip `K`-thunks: every `K x w` read as `x`, at the root and at every
+    slot (route (B)'s reader; no `encNn` cell has that shape). -/
+partial def unK : OTerm → OTerm
+  | .app (.app .K x) _ => unK x
+  | .app f x => .app (unK f) (unK x)
+  | t => t
+
+def osize : OTerm → Nat
+  | .app f x => osize f + osize x
+  | _ => 1
+
+/-- The head of a term's spine and its argument count. -/
+partial def spine : OTerm → OTerm × Nat
+  | .app f _ => let (h, n) := spine f; (h, n + 1)
+  | t => (t, 0)
+
+def headName : OTerm → String
+  | .S => "S" | .K => "K" | .I => "I" | .var _ => "J" | .app _ _ => "app"
+
+/-- A short description of the argument the jet is handed. -/
+def describe (x : OTerm) : String :=
+  let (h, n) := spine x
+  let kthunk := match x with | .app (.app .K _) _ => true | _ => false
+  s!"spine head {headName h} with {n} arguments, size {osize x}" ++
+    (if kthunk then ", a K-thunk K R w" else ", not a K-thunk") ++
+    (match nnOf (unK x) with
+      | some _ => ", readable after stripping K-thunks"
+      | none => ", not readable after stripping K-thunks")
+
+/-- `followK`: the jet also fires on a subject readable after `unK`. -/
+partial def run (followK : Bool) (fuel : Nat) (t : OTerm) (stk : List OTerm) (n jets : Nat) : String :=
   if fuel = 0 then s!"no weak head normal form within the fuel ({n} contractions, {jets} jet steps)" else
   match t, stk with
-  | .app f x, _ => run (fuel - 1) f (x :: stk) n jets
-  | .I, x :: r => run (fuel - 1) x r (n + 1) jets
-  | .K, x :: _ :: r => run (fuel - 1) x r (n + 1) jets
-  | .S, f :: g :: x :: r => run (fuel - 1) f (x :: (.app g x) :: r) (n + 1) jets
+  | .app f x, _ => run followK (fuel - 1) f (x :: stk) n jets
+  | .I, x :: r => run followK (fuel - 1) x r (n + 1) jets
+  | .K, x :: _ :: r => run followK (fuel - 1) x r (n + 1) jets
+  | .S, f :: g :: x :: r => run followK (fuel - 1) f (x :: (.app g x) :: r) (n + 1) jets
   | .var j, x :: r =>
-    match nnOf x with
-    | some s =>
-      if (DecJet.encNn s).toO == x then
-        run (fuel - 1) (DecJet.encO (DecJet.decSpec s)).toO r (n + 1) (jets + 1)
-      else s!"STOPPED at contraction {n}: the jet's argument does not read back"
-    | none => s!"STOPPED at contraction {n} ({jets} jet steps before): the jet {j}'s argument is not an encNn laid out in memory"
+    match nnOf (if followK then unK x else x) with
+    | some s => run followK (fuel - 1) (DecJet.encO (DecJet.decSpec s)).toO r (n + 1) (jets + 1)
+    | none => s!"STOPPED at contraction {n} ({jets} jet steps before): the jet {j}'s argument is not an encNn laid out in memory ({describe x})"
   | _, _ => s!"weak head normal form after {n} contractions, {jets} jet steps"
 
 def probe (n : Nat) : IO UInt32 := do
   let T := nockToSki decLoopF ⬝ encNoun (.cell (.atom n) (.cell (.atom 0) (.atom 0)))
   let TJ := abstJ (nockToSki decF) T
   IO.println s!"loop on [{n} [0 0]], the word's {TJ.count ComposedDText.JD} occurrences as the jet:"
-  IO.println ("  " ++ run (1 <<< 28) TJ [] 0 0)
+  IO.println ("  " ++ run false (1 <<< 28) TJ [] 0 0)
+  IO.println s!"the same, the jet also firing on a subject readable after stripping K-thunks K R w (route (B)'s reader):"
+  IO.println ("  " ++ run true (1 <<< 28) TJ [] 0 0)
   let C := checkJ decF (decS (max n 1)) (decP (max n 1))
   IO.println s!"the word alone on [{max n 1} 0] (the decterm statement's check):"
-  IO.println ("  " ++ run (1 <<< 28) C [] 0 0)
+  IO.println ("  " ++ run false (1 <<< 28) C [] 0 0)
   return 0
 
 def main (args : List String) : IO UInt32 := do

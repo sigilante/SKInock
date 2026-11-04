@@ -1,0 +1,13 @@
+control: J constant receives K P from [P, k]
+goal 3, order 0, terms of 1..6 leaves: 187796 terms, 134 reach the goal
+hand P back bare to k below it ([P, k]):
+goal 1, order 0, terms of 1..10 leaves: 318380772 terms, 0 reach the goal
+hand a fresh wrapper K P bare to a continuation k ([k, P] and [P, k]):
+goal 2, order 1, terms of 1..10 leaves: 318380772 terms, 0 reach the goal
+goal 2, order 0, terms of 1..10 leaves: 318380772 terms, 0 reach the goal
+lay out a two-field cell, both fields input-dependent, for constant J ([P, k] and [k, P]):
+goal 4, order 0, terms of 1..9 leaves: 405331348 terms, 0 reach the goal
+goal 4, order 1, terms of 1..9 leaves: 405331348 terms, 0 reach the goal
+hand K P to k folded as the thunk K (K P) w ([k, P]):
+goal 5, order 1, terms of 1..10 leaves: 318380772 terms, 0 reach the goal
+T = S (K (S (S (K (S (K (S I)) K)) K))) K on [k, P]: k receives the thunk K (K P) w (and not K P bare)

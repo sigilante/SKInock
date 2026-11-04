@@ -23,6 +23,8 @@
 #      aircheck accepts each table.  `VERIFY_UNJETTED=0` skips the
 #      re-proof (dec_100_unjetted peaks at 3.3 GB).
 #   3. probe.txt is recomputed (`nockdec probe 3`).
+#   4. layout.txt is recomputed (layout/run.sh: the searches and the
+#      delivery term), and lean-ski's Ski/NoLayout.lean builds.
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
 LEAN_SKI=${LEAN_SKI:-../lean-ski}
@@ -76,4 +78,8 @@ fi
 echo "--- 3. the probe"
 "$N" probe 3 > "$tmp/probe.txt"
 cmp "$tmp/probe.txt" "$D/probe.txt" && echo "probe.txt: recomputed"
+echo "--- 4. the layout evidence"
+"$D/layout/run.sh" "$tmp" > "$tmp/layout.txt"
+cmp "$tmp/layout.txt" "$D/layout.txt" && echo "layout.txt: recomputed"
+(cd "$LEAN_SKI" && lake build Ski.NoLayout > /dev/null) && echo "lean-ski Ski/NoLayout.lean: built"
 echo "ALL CHECKS PASSED"

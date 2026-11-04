@@ -1000,13 +1000,19 @@ rows, 5.1 s; `loop_3` 96,718, 242,656 rows, 6.8 s (`loop_10` is 239,560 contract
 `loop_20` 643,783: quadratic, `n` words each running its count-up loop). Jetted it cannot be
 proved: `nockdec probe 3` replaces the word's 13 occurrences in the compiled loop by the jet and
 runs a head machine that fires the jet only on a subject laid out as `encNn`, as lean-ski's
-row does, and the run stops at the first call (contraction 2,826). The word's argument there is
-the loop's stack as the environment's unevaluated projection; and a laid-out cell, once
-eliminated, hands its fields over as thunks `K h c` (head reduction never reduces an
-argument), so not even the jet's own output is a subject the next call could read. The
-`decterm` statement of the loop exists (`checkJ (NT decLoop) s p`, and `nockdec_sound` holds
-for it), but the prover's run cannot pass the first call: a run is head reduction with the jet,
-deterministic, and at that state the jet does not fire and its atom has no other step. Collapsing a loop needs a jet whose row takes a
-computed argument: one that normalises its subject first (the machine reducing the argument
-to a laid-out `encNn`, which lean-ski's head machine does not do), or an encoding whose
-elimination exposes the fields' cells.
+row does, and the run stops at the first call (contraction 2,826); the word's argument there
+is the loop's computed stack. PROBE_README
+
+**No term can lay the argument out** (`release/nock/DECJET.md`, "Inside a loop, on the
+circuit"; lean-ski `Ski/NoLayout.lean`, branch `dec-norm`). A normaliser `norm` with `J ⬝
+(norm ⬝ x)` readable would have to write the encoding's wrappers, each an application cell
+whose function is a constant. On lean-ski's write-once machine an invariant of every
+reachable state (`inv_step`, `inv_reach`) makes the `S` that writes such a cell continue
+with constant code (`S_cont_const`), so a continuation carrying the rest of a traversal
+receives a computed cell `R` only folded, as the thunk `K R w`. `release/nock/decloop/layout`
+has the evidence (`layout.txt`, recomputed by produce.sh and verify.sh). A 12-leaf term does
+exactly that fold. No term of up to 10 leaves hands `K P` over bare (318,380,772 terms per
+goal), and none of up to 9 lays out a cell of two computed fields (405,331,348 terms, both
+stack orders). Collapsing the loop is a circuit change: a row that reads through `K R w`
+(then a continuation-passing `norm` exists), or a machine that reduces the argument in place
+before the row reads it, as Avon's `jet-reduce-arg` does at run time.
