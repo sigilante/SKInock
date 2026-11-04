@@ -208,3 +208,53 @@ bare pin, `jetT ⬝ core` fires after 46 steps, because its bare subterm is reac
    and the sample and its bit list. If it cannot, it declines. The licence is
    `hoon_dec_bare_fire_sound_red`.
 4. The program is loaded unshared, or Avon binds pins after the sharing βs.
+
+### Fired in whole programs: Avon branch `jet-reduce-arg` (2026-11-04)
+
+Avon branch `jet-reduce-arg` (commit `2f0843b`, not merged) makes the four changes listed
+above:
+
+1. Kind `hoon-dec` accepts both full digests: `jetT hoonDecBodyF` (`a4baf0aa…`) and the
+   bare arm `nockToSki hoonDecBodyF` (`d320b173…`). `terms/nockToSki-hoonDecBodyF.dag` is
+   vendored as `jets/pins/nockToSki-hoonDecBodyF.dag`, and `jets/pins.conf` lists both
+   (`hoon-dec` is the one kind that may have two lines). `--pins` reports each term's
+   occurrences, e.g. `(jetT 0, bare 1)`.
+2. Before the literal check, the reader reduces the argument in place. Each node the
+   check reads is first reduced to weak head normal form by a nested share-mode run of
+   Avon's reducer. Those nodes are the core, its tail, the sample and the sample's bit
+   list, which are what the arm forces itself; `bat`, `ctx` and a `Form`'s code are never
+   forced. The reductions are capped at 2^22 contractions per call (or the fuel left).
+   If the cap is reached, the jet declines and the reducts stay in the graph.
+   The reductions count as contractions of the run, and the fire is one step more. The
+   licence is `hoon_dec_bare_fire_sound_red` (and `hoon_dec_fire_sound_red`). The Λ word's
+   reader (`nock-dec`) had the same limitation and now reduces its argument the same way,
+   licensed by `dec_transport` after `WSteps.right`.
+3. A term loaded as a tree now binds. `pin_same`'s comparison budget is now at least the
+   pinned term's size as a tree (capped at 2^22), not only `8 · pin_nodes + 4096`. That
+   was the cause: a tree copy of the arm has about 65,000 application nodes against a
+   budget of 15,376. The input is not hash-consed, so its counts are unchanged.
+4. Shared programs are documented as out of reach. Binding pins in reducts would mean
+   hashing every node a contraction builds. So a program whose `++dec` should fire must
+   be loaded unshared (as a DAG or as a prefix tree).
+
+The whole program `hoon_dec_N`, unshared, as a DAG; Avon `reduce`, share mode,
+`--budget=10^11`, `--pins` (the branch's `jets/pins.conf`) against no pins, normal forms
+compared byte for byte:
+
+| N | unjetted | jetted | arm | normal forms |
+|--:|--:|--:|---|---|
+| 7 | 12,295 | **1,011** | bare: 1 bound, 1 fired, 0 declined | equal (116 bytes) |
+| 100 | 170,640 | **1,011** | the same | equal (220 bytes) |
+| 10,000 | 17,040,411 (0.48 s, 58 MB) | **1,011** (0.04 s, 6 MB) | the same | equal (400 bytes) |
+
+The jetted count does not depend on N. Its 1,010 steps besides the fire are the program's
+own work outside the arm, including the reduction of the core. That matches the unjetted
+gap between the whole program and the direct application (12,295 − 11,286 = 1,009 at
+N = 7). The same program as a backtick-prefix tree now binds the arm at all three of its
+tree occurrences: 12,484 / 170,938 / 17,040,897 steps unjetted, 1,011 jetted, normal forms
+equal. The shared form still binds nothing (15,628 steps at N = 7, jetted or not). The
+direct applications `nockToSki hoonDecBodyF ⬝ core` and `jetT hoonDecBodyF ⬝ core` fire in
+one step, as DAG and as prefix. Avon's `tests/test_nockdec.c` checks `hoon_dec_7` itself
+against the unjetted normal form (`tests/data/hoon-dec/`), together with lazy cores
+(`K`/`I`/`S K K` thunks at the core, the tail, the sample and its bits, `Form`s, divergent
+`bat`/`ctx`), lazy stacks, the bare arm and a tree copy of each term.
