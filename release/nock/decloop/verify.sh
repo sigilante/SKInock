@@ -25,6 +25,10 @@
 #   3. probe.txt is recomputed (`nockdec probe 3`).
 #   4. layout.txt is recomputed (layout/run.sh: the searches and the
 #      delivery term), and lean-ski's Ski/NoLayout.lean builds.
+#   5. results-norm.txt is recomputed (`nocknorm run 1 3 10 20`: the loop
+#      with the normalised jet on the heap machine, lean-ski's
+#      DecJet.decRowI firing at every call), and lean-ski's Ski/DecInd.lean
+#      and Nock2Ski/DecNorm.lean build.
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
 LEAN_SKI=${LEAN_SKI:-../lean-ski}
@@ -34,7 +38,7 @@ trap '/bin/rm -rf "$tmp"' EXIT
 A=$LEAN_SKI/bench/plonky3/target/release/ski-air
 (cd "$LEAN_SKI/bench/plonky3" && cargo build --release --locked --quiet)
 (cd "$LEAN_SKI" && lake build composed circuit aircheck > /dev/null)
-lake build nockdec nockstatement > /dev/null
+lake build nockdec nockstatement nocknorm > /dev/null
 N=.lake/build/bin/nockdec
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
@@ -82,4 +86,9 @@ echo "--- 4. the layout evidence"
 "$D/layout/run.sh" "$tmp" > "$tmp/layout.txt"
 cmp "$tmp/layout.txt" "$D/layout.txt" && echo "layout.txt: recomputed"
 (cd "$LEAN_SKI" && lake build Ski.NoLayout > /dev/null) && echo "lean-ski Ski/NoLayout.lean: built"
+echo "--- 5. the loop with the normalised jet"
+.lake/build/bin/nocknorm run 1 3 10 20 > "$tmp/results-norm.txt"
+cmp "$tmp/results-norm.txt" "$D/results-norm.txt" && echo "results-norm.txt: recomputed"
+(cd "$LEAN_SKI" && lake build Ski.DecInd > /dev/null) && echo "lean-ski Ski/DecInd.lean: built"
+lake build Nock2Ski.DecNorm > /dev/null && echo "Nock2Ski/DecNorm.lean: built"
 echo "ALL CHECKS PASSED"

@@ -38,23 +38,33 @@
 #             fresh wrapper to a dynamic continuation only as the thunk
 #             `K (K P) w` (layout/deliver.py); lean-ski's Ski/NoLayout.lean
 #             proves the invariant behind them (layout.txt).
+#   norm      Route (B): `nocknorm run 1 3 10 20` (bench/NockNorm.lean)
+#             runs the Nock claim *[[N [0 0]] decLoopF] = [0 [0 0]]'s check
+#             on lean-ski's heap machine, unjetted, with every occurrence
+#             of the compiled word the jet's atom (it stops at the first
+#             call), and with every occurrence `normJ JD` (Nock2Ski/
+#             DecNorm.lean's continuation-passing normaliser, then the
+#             jet): lean-ski's DecJet.decRowI (Ski/DecInd.lean, the row
+#             reading through K-thunks) fires at every call and the run
+#             reaches K (results-norm.txt).  Machine runs, not proofs: the
+#             DEC table does not carry decRowI's reader yet.
 #
-# Stages: `produce.sh [jetted unjetted probe layout]`, all by default.
+# Stages: `produce.sh [jetted unjetted probe layout norm]`, all by default.
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
 LEAN_SKI=${LEAN_SKI:-../lean-ski}
 D=release/nock/decloop
-STAGES=" ${*:-jetted unjetted probe layout} "
+STAGES=" ${*:-jetted unjetted probe layout norm} "
 want() { case "$STAGES" in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 for st in $STAGES; do
-    case " jetted unjetted probe layout " in *" $st "*) ;; *) echo "no stage $st" >&2; exit 2 ;; esac
+    case " jetted unjetted probe layout norm " in *" $st "*) ;; *) echo "no stage $st" >&2; exit 2 ;; esac
 done
 tmp=$(mktemp -d)
 trap '/bin/rm -rf "$tmp"' EXIT
 A=$LEAN_SKI/bench/plonky3/target/release/ski-air
 (cd "$LEAN_SKI/bench/plonky3" && cargo build --release --locked --quiet)
 (cd "$LEAN_SKI" && lake build composed circuit aircheck > /dev/null)
-lake build nockdec nockstatement > /dev/null
+lake build nockdec nockstatement nocknorm > /dev/null
 N=.lake/build/bin/nockdec
 lg() { awk -v x="$1" 'BEGIN { l = 9; while (2 ^ l < x) l++; print l }'; }
 
@@ -105,4 +115,11 @@ if want layout; then
 echo "--- why no term lays the argument out"
 "$D/layout/run.sh" "$tmp" | tee "$D/layout.txt"
 (cd "$LEAN_SKI" && lake build Ski.NoLayout > /dev/null) && echo "lean-ski Ski/NoLayout.lean: built (inv_step, inv_reach, S_cont_const)"
+fi
+
+if want norm; then
+echo "--- route (B): the loop with the normalised jet, on the heap machine"
+.lake/build/bin/nocknorm run 1 3 10 20 | tee "$D/results-norm.txt"
+(cd "$LEAN_SKI" && lake build Ski.DecInd > /dev/null) && echo "lean-ski Ski/DecInd.lean: built (decRowI_step, JStepsI.close_K)"
+lake build Nock2Ski.DecNorm > /dev/null && echo "Nock2Ski/DecNorm.lean: built (norm_enc, normJ_impl, normDec_enc)"
 fi

@@ -1,0 +1,12 @@
+loop_1 unjetted      : 20757 rows, 8434 contractions, 0 jet calls, 25034 cells written, K
+loop_1 bare jet      : 7034 rows, 2857 contractions, 0 jet calls, 8551 cells written, STOPPED at call 1: the argument is not readable by DecJet.readSubjI
+loop_1 normalised jet: 17348 rows, 7051 contractions, 1 jet calls, 20895 cells written, K
+loop_3 unjetted      : 57785 rows, 23459 contractions, 0 jet calls, 69435 cells written, K
+loop_3 bare jet      : 7034 rows, 2857 contractions, 0 jet calls, 8551 cells written, STOPPED at call 1: the argument is not readable by DecJet.readSubjI
+loop_3 normalised jet: 34805 rows, 14139 contractions, 3 jet calls, 41780 cells written, K
+loop_10 unjetted      : 336681 rows, 136500 contractions, 0 jet calls, 402345 cells written, K
+loop_10 bare jet      : 7034 rows, 2857 contractions, 0 jet calls, 8551 cells written, STOPPED at call 1: the argument is not readable by DecJet.readSubjI
+loop_10 normalised jet: 97843 rows, 39730 contractions, 10 jet calls, 116993 cells written, K
+loop_20 unjetted      : 1152824 rows, 466653 contractions, 0 jet calls, 1371353 cells written, K
+loop_20 bare jet      : 7034 rows, 2857 contractions, 0 jet calls, 8551 cells written, STOPPED at call 1: the argument is not readable by DecJet.readSubjI
+loop_20 normalised jet: 190465 rows, 77294 contractions, 20 jet calls, 227010 cells written, K

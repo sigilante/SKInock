@@ -33,3 +33,4 @@ import Nock2Ski.Circuit
 import Nock2Ski.DecBridge
 import Nock2Ski.DecLoop
 import Nock2Ski.DecTermNock
+import Nock2Ski.DecNorm

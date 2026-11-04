@@ -35,3 +35,7 @@ root = "bench.NockProbe"
 [[lean_exe]]
 name = "nockdec"
 root = "bench.NockDec"
+
+[[lean_exe]]
+name = "nocknorm"
+root = "bench.NockNorm"

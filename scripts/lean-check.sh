@@ -88,6 +88,10 @@ while IFS=$'\t' read -r name kind n; do
         loop) lake exe nockstatement --check "$name" "$F" "[$n [0 0]]" < release/nock/decloop/corpus.txt 2> /dev/null ;;
     esac
 done < release/nock/decloop/unjetted.txt
+# Route (B): the loop with the normalised jet on the heap machine, the
+# jet's row lean-ski's DecJet.decRowI (release/nock/decloop/results-norm.txt)
+lake build nocknorm
+.lake/build/bin/nocknorm run 1 3 10 20 | cmp - release/nock/decloop/results-norm.txt && echo "nocknorm: results-norm.txt recomputed"
 cat > "$tmp/Axioms.lean" <<'LEAN'
 import Nock2Ski
 #print axioms Nock2Ski.m0_join
@@ -344,5 +348,11 @@ import Nock2Ski
 #print axioms Nock2Ski.abstJ_occ
 #print axioms Nock2Ski.nockDecV_vsOK
 #print axioms Nock2Ski.nockdec_sound
+-- the continuation-passing normaliser (DecNorm)
+#print axioms Nock2Ski.DecNorm.fix_red
+#print axioms Nock2Ski.DecNorm.normBits_bl
+#print axioms Nock2Ski.DecNorm.norm_enc
+#print axioms Nock2Ski.DecNorm.normJ_impl
+#print axioms Nock2Ski.DecNorm.normDec_enc
 LEAN
 lake env lean "$tmp/Axioms.lean"
