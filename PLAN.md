@@ -240,6 +240,24 @@ Started 2026-11-03. Open question C5 of `../OPEN-QUESTIONS.md`. Companion paper:
   `hoon_dec_0`: 11,364 → 10,275 (164; 4,606 → 3,960), 0.91 s, 0.7 s; prover under 420 MB. The chain:
   `Circuit.jetExport_sound` + `jet_run_shape` + `embed_outcome`. The loop does not collapse
   (§8's gate for M5 named the data jet): rows fall 36–40%, proportional to the count still.
+- **The `dec` data jet on lean-ski's circuit** (`Nock2Ski/DecBridge.lean`, `DecLoop.lean`,
+  `DecTermNock.lean`, `bench/NockDec.lean`, `release/nock/decloop/`; lean-ski branch
+  `dec-loop`, `Ski/DecTermText.lean`, `Ski/DecTerm.lean`; 2026-11-04). The bridge:
+  `toNoun`, `encNn_eq`, `encO_eq`, `dec_impl_lean : Implements DecJet.decContract (jetT
+  decF)` (discharging `decpreExport_sound`'s `hP`, `decpre_proof_nock`), and the bare word
+  `dec_impl_bare : Implements DecJet.decContract (nockToSki decF)` (no `toCell`). lean-ski's
+  `decterm J` statement takes any public verifiers open in the jet's atom
+  (`dectermExport_sound`, `dectermExport_close`); `nockdec_sound`: for any formula `f`, an
+  accepted proof of `verT (checkJ f s p)` (M4c's `eqn` check with every `nockToSki decF` the
+  jet) shows `*[s f] = p`. Rows for `*[[N 0] phi(dec)] = [N-1 0]`: jetted 2,184 (N = 10) to
+  12,233 (N = 2^32 - 1), one jet row, proved in under 1.4 s; unjetted 48,316 (N = 10),
+  252,097 (50), 533,392 (100, 3.3 GB), past the cap at 1,000. The Λ loop `while (top ≠ 0) dec`
+  (`decLoop_nock` from `composition_term`) is proved unjetted (`loop_1`, `loop_3`: 190,814 and
+  242,656 rows) and **does not collapse**: the jet row reads a subject laid out in memory, and
+  inside the compiled loop the word's argument never is (the run stops at the first call,
+  `nockdec probe`); a laid-out cell's fields come out of elimination as thunks, so the jet
+  cannot fire on its own output either. Collapsing a loop needs a jet that normalises a
+  computed argument (§3.2's limit, now measured).
 - **Remaining** (M3's other items, M4–M7): `fragment_static` is moot for correctness (the
   fallback is proved) and is a cost statement; the Λ front end; the statement path and the
   circuit.

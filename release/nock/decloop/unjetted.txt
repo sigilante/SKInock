@@ -1,0 +1,5 @@
+dec_10_unjetted	dec	10
+dec_50_unjetted	dec	50
+dec_100_unjetted	dec	100
+loop_1	loop	1
+loop_3	loop	3

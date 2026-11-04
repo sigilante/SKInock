@@ -15,7 +15,9 @@
 #    of every theorem (no sorry, no native_decide);
 # 4. the circuit proofs: every program of release/nock proved on lean-ski's
 #    circuits and verified from the Nock formula (release/nock/produce.sh
-#    regenerates them; verify.sh re-checks statements and proofs).
+#    regenerates them; verify.sh re-checks statements and proofs), and
+#    release/nock/decloop's: the dec jet on lean-ski's circuit, jetted
+#    against unjetted (needs lean-ski's dec-loop branch).
 set -eu
 cd "$(dirname "$0")/.."
 export PATH="$HOME/.elan/bin:$PATH"
@@ -36,6 +38,8 @@ if [ "${1:-}" != quick ]; then
   step "4. Circuit proofs: produce and verify release/nock"
   release/nock/produce.sh
   VERIFY_ALL=1 release/nock/verify.sh
+  release/nock/decloop/produce.sh
+  release/nock/decloop/verify.sh
 fi
 
 step "ARTIFACT OK"

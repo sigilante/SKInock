@@ -31,3 +31,7 @@ root = "bench.NockPred"
 [[lean_exe]]
 name = "nockprobe"
 root = "bench.NockProbe"
+
+[[lean_exe]]
+name = "nockdec"
+root = "bench.NockDec"

@@ -444,6 +444,54 @@ one byte changed at the middle (`verify: Verification(…)`).  A tampered
 table (one row's counter changed) is refused by `check-jets` (`not a jetted
 run of NAME with its jet table`).
 
+## The `dec` data jet: jetted against unjetted (`decloop/`, 2026-11-04)
+
+lean-ski's `dec` data-jet circuit (branch `dec-loop`: the `decterm J`
+statement, any public verifiers open in the jet's atom) on the claim
+`*[[N 0] phi(dec)] = [N-1 0]`: the verifier `λ β w. checkJ decF s p`, M4c's
+`eqn` check with every occurrence of the compiled word the jet
+(`Nock2Ski/DecTermNock.lean`, `nockdec_sound`).  `decloop/results.txt`,
+ski-air's `compd-prove` lines and lean-ski's `check-dec-run` replay:
+
+| row | N | rows | jet rows | memory cells | heights (CPU, mem, DEC) | prove s | verify s | proof |
+|---|--:|--:|--:|--:|---|--:|--:|--:|
+| `dec_10` | 10 | 2,184 | 8 | 5,705 | 2^12, 2^13, 2^9 | 0.44 | 0.67 | 1,008 KB |
+| `dec_100` | 100 | 3,158 | 11 | 6,962 | 2^12, 2^13, 2^9 | 0.43 | 0.56 | 1,004 KB |
+| `dec_1000` | 1,000 | 4,200 | 14 | 8,298 | 2^13, 2^14, 2^9 | 0.73 | 0.56 | 1,049 KB |
+| `dec_10000` | 10^4 | 5,484 | 18 | 9,904 | 2^13, 2^14, 2^9 | 0.73 | 0.55 | 1,043 KB |
+| `dec_100000` | 10^5 | 6,518 | 21 | 11,191 | 2^13, 2^14, 2^9 | 0.73 | 0.57 | 1,042 KB |
+| `dec_1000000` | 10^6 | 7,570 | 24 | 12,487 | 2^13, 2^14, 2^9 | 0.75 | 0.54 | 1,041 KB |
+| `dec_4294967295` | 2^32 - 1 | 12,233 | 36 | 18,066 | 2^14, 2^15, 2^9 | 1.32 | 0.54 | 1,091 KB |
+
+One jet call each; the prover under 0.7 GB.  The same check unjetted (the
+bare word in the jet's place, `nockdec corpus`) and the Λ loop `while (top
+≠ 0) dec` (`Nock2Ski/DecLoop.lean`, shared), on lean-ski's base circuit,
+`decloop/results-unjetted.txt`:
+
+| row | contractions | rows | budget | memory | prove s | verify s |
+|---|--:|--:|--:|--:|--:|--:|
+| `dec_10_unjetted` | 19,605 | 48,316 | 2^16 | 2^18 | 2.17 | 1.13 |
+| `dec_50_unjetted` | 101,365 | 252,097 | 2^18 | 2^19 | 5.08 | 1.15 |
+| `dec_100_unjetted` | 212,403 | 533,392 | 2^20 | 2^20 | 14.08 | 1.15 |
+| `loop_1` | 76,395 | 190,814 | 2^18 | 2^19 | 5.10 | 1.19 |
+| `loop_3` | 96,718 | 242,656 | 2^18 | 2^20 | 6.81 | 1.19 |
+
+`dec_100_unjetted` peaks at 3.3 GB.  `N = 1,000` unjetted is 3,923,405
+contractions, about 9.7 M rows, past the circuit's `2^21`.  So the rows of
+the word grow with `N` unjetted (about 2,100 contractions a unit: the
+count-up loop inside `phi .dec`) and with the bits jetted (one jet row, a
+DEC row per bit pattern, `eqn` over the product's bits): 22× fewer at `N =
+10`, 169× at `N = 100`.
+
+The Λ loop does not collapse.  With the word's 13 occurrences in the
+compiled loop as the jet, the run stops at the first call (`decloop/probe.txt`,
+contraction 2,826): the row reads a subject laid out in memory, and the
+word's argument there is the loop's stack as an unevaluated projection of
+the environment.  A laid-out cell's fields come out of Scott elimination as
+thunks `K h c`, so the jet's own output is not a subject either.  The loop
+is proved unjetted only (`loop_1`, `loop_3`; `loop_10` is 239,560
+contractions and `loop_20` 643,783, quadratic in `n`).
+
 ## Rows per contraction
 
 | row | contractions | machine rows | rows / contraction |

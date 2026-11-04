@@ -1,0 +1,14 @@
+dec_10 (N = 10): proved 2184 rows (1 jet calls, 8 jet rows), 5705 memory cells, in 0.44 s; verified in 0.671 s; proof 1008430 bytes -> release/nock/decloop/dec_10.proof
+dec_10: OK DECRUN decterm (1 verifiers): 2184 rows, 1 jet rows, each a step or DecJet.decRow
+dec_100 (N = 100): proved 3158 rows (1 jet calls, 11 jet rows), 6962 memory cells, in 0.43 s; verified in 0.557 s; proof 1004110 bytes -> release/nock/decloop/dec_100.proof
+dec_100: OK DECRUN decterm (1 verifiers): 3158 rows, 1 jet rows, each a step or DecJet.decRow
+dec_1000 (N = 1000): proved 4200 rows (1 jet calls, 14 jet rows), 8298 memory cells, in 0.73 s; verified in 0.560 s; proof 1049475 bytes -> release/nock/decloop/dec_1000.proof
+dec_1000: OK DECRUN decterm (1 verifiers): 4200 rows, 1 jet rows, each a step or DecJet.decRow
+dec_10000 (N = 10000): proved 5484 rows (1 jet calls, 18 jet rows), 9904 memory cells, in 0.73 s; verified in 0.548 s; proof 1043267 bytes -> release/nock/decloop/dec_10000.proof
+dec_10000: OK DECRUN decterm (1 verifiers): 5484 rows, 1 jet rows, each a step or DecJet.decRow
+dec_100000 (N = 100000): proved 6518 rows (1 jet calls, 21 jet rows), 11191 memory cells, in 0.73 s; verified in 0.569 s; proof 1041635 bytes -> release/nock/decloop/dec_100000.proof
+dec_100000: OK DECRUN decterm (1 verifiers): 6518 rows, 1 jet rows, each a step or DecJet.decRow
+dec_1000000 (N = 1000000): proved 7570 rows (1 jet calls, 24 jet rows), 12487 memory cells, in 0.75 s; verified in 0.544 s; proof 1041251 bytes -> release/nock/decloop/dec_1000000.proof
+dec_1000000: OK DECRUN decterm (1 verifiers): 7570 rows, 1 jet rows, each a step or DecJet.decRow
+dec_4294967295 (N = 4294967295): proved 12233 rows (1 jet calls, 36 jet rows), 18066 memory cells, in 1.32 s; verified in 0.542 s; proof 1090872 bytes -> release/nock/decloop/dec_4294967295.proof
+dec_4294967295: OK DECRUN decterm (1 verifiers): 12233 rows, 1 jet rows, each a step or DecJet.decRow

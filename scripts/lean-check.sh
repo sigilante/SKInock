@@ -73,6 +73,21 @@ while IFS=$'\t' read -r name subject product form formula; do
     gunzip -c "release/nock/jets/$name.jetted.table.gz" > "$tmp/$name.jetted.table"
     lake exe nockprobe check-jets release/nock/corpus.txt "$name" "$tmp/$name.jetted.table" | sed "s|$tmp/||"
 done < release/nock/programs.txt
+# The dec jet on lean-ski's circuit (release/nock/decloop): each released
+# decterm statement recomputes from N (`nockdec check`: the verifier
+# `verT (checkJ decF s p)`, lean-ski's parser reading it back), and each
+# unjetted corpus row from N or the Λ loop's formula
+lake build nockdec
+while IFS=$'\t' read -r name n; do
+    lake exe nockdec check "$name" "$n" "release/nock/decloop/$name.public.txt"
+done < release/nock/decloop/jetted.txt
+F=$(lake exe nockdec loop-formula)
+while IFS=$'\t' read -r name kind n; do
+    case "$kind" in
+        dec) lake exe nockdec check-corpus "$name" "$n" < release/nock/decloop/corpus.txt ;;
+        loop) lake exe nockstatement --check "$name" "$F" "[$n [0 0]]" < release/nock/decloop/corpus.txt 2> /dev/null ;;
+    esac
+done < release/nock/decloop/unjetted.txt
 cat > "$tmp/Axioms.lean" <<'LEAN'
 import Nock2Ski
 #print axioms Nock2Ski.m0_join
@@ -313,5 +328,21 @@ import Nock2Ski
 #print axioms Nock2Ski.hoon_dec_bare_fire_sound
 #print axioms Nock2Ski.hoon_dec_bare_fire_sound_red
 #print axioms Nock2Ski.hoon_dec_fire_sound_red
+-- the dec data jet on lean-ski's circuit (DecBridge, DecLoop, DecTermNock)
+#print axioms Nock2Ski.bits_eq_bitsN
+#print axioms Nock2Ski.encNn_eq
+#print axioms Nock2Ski.encO_eq
+#print axioms Nock2Ski.dec_impl_lean
+#print axioms Nock2Ski.decC_toNoun
+#print axioms Nock2Ski.decpre_proof_nock
+#print axioms Nock2Ski.decF_bare
+#print axioms Nock2Ski.dec_impl_bare
+#print axioms Nock2Ski.decLoop_ceval
+#print axioms Nock2Ski.decLoop_nock
+#print axioms Nock2Ski.decLoop_ski
+#print axioms Nock2Ski.abstJ_close
+#print axioms Nock2Ski.abstJ_occ
+#print axioms Nock2Ski.nockDecV_vsOK
+#print axioms Nock2Ski.nockdec_sound
 LEAN
 lake env lean "$tmp/Axioms.lean"

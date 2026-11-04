@@ -775,9 +775,10 @@ Axioms: `propext`, `Classical.choice`, `Quot.sound` on the lean-ski side; `prope
   reached `Nock.Fuel`, whose root `Diverges` clashed with `Ski.Basic`'s, and the instances
   took `Leaf decF decC` as a hypothesis discharged in `JetWord.lean`, the two meeting in
   `JetSpec.lean`'s one constant.)
-- **What is not built.** The transported `dec` data jet has no circuit: lean-ski's data-jet
-  path needs a precompile that computes `spec` (its own `Ski/DataJet.lean` says so of
-  Poseidon2), and building one for `cw .dec` is held by the user. Nor is an Avon C jet for
+- **What is not built.** (Since built: lean-ski's `dec` data-jet circuit, branch `dec-jet`,
+  and its use on Nock claims, "The `dec` data jet on lean-ski's circuit" below.) The
+  transported `dec` data jet had no circuit: lean-ski's data-jet path needs a precompile that
+  computes `spec` (its own `Ski/DataJet.lean` says so of Poseidon2). Nor is an Avon C jet for
   `dec` made. `jet_transport` licenses the row: whatever circuit computes `cw .dec` on
   `encNoun` may stand in for `jetT decF`, and a proof accepted under it is a proof about the
   Nock formula. PLAN §3.2's limit stands: the transported jet says nothing about steps.
@@ -924,3 +925,88 @@ constant is the data jet's, not built (above). `release/nock/RESULTS.md` has ski
   `Eval t v'` is the shared constant. Both import together now (`Nock2Ski/Circuit.lean`
   imports `Ski.Circuit.ProbeRows`); the composition is not written out, since the jetted
   rows are not released as probe proofs.
+
+## The `dec` data jet on lean-ski's circuit (`release/nock/decloop/`)
+
+lean-ski's `dec` data jet (`Ski/DecJet.lean`, `Ski/Circuit/DecAir.lean`) is a row that reads a
+subject `encNn s` from the memory cell by cell and writes `encO (decSpec s)`; its soundness
+takes any implementation of `DecJet.decContract` (`Circuit.decpreExport_sound`'s `hP`). Three
+pieces join it to Nock.
+
+**The bridge** (`Nock2Ski/DecBridge.lean`). `toNoun : DecJet.Nn → Noun` reads an atom's bits
+as their value.
+
+    bits_eq_bitsN      : bits n = bitsN n                                     skinock's bits, lean-ski's bitsN
+    encNn_eq           : s.wf → DecJet.encNn s = encNoun (toNoun s)
+    encO_eq            : s.wf → DecJet.encO (decSpec s) = encOut (decC (toNoun s))        (decB_bitsN)
+    dec_impl_lean      : Implements DecJet.decContract (jetT decF)                       from dec_transport
+    decpre_proof_nock  : accepted proof of decpre p → ∃ s r, *[toNoun s phi(dec)] = [p r]
+    decF_bare          : nockToSki decF ⬝ encNoun S ↠ encOut (decC S)                     no toCell
+    dec_impl_bare      : Implements DecJet.decContract (nockToSki decF)
+
+`dec_impl_lean` discharges `decpreExport_sound`'s hypothesis. `decF_bare` is the word as a
+compiled program carries it (no `toCell`): the head of `[[7 [0 2] g] 0 3]` is an atom, whose
+encoding is unique (`Enc.atom_inv`), the tail is the subject's own (`[0 3]`, `tl_cellT`), and
+`force` and `Cell` rebuild the code-free cell (`force_spec`, `consK_beta`, `CellC_red`).
+
+**Any Nock claim as a `decterm` statement** (`Nock2Ski/DecTermNock.lean`; lean-ski's
+`Ski/DecTermText.lean`, `Ski/DecTerm.lean`, branch `dec-loop`). lean-ski's `decterm J`
+statement names any public verifiers open in the jet's atom by their cells; an accepted proof
+makes each head-reduce with the jet to `K` (`Circuit.dectermExport_sound`), and for `verT C =
+λ β w. C` any implementation closed in makes `C` reach `K` (`Circuit.dectermExport_close`).
+Here:
+
+    abstJ P t          : t with every occurrence of the subterm P replaced by the jet's atom JD
+    abstJ_close        : σ JD = P → (abstJ P t).close σ = t
+    checkT f s p       = eqn (nockToSki f ⬝ encNoun s) (encNoun p)                       M4c's check
+    checkJ f s p       = abstJ (nockToSki decF) (checkT f s p)                            the word as the jet
+    nockdec_sound      : accepted proof for compDAirsG [verT (checkJ f s p)] W → *[s f] = p
+
+for **any** formula `f`: `dectermExport_close` with `dec_impl_bare` closes the jetted check to
+`checkT f s p` itself, and `nock_of_eqn_K` reads that as a `NockEval` derivation. `lake exe
+nockdec emit|check` writes and recomputes the statement for `f = phi(dec)`, `s = [N 0]`, `p =
+[N-1 0]`; `ski-air compd-prove|compd-verify` prove and check it (lean-ski's `composed
+statement-dec` reads the `decterm` header).
+
+**Rows** (`release/nock/decloop/RESULTS` below; `produce.sh`, `verify.sh`). Jetted, the word
+on the literal subject is one jet row, and the rows follow the bits (the check's `eqn` and the
+DEC table's one row per bit pattern). Unjetted, the same check with the bare word runs the
+word's count-up loop `N` times, about 2,100 contractions a unit:
+
+| N | jetted rows (jet rows) | memory cells | prove s | unjetted rows | unjetted prove s |
+|--:|--:|--:|--:|--:|--:|
+| 10 | 2,184 (8) | 5,705 | 0.44 | 48,316 | 2.2 |
+| 50 | | | | 252,097 | 5.1 |
+| 100 | 3,158 (11) | 6,962 | 0.43 | 533,392 | 14.1 (3.3 GB) |
+| 1,000 | 4,200 (14) | 8,298 | 0.73 | about 9.7 M (3,923,405 contractions; past 2^21) | |
+| 10,000 | 5,484 (18) | 9,904 | 0.73 | | |
+| 100,000 | 6,518 (21) | 11,191 | 0.73 | | |
+| 1,000,000 | 7,570 (24) | 12,487 | 0.75 | | |
+| 2^32 - 1 | 12,233 (36) | 18,066 | 1.32 | | |
+
+Each jetted proof is about 1 MB, verified in 0.55–0.67 s, the prover under 0.7 GB; lean-ski's
+`composed check-dec-run` replays each run (every row a step or `DecJet.decRow`, one jet row).
+At `N = 100` the jet saves 169× the rows; at `N = 1,000` the unjetted run does not fit the
+circuit.
+
+**The Λ loop, and why it does not collapse** (`Nock2Ski/DecLoop.lean`). `decLoop = while (top
+≠ 0) dec` on `[n [0 r]]` (test `over over eq ifte(over inc, over)`, body `dec`):
+
+    decLoop_nock : *[[n [0 r]] NT decLoop] = [0 [0 r]]                 composition_term + CEval by induction on n
+    decLoop_ski  : nockToSki (NT decLoop) ⬝ encNoun [n [0 r]] ↠ e,  Enc [0 [0 r]] e
+
+Unjetted on the base circuit (shared, 256,825 cells): `loop_1` 76,395 contractions, 190,814
+rows, 5.1 s; `loop_3` 96,718, 242,656 rows, 6.8 s (`loop_10` is 239,560 contractions,
+`loop_20` 643,783: quadratic, `n` words each running its count-up loop). Jetted it cannot be
+proved: `nockdec probe 3` replaces the word's 13 occurrences in the compiled loop by the jet and
+runs a head machine that fires the jet only on a subject laid out as `encNn`, as lean-ski's
+row does, and the run stops at the first call (contraction 2,826). The word's argument there is
+the loop's stack as the environment's unevaluated projection; and a laid-out cell, once
+eliminated, hands its fields over as thunks `K h c` (head reduction never reduces an
+argument), so not even the jet's own output is a subject the next call could read. The
+`decterm` statement of the loop exists (`checkJ (NT decLoop) s p`, and `nockdec_sound` holds
+for it), but the prover's run cannot pass the first call: a run is head reduction with the jet,
+deterministic, and at that state the jet does not fire and its atom has no other step. Collapsing a loop needs a jet whose row takes a
+computed argument: one that normalises its subject first (the machine reducing the argument
+to a laid-out `encNn`, which lean-ski's head machine does not do), or an encoding whose
+elimination exposes the fields' cells.

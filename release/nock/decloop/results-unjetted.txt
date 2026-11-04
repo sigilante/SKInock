@@ -1,0 +1,14 @@
+row               contr   rows budget  memory  prove s verify s  verdict
+ik                    1      3     16      16     0.00    0.477  verified
+skks                  2      6     16      16     0.02    0.493  verified
+dec_10_unjetted   19605  48316  65536  262144     2.17    1.125  verified
+dec_50_unjetted  101365 252097 262144  524288     5.08    1.145  verified
+dec_100_unjetted 212403 533392 1048576 1048576    14.08    1.153  verified
+loop_1            76395 190814 262144  524288     5.10    1.188  verified
+loop_3            96718 242656 262144 1048576     6.81    1.191  verified
+
+tampered tables (each proof must be rejected by the verifier):
+forged_cell      rejected by the verifier (verify: Lookup(TerminalSumNonZero))
+wrong_step       rejected by the verifier (verify: Verification(OodEvaluationMismatch { index: Some(0) )
+early_halt       rejected by the verifier (verify: Lookup(TerminalSumNonZero))
+forged_loaded    rejected by the verifier (verify: Transcript(LookupPowWitness { bits: 5 }))

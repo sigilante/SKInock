@@ -1,0 +1,4 @@
+loop on [3 [0 0]], the word's 13 occurrences as the jet:
+  STOPPED at contraction 2826 (0 jet steps before): the jet 8388608's argument is not an encNn laid out in memory
+the word alone on [3 0] (the decterm statement's check):
+  weak head normal form after 635 contractions, 1 jet steps
