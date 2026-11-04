@@ -492,6 +492,21 @@ thunks `K h c`, so the jet's own output is not a subject either.  The loop
 is proved unjetted only (`loop_1`, `loop_3`; `loop_10` is 239,560
 contractions and `loop_20` 643,783, quadratic in `n`).
 
+With lean-ski's row through thunks (`DecJet.decRowI`, branch `dec-norm`)
+and skinock's normaliser (`Nock2Ski/DecNorm.lean`), the loop's jet fires at
+every call on the heap machine (`decloop/results-norm.txt`, `nocknorm`): the
+check of `*[[N [0 0]] decLoopF] = [0 [0 0]]` takes
+
+| N | unjetted contractions | transitions | normalised jet contractions | transitions |
+|--:|--:|--:|--:|--:|
+| 1 | 8,434 | 20,757 | 7,051 | 17,348 |
+| 3 | 23,459 | 57,785 | 14,139 | 34,805 |
+| 10 | 136,500 | 336,681 | 39,730 | 97,843 |
+| 20 | 466,653 | 1,152,824 | 77,294 | 190,465 |
+
+These are machine runs, not proofs: the DEC table does not carry the
+reader through thunks yet (lean-ski `todo/dec-norm.md`).
+
 ## Rows per contraction
 
 | row | contractions | machine rows | rows / contraction |

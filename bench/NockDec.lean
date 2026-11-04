@@ -132,7 +132,7 @@ partial def run (followK : Bool) (fuel : Nat) (t : OTerm) (stk : List OTerm) (n 
   | .var j, x :: r =>
     match nnOf (if followK then unK x else x) with
     | some s => run followK (fuel - 1) (DecJet.encO (DecJet.decSpec s)).toO r (n + 1) (jets + 1)
-    | none => s!"STOPPED at contraction {n} ({jets} jet steps before): the jet {j}'s argument is not an encNn laid out in memory ({describe x})"
+    | none => s!"STOPPED at contraction {n} ({jets} jet steps before): the jet {j}'s argument is not an encNn laid out in memory"
   | _, _ => s!"weak head normal form after {n} contractions, {jets} jet steps"
 
 def probe (n : Nat) : IO UInt32 := do
@@ -140,8 +140,6 @@ def probe (n : Nat) : IO UInt32 := do
   let TJ := abstJ (nockToSki decF) T
   IO.println s!"loop on [{n} [0 0]], the word's {TJ.count ComposedDText.JD} occurrences as the jet:"
   IO.println ("  " ++ run false (1 <<< 28) TJ [] 0 0)
-  IO.println s!"the same, the jet also firing on a subject readable after stripping K-thunks K R w (route (B)'s reader):"
-  IO.println ("  " ++ run true (1 <<< 28) TJ [] 0 0)
   let C := checkJ decF (decS (max n 1)) (decP (max n 1))
   IO.println s!"the word alone on [{max n 1} 0] (the decterm statement's check):"
   IO.println ("  " ++ run false (1 <<< 28) C [] 0 0)

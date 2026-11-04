@@ -1001,7 +1001,7 @@ rows, 5.1 s; `loop_3` 96,718, 242,656 rows, 6.8 s (`loop_10` is 239,560 contract
 proved: `nockdec probe 3` replaces the word's 13 occurrences in the compiled loop by the jet and
 runs a head machine that fires the jet only on a subject laid out as `encNn`, as lean-ski's
 row does, and the run stops at the first call (contraction 2,826); the word's argument there
-is the loop's computed stack. PROBE_README
+is the loop's computed stack.
 
 **No term can lay the argument out** (`release/nock/DECJET.md`, "Inside a loop, on the
 circuit"; lean-ski `Ski/NoLayout.lean`, branch `dec-norm`). A normaliser `norm` with `J ⬝
@@ -1013,6 +1013,22 @@ receives a computed cell `R` only folded, as the thunk `K R w`. `release/nock/de
 has the evidence (`layout.txt`, recomputed by produce.sh and verify.sh). A 12-leaf term does
 exactly that fold. No term of up to 10 leaves hands `K P` over bare (318,380,772 terms per
 goal), and none of up to 9 lays out a cell of two computed fields (405,331,348 terms, both
-stack orders). Collapsing the loop is a circuit change: a row that reads through `K R w`
-(then a continuation-passing `norm` exists), or a machine that reduces the argument in place
-before the row reads it, as Avon's `jet-reduce-arg` does at run time.
+stack orders).
+
+**The row through thunks fires** (route B; `release/nock/DECJET.md`, "Route B"). lean-ski's
+`Ski/DecInd.lean` (branch `dec-norm`) gives the row `DecJet.decRowI`, which follows `K R w`
+at every pointer of the subject's need tree and once at a cell's tail slot:
+`decRowI_step` reads it back as a jet step up to `K`-contraction and `JStepsI.close_K`
+closes a run to `K` with any implementation of the unchanged contract. `Nock2Ski/DecNorm.lean`
+gives the continuation-passing normaliser:
+
+    norm_enc    : Enc s es → normT ⬝ es ⬝ k ↠ k ⬝ encNoun s
+    normJ_impl  : Implements decContract P → Implements decContract (S normT (K P))
+    normDec_enc : Enc s es → S normT (K (nockToSki decF)) ⬝ es ↠ encOut (decC s)
+
+On lean-ski's heap machine (`lake exe nocknorm run 1 3 10 20`, `release/nock/decloop/
+results-norm.txt`), the loop's check with every occurrence of the word replaced by
+`S normT (K J)` fires the jet at every call and reaches `K`: 7,051 / 14,139 / 39,730 / 77,294
+contractions at `N` = 1, 3, 10, 20 against 8,434 / 23,459 / 136,500 / 466,653 unjetted on the
+same machine. These are machine runs: the DEC table does not read through thunks yet, so the
+loop is proved unjetted only (lean-ski `todo/dec-norm.md`).

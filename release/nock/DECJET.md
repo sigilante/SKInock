@@ -315,25 +315,66 @@ That is the K-thunk of the loop's diagnosis, and it is now known to be not just
 what elimination hands back but the only form in which a computed cell can reach the rest
 of a computation.
 
-**Route B, and what it costs.** If the row followed `K R w` at the subject and at every slot
-(read `R`), a continuation-passing normaliser could return each sub-result as a thunk the
-row reads, so a closed `norm` could exist. Soundness would rest on the weak reduction `K R w
-↠ R` inside the subject. But this is a circuit change of the whole jet: `DecJet`'s readers
-and their read-back proofs (1,668 lines), the DEC table's need tree and chain levels with
-their soundness and completeness (`Ski/Circuit/CompD*.lean`, 9,759 lines), and the Rust AIR
-(`decair.rs`). It is not done here. The probe also shows that the reader alone would not be
-enough: in the compiled loop the argument is not a `K`-thunk of a laid-out subject.
+**Route B: the row through thunks, and a continuation-passing normaliser (2026-11-04).** The
+row reads through `K R w`; a closed `norm` then exists, and the jet fires at every call of
+the loop on the heap machine. The DEC table does not carry the new reader yet, so the loop is
+not proved jetted.
 
-    PROBE_LINE
+- **The row** (lean-ski `Ski/DecInd.lean`, branch `dec-norm`; `propext`, `Quot.sound`, in
+  the audit manifest). `readInd` follows a thunk (`p` holds `f w`, `f` holds `k R`, `k` holds
+  `K`) to `R`. The reader follows chains of them at every pointer of the need tree (the
+  root, the head atom, a cell's halves, an atom's bit list and each tail) and one at a
+  `Cell` wrapper's tail slot `K t` (`ktAt`). `decRowI` is `decRow` with that reader and the
+  same output cells.
 
-so the loop would still need the CPS normaliser, a combinator program of its own with its
-`norm_enc` proof. The other circuit-side answer is the machine doing what Avon does:
-reducing the argument before the row reads it. That needs a machine with update in place
-(lean-ski's `Ski/Graph.lean`, whose circuit is open in PLAN §1) and a row that reads
-through indirections.
+      decRowI_step    : the row reads back as J ⬝ u ⬝ R, u ↠ encNn s, s in the domain,
+                        the next state as v ⬝ R, v ↠ encO (decSpec s)   (↠: K-contraction anywhere)
+      JStepsI.close_K : a run of that head reduction to K, the jet closed to any implementation
+                        of the unchanged contract, is a weak reduction to K   (Church–Rosser)
+      decRow_decRowI  : on a subject without thunks the two rows agree
 
-**Loop rows.** Unjetted, as before (`results-unjetted.txt`): `loop_1` 76,395 contractions,
-190,814 rows; `loop_3` 96,718 contractions, 242,656 rows. `loop_10` is 239,560 contractions
-and `loop_20` 643,783, quadratic. Their proofs would take about 0.6M and 1.6M rows, past this
-machine's 4 GB budget, so they are not proved. Jetted: none. The run stops at the first call
-for every loop length, because the subject is the same computed stack shape at every call.
+- **The normaliser** (`Nock2Ski/DecNorm.lean`). `normT x k` forces `x` with the
+  continuation as an extra argument of the Scott cases, normalises a cell's halves and an
+  atom's bits recursively, and builds each value by straight-line code from the top of the
+  stack (`S (K n) c z ⟶ n (c z)` writes `c z`). It hands the value to the continuation below
+  as `K Q k`. A cell's tail slot `K t` is folded over its head, so it reaches the wrapper as
+  one thunk. That is the fold `NoLayout` forces, at the slot `ktAt` reads.
+
+      norm_enc    : Enc s es → normT ⬝ es ⬝ k ↠ k ⬝ encNoun s      (Forms included)
+      normJ_impl  : Implements decContract P → Implements decContract (S normT (K P))
+      normDec_enc : Enc s es → S normT (K (nockToSki decF)) ⬝ es ↠ encOut (decC s)
+
+- **The loop** (`bench/NockNorm.lean`, `lake exe nocknorm run 1 3 10 20`,
+  `results-norm.txt`). The check of `*[[N [0 0]] decLoopF] = [0 [0 0]]` runs on lean-ski's
+  heap machine cell for cell, the jet's row `DecJet.decRowI`'s reader and writer on the
+  memory. With every occurrence of the word the jet's atom, the run stops at the first call:
+  the reader through thunks does not read the computed stack. With every occurrence
+  `normJ JD = S normT (K JD)`, the jet fires at every call and the run reaches `K`:
+
+| N | unjetted contractions | unjetted transitions | normalised contractions | normalised transitions | jet calls |
+|--:|--:|--:|--:|--:|--:|
+| 1 | 8,434 | 20,757 | 7,051 | 17,348 | 1 |
+| 3 | 23,459 | 57,785 | 14,139 | 34,805 | 3 |
+| 10 | 136,500 | 336,681 | 39,730 | 97,843 | 10 |
+| 20 | 466,653 | 1,152,824 | 77,294 | 190,465 | 20 |
+
+  Jetted, a call costs about 3,700 contractions (the normaliser and the loop's own work);
+  unjetted the cost is quadratic. The transitions are the CPU's rows; a proof would add the
+  DEC rows of each call.
+
+**What remains** (lean-ski `todo/dec-norm.md`). DEC must read through thunks: an indirection
+row kind on the need tree and the bit chains, and three slots for the tail slot's thunk in
+the `Cell` row, in `DecAir.lean` and `decair.rs` (`compare-compd`), with
+`decpreExport_sound` and `decpre_complete_log` re-proved and the released `compDAirsG`
+proofs re-produced. The Nock claim needs the compiler's correctness with the word replaced
+by the normalised call (`normDec_enc` is the per-call fact) to give `nockdec_sound`'s
+analogue. The other circuit-side answer is the machine doing what Avon does: reducing the
+argument in place before the row reads it, which needs a machine with update in place
+(lean-ski's `Ski/Graph.lean`, whose circuit is open in PLAN §1).
+
+**Loop rows.** Proved: unjetted only (`results-unjetted.txt`, the shared base-circuit
+statement, a different term from the check above): `loop_1` 76,395 contractions, 190,814
+rows; `loop_3` 96,718 contractions, 242,656 rows. `loop_10` is 239,560 contractions and
+`loop_20` 643,783, quadratic; their proofs would take about 0.6M and 1.6M rows, past this
+machine's 4 GB budget. Jetted: the machine runs above; no proof until DEC reads through
+thunks.

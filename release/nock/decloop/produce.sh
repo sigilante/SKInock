@@ -29,9 +29,9 @@
 #   probe     `nockdec probe 3`: the compiled loop with the word's 13
 #             occurrences as the jet, in a head machine whose jet fires
 #             only on a subject laid out in memory, as lean-ski's row
-#             does; the run stops at the first call; and the same run with
-#             a reader that also follows K-thunks `K R w` at every slot
-#             (route (B)'s reader), which stops there too (probe.txt).
+#             does; the run stops at the first call (probe.txt).  The
+#             reader through K-thunks stops there too: results-norm.txt's
+#             "bare jet" rows (stage norm).
 #   layout    Why no term can lay the argument out (layout/): exhaustive
 #             searches over SKI terms on a model of lean-ski's write-once
 #             machine (layout/search.c), and the 12-leaf term that hands a
