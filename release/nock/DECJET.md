@@ -211,7 +211,7 @@ bare pin, `jetT ⬝ core` fires after 46 steps, because its bare subterm is reac
 
 ### Fired in whole programs: Avon branch `jet-reduce-arg` (2026-11-04)
 
-Avon branch `jet-reduce-arg` (commit `2f0843b`, not merged) makes the four changes listed
+Avon branch `jet-reduce-arg` (commit `2f0843b`, merged to Avon master as `d9e888d`, PR #123, 2026-11-06) makes the four changes listed
 above:
 
 1. Kind `hoon-dec` accepts both full digests: `jetT hoonDecBodyF` (`a4baf0aa…`) and the
