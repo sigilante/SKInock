@@ -218,6 +218,53 @@ theorem shareT_red (minSize : Nat) (t : Term) : WSteps (shareT minSize t) t :=
 /-- **`share_red`**: the shared term weakly reduces to the term, by `n` βs. -/
 theorem share_red (t : Term) : WSteps (share t) t := shareT_red _ t
 
+/-- `plan` with terms kept literal: a node equal to a term of `keep` gets
+    its literal code as its body (its own repeated subterms are not replaced
+    by variables inside it), so the shared term contains each kept term
+    verbatim.  Bound subterms inside it may still be bound for their uses
+    elsewhere.  A runtime that binds pinned terms at load (Avon's
+    `av_pin_bind`) then finds them in the shared program.  With `keep = []`
+    this is `plan`. -/
+def planKeep (minSize : Nat) (keep : List Term) (t : Term) : Binds × OTerm := Id.run do
+  let d := Dag.ofTerm t
+  let sz := d.sizes
+  let deg := d.indegs
+  let keepO := keep.map fun k => (treeSizeK k, k.toO)
+  let mut ot : Array OTerm := Array.replicate d.nodes.size .S
+  let mut lit : Array OTerm := Array.replicate d.nodes.size .S
+  let mut bs : Array (Nat × OTerm) := #[]
+  for i in [0:d.nodes.size] do
+    match d.nodes[i]! with
+    | .S => ot := ot.set! i .S; lit := lit.set! i .S
+    | .K => ot := ot.set! i .K; lit := lit.set! i .K
+    | .I => ot := ot.set! i .I; lit := lit.set! i .I
+    | .app f a =>
+      let l := lit[f]! ⬝ₒ lit[a]!
+      lit := lit.set! i l
+      let kept := keepO.any fun (n, k) => n == sz[i]! && k == l
+      let body := if kept then l else ot[f]! ⬝ₒ ot[a]!
+      if i != d.root && deg[i]! ≥ 2 && sz[i]! ≥ minSize then
+        bs := bs.push (bs.size, body)
+        ot := ot.set! i (.var bs.size.pred)
+      else
+        ot := ot.set! i body
+  return (bs.toList, ot[d.root]!)
+where
+  /-- The tree size as `Dag.sizes` counts it: every node, leaves and
+      applications. -/
+  treeSizeK : Term → Nat
+    | .app f a => 1 + treeSizeK f + treeSizeK a
+    | _ => 1
+
+/-- **Sharing that keeps the given terms literal** (`planKeep`). -/
+def shareKeep (keep : List Term) (t : Term) : Term :=
+  let p := planKeep shareMin keep t
+  shareWith p.1 p.2 t
+
+/-- **`shareKeep_red`**: as `share_red`, by `shareWith`'s check. -/
+theorem shareKeep_red (keep : List Term) (t : Term) : WSteps (shareKeep keep t) t :=
+  shareWith_red _ _ t
+
 /-- The number of bindings a plan makes. -/
 def shareCount (minSize : Nat) (t : Term) : Nat := (plan minSize t).1.length
 

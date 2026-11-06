@@ -156,6 +156,7 @@ import Nock2Ski
 -- M4b: sharing in the term, and the join to the circuit's statement
 #print axioms Nock2Ski.chain_red
 #print axioms Nock2Ski.share_red
+#print axioms Nock2Ski.shareKeep_red
 #print axioms Nock2Ski.shared_value
 #print axioms Nock2Ski.shared_crash
 #print axioms Nock2Ski.enc_whnf

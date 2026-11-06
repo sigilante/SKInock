@@ -259,6 +259,30 @@ against the unjetted normal form (`tests/data/hoon-dec/`), together with lazy co
 (`K`/`I`/`S K K` thunks at the core, the tail, the sample and its bits, `Form`s, divergent
 `bat`/`ctx`), lazy stacks, the bare arm and a tree copy of each term.
 
+### In shared programs: the arm kept literal (2026-11-06)
+
+`share` writes the arm only as a reduct (0 literal occurrences above), and Avon binds pins at
+load. `shareKeep keep t` (`Nock2Ski/Share.lean`, `planKeep`) shares as `share` does, except
+that a node equal to a kept term gets its literal code as its body, so the shared term contains
+it verbatim. `shareKeep_red : shareKeep keep t ↠ t` holds by `shareWith`'s check, as
+`share_red` does (axioms `propext`, `Classical.choice`, `Quot.sound`). `share` itself is
+unchanged, so the released shared rows are byte-identical. `nockstatement --keep-hoon-dec`
+writes the row, and `nockstatement --dag shared|keep-hoon-dec|unshared` writes Avon's dag form.
+
+`hoon_dec_N` shared with the bare arm kept (`nockToSki hoonDecBodyF`): 189,729 cells as a
+tree at N = 7 (60,199 under `share`, 1,077,188 unshared), and the arm literal once. Avon master
+d9e888d, `reduce`, share mode, normal forms compared byte for byte:
+
+| N | `share`, `--pins` | `shareKeep`, no pins | `shareKeep`, `--pins` | normal forms |
+|--:|--:|--:|--:|---|
+| 7 | 15,628 (nothing binds) | 15,387 | **4,103** (1 bound, 1 fired) | equal |
+| 100 | | 173,732 | **4,103** | equal |
+| 10,000 | | 17,043,503 | **4,103** | equal |
+
+The jetted count does not depend on N. Its excess over the unshared program's 1,011 is the
+sharing's βs. So "inputs must be unshared" is no longer needed for this jet: emit with
+`shareKeep` and the pin binds at load.
+
 ## Inside a loop, on the circuit: why no term can lay the argument out (2026-11-04)
 
 On Avon the jet fires inside a loop once the argument is reduced in place before the read

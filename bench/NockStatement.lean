@@ -1,8 +1,10 @@
 import Nock2Ski.Share
+import Nock2Ski.HoonDec
+import Std.Data.HashMap
 import Ski.Fuel
 import Nock2Ski.NounText
 
-open Nock
+open Nock hiding Term
 
 /-!
 # nockstatement: a Nock program as a corpus row for lean-ski's circuit
@@ -122,7 +124,7 @@ def findRow (input : String) (name : String) : Option Row := Id.run do
   return none
 
 def usage : String :=
-  "usage: nockstatement [--unshared] NAME FORMULA SUBJECT\n       nockstatement --check [--unshared] NAME FORMULA SUBJECT < corpus.txt\n       nockstatement --count-term FILE\n       nockstatement --cells FORMULA SUBJECT [MINSIZE...]"
+  "usage: nockstatement [--unshared] NAME FORMULA SUBJECT\n       nockstatement --check [--unshared] NAME FORMULA SUBJECT < corpus.txt\n       nockstatement --count-term FILE\n       nockstatement --cells FORMULA SUBJECT [MINSIZE...]\n       nockstatement --keep-hoon-dec NAME FORMULA SUBJECT\n       nockstatement --dag unshared|shared|keep-hoon-dec FORMULA SUBJECT"
 
 def die (msg : String) (code : UInt32 := 2) : IO UInt32 := do
   IO.eprintln msg
@@ -155,6 +157,72 @@ def rowOf (shared : Bool) (name formula subject : String) : IO (Except String Ro
   match countOf t with
   | none => return .error s!"{name}: no weak head normal form within {FUEL} contractions"
   | some k => return .ok ⟨name, k, prefixOf t⟩
+
+/-- The terms `--keep-hoon-dec` keeps literal: Hoon's `++dec` arm, bare, the
+    term Avon's `hoon-dec` pin matches (`Nock2Ski/HoonDecFree.lean`). -/
+def hoonKeep : List _root_.Term := [nockToSki Nock2Ski.hoonDecBodyF]
+
+/-- Avon's dag form (as `scripts/PinDec.lean`): every distinct subterm once,
+    `id=l.r`, leaves S K I, the root last. -/
+def dagText (t : _root_.Term) : String := Id.run do
+  let mut ids : Std.HashMap (Nat × Nat × Nat) Nat := {}
+  let mut lines : Array String := #[]
+  let mut res : Array Nat := #[]
+  let mut stack : List (_root_.Term × Bool) := [(t, false)]
+  repeat
+    match stack with
+    | [] => break
+    | (u, done) :: rest =>
+      stack := rest
+      let key? : Option (Nat × Nat × Nat) := match u, done with
+        | .app _ _, false => none
+        | .app _ _, true =>
+          let b := res.back!; let a := res.pop.back!
+          some (3, a, b)
+        | .S, _ => some (0, 0, 0) | .K, _ => some (1, 0, 0) | .I, _ => some (2, 0, 0)
+      match key? with
+      | none =>
+        match u with
+        | .app f x => stack := (f, false) :: (x, false) :: (u, true) :: rest
+        | _ => pure ()
+      | some key =>
+        if key.1 == 3 then res := res.pop.pop
+        match ids[key]? with
+        | some i => res := res.push i
+        | none =>
+          let i := ids.size
+          let rhs := match key with
+            | (0, _, _) => "S" | (1, _, _) => "K" | (2, _, _) => "I" | (_, a, b) => s!"{a}.{b}"
+          ids := ids.insert key i
+          lines := lines.push s!"{i}={rhs}"
+          res := res.push i
+  return "dag " ++ String.intercalate " " lines.toList ++ s!" @{res.back!}"
+
+/-- The number of literal occurrences of `k` in `t` as a tree subterm, in one
+    post-order pass (sizes bottom-up; a term is compared with `k` only when
+    its size is `k`'s). -/
+def occurrences (k t : _root_.Term) : Nat := Id.run do
+  let n := treeSize k
+  let mut c := 0
+  let mut sizes : Array Nat := #[]
+  let mut stack : List (_root_.Term × Bool) := [(t, false)]
+  repeat
+    match stack with
+    | [] => break
+    | (u, done) :: rest =>
+      stack := rest
+      match u, done with
+      | .app f a, false => stack := (f, false) :: (a, false) :: (u, true) :: rest
+      | .app _ _, true =>
+        let sa := sizes.back!; let sf := sizes.pop.back!
+        sizes := sizes.pop.pop
+        let m := 1 + sf + sa
+        if m == n && u == k then c := c + 1
+        sizes := sizes.push m
+      | _, _ =>
+        if n == 1 && u == k then c := c + 1
+        sizes := sizes.push 1
+  return c
 
 /-- The depth of the term as a tree. -/
 def depthOf (t : Term) : Nat := Id.run do
@@ -199,6 +267,28 @@ def main (args : List String) : IO UInt32 := do
     match mins.mapM String.toNat? with
     | some ms => cells formula subject ms
     | none => die usage
+  | ["--keep-hoon-dec", name, formula, subject] =>
+    match ← parseProgram formula subject with
+    | .error e => die e
+    | .ok (f, s) =>
+      let t0 := compiled f s
+      let t := shareKeep hoonKeep t0
+      IO.eprintln s!"{name}: term of {treeSize t0} cells, shared keeping the hoon-dec arm {treeSize t}, arm literal {occurrences (hoonKeep.head!) t} times"
+      match countOf t with
+      | none => die s!"{name}: no weak head normal form within {FUEL} contractions" 1
+      | some k => IO.println s!"{name} {k} {prefixOf t}"; pure 0
+  | ["--dag", mode, formula, subject] =>
+    match ← parseProgram formula subject with
+    | .error e => die e
+    | .ok (f, s) =>
+      let t0 := compiled f s
+      let t ← match mode with
+        | "unshared" => pure t0
+        | "shared" => pure (share t0)
+        | "keep-hoon-dec" => pure (shareKeep hoonKeep t0)
+        | _ => do IO.eprintln usage; return 2
+      IO.eprintln s!"{mode}: {treeSize t} cells, hoon-dec arm literal {occurrences (hoonKeep.head!) t} times"
+      IO.println (dagText t); pure 0
   | [name, formula, subject] => emit true name formula subject
   | ["--unshared", name, formula, subject] => emit false name formula subject
   | ["--check", name, formula, subject] => check true name formula subject
