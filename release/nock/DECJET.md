@@ -385,7 +385,29 @@ thunks (lean-ski branch `dec-thunk`); the loop is measured jetted on the circuit
   The memory is the statement's heap, the compiled program as a tree: a `2^22`-row memory
   table. A first form of `loop_1` (`normT` at each of the 13 occurrences, 2,360,598 cells)
   proved in 129 s and verified in 37 s, a 1.56 MB proof, at a 13.5 GB peak, past this
-  machine's 4 GB budget; no loop proof is released. Open: a shared statement heap.
+  machine's 4 GB budget.
+
+  **Proved, with a shared statement heap (2026-11-06).** lean-ski master b9275ad (PR #70,
+  zori) lays the public cells out hash-consed (`CompM.sharedL`, `Ski/HeapShared.lean`'s
+  `obuildS`; header `dectermS`), with the dec circuit's soundness and completeness generalised
+  over a layout (`Circuit.dectermSExport_sound`, `dectermSExport_close`; the tree theorems are
+  instances with their statements unchanged). The loop's statement then holds about 2,300
+  public cells instead of 2.33 million. skinock's `nockdec emit-loop` / `check-loop` write and
+  check `dectermS`, and `nockloop_closeS` / `nockloop_soundS` are `nockloop_close` /
+  `nockloop_sound` through the shared layout. Released in `decloop/` (`produce.sh loop`,
+  `verify.sh` step 6, `results-loop.txt`):
+
+| N | CPU rows | DEC rows | memory cells | heights | prove | verify | proof | peak |
+|--:|--:|--:|--:|--|--:|--:|--:|--:|
+| 1 | 17,544 | 20 | 23,429 | 15 15 9 | 1.8 s | 1.8 s | 1.12 MB | 0.66 GB |
+| 3 | 35,165 | 64 | 44,514 | 16 16 9 | 3.5 s | 1.9 s | 1.17 MB | 0.67 GB |
+| 10 | 98,777 | 238 | 120,437 | 17 17 9 | 6.8 s | 1.8 s | 1.23 MB | 1.17 GB |
+| 20 | 192,219 | 508 | 231,457 | 18 18 9 | 13.5 s | 2.2 s | 1.28 MB | 2.28 GB |
+
+  Every run replays in Lean (`composed check-dec-run`: each row a step or `DecJet.decRowI`), and
+  `compd-verify` checks each proof against the statement alone and refuses it with a byte
+  changed. `nockloop_soundS`: axioms `propext`, `Classical.choice`, `Quot.sound`, as
+  `nockloop_sound`. Proof bytes vary slightly between runs (1.12 vs 1.13 MB at `loop_1`).
 
   The Nock claim is proved (`Nock2Ski/DecLoopSound.lean`; `propext`, `Classical.choice`,
   `Quot.sound`) for the loop's subjects `[n [0 r]]`:
@@ -415,8 +437,8 @@ row kind on the need tree and the bit chains, three slots for the tail slot's th
 `Cell` row, `compare-compd`), with `decpreExport_sound` and `decpre_complete_log` re-proved
 and the released `compDAirsG` proofs re-produced: done. The Nock claim, `nockdec_sound`'s
 analogue for the loop: done, `nockloop_sound` above. This closes `todo/dec-norm.md`'s
-Nock-claim item for this loop (that file is lean-ski's and is not edited here). Still open is
-the loop's proof itself, measured, not proved. The other circuit-side answer is the machine doing what Avon does: reducing the
+Nock-claim item for this loop (that file is lean-ski's and is not edited here). The loop's
+proof itself: done, with the shared statement heap above. The other circuit-side answer is the machine doing what Avon does: reducing the
 argument in place before the row reads it, which needs a machine with update in place
 (lean-ski's `Ski/Graph.lean`, whose circuit is open in PLAN §1).
 

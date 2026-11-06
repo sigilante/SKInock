@@ -225,4 +225,19 @@ theorem nockloop_close {f s p : Noun} {W : Nat} {Rs : List Circuit.AirD} {ts : L
   rw [e] at hc
   exact (Compose.wsteps_K_iff hc).1 hk
 
+/-- **`nockloop_closeS`**: `nockloop_close` for the statement with a shared
+    heap (header `dectermS`, lean-ski's `sharedL`), the form the loop proofs
+    are released in: the same conclusion through `dectermSExport_close`. -/
+theorem nockloop_closeS {f s p : Noun} {W : Nat} {Rs : List Circuit.AirD} {ts : List Circuit.Table}
+    (hs : Circuit.sameAirsB Rs (Circuit.compDAirsGL CompM.sharedL [nockLoopV f s p] W) = true)
+    (hacc : Circuit.AcceptedP Rs ts) :
+    WSteps (replT (nockToSki decF) (normJ (nockToSki decF)) (checkT f s p)) _root_.Term.K := by
+  have hk := Circuit.dectermSExport_close (nockLoopV_vsOK f s p) (List.mem_singleton.2 rfl)
+    (fun x hx => checkN_occ _ _ _ hx) hs hacc dec_impl_bare
+  have hc := checkN_close f s p (DecPre.envD (nockToSki decF))
+  have e : DecPre.envD (nockToSki decF) JD = nockToSki decF := by
+    show (if JD = JD then _ else _) = _; rw [if_pos rfl]
+  rw [e] at hc
+  exact (Compose.wsteps_K_iff hc).1 hk
+
 end Nock2Ski

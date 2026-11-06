@@ -567,4 +567,17 @@ theorem nockloop_sound {n : Nat} {r p : Noun} {W : Nat} {Rs : List Circuit.AirD}
   subst hp
   exact decLoop_nock n r
 
+open DecLoopSound in
+/-- **`nockloop_soundS`**: `nockloop_sound` for the released form, the
+    statement with a shared heap (`dectermS`, lean-ski's `sharedL`): an
+    accepted proof is a Nock derivation of `*[[n [0 r]] decLoopF] = p`. -/
+theorem nockloop_soundS {n : Nat} {r p : Noun} {W : Nat} {Rs : List Circuit.AirD} {ts : List Circuit.Table}
+    (hs : Circuit.sameAirsB Rs
+      (Circuit.compDAirsGL CompM.sharedL [nockLoopV decLoopF (.cell (.atom n) (.cell (.atom 0) r)) p] W) = true)
+    (hacc : Circuit.AcceptedP Rs ts) :
+    NockEval (.cell (.atom n) (.cell (.atom 0) r)) decLoopF (.val p) := by
+  have hp := replaced_sound (nockloop_closeS hs hacc)
+  subst hp
+  exact decLoop_nock n r
+
 end Nock2Ski

@@ -1,0 +1,8 @@
+loop_1 (N = 1): proved 17544 rows (1 jet calls, 20 jet rows), 23429 memory cells, in 1.78 s; verified in 3.398 s; proof 1123752 bytes -> release/nock/decloop/loop_1.proof
+loop_1: OK DECRUN dectermS (1 verifiers): 17544 rows, 1 jet rows, each a step or DecJet.decRowI
+loop_3 (N = 3): proved 35165 rows (3 jet calls, 64 jet rows), 44514 memory cells, in 3.47 s; verified in 1.871 s; proof 1173405 bytes -> release/nock/decloop/loop_3.proof
+loop_3: OK DECRUN dectermS (1 verifiers): 35165 rows, 3 jet rows, each a step or DecJet.decRowI
+loop_10 (N = 10): proved 98777 rows (10 jet calls, 238 jet rows), 120437 memory cells, in 6.81 s; verified in 1.833 s; proof 1230226 bytes -> release/nock/decloop/loop_10.proof
+loop_10: OK DECRUN dectermS (1 verifiers): 98777 rows, 10 jet rows, each a step or DecJet.decRowI
+loop_20 (N = 20): proved 192219 rows (20 jet calls, 508 jet rows), 231457 memory cells, in 13.48 s; verified in 2.176 s; proof 1276551 bytes -> release/nock/decloop/loop_20.proof
+loop_20: OK DECRUN dectermS (1 verifiers): 192219 rows, 20 jet rows, each a step or DecJet.decRowI

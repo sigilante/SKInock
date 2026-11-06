@@ -2,7 +2,7 @@
 # Produce release/nock/decloop: lean-ski's `dec` data jet on a Nock claim,
 # rows jetted against unjetted.  The producer's side; verify.sh is the
 # verifier's.  Run from a clean checkout of skinock with lean-ski beside it
-# (LEAN_SKI, default ../lean-ski) on its `dec-thunk` branch (the `decterm`
+# (LEAN_SKI, default ../lean-ski) on master (b9275ad or later) (the `decterm`
 # statement, Ski/DecTermText.lean and Ski/DecTerm.lean, and ski-air's
 # `decterm J` header), and lean-nock at ../../lean-nock.
 #
@@ -50,16 +50,26 @@
 #             (lean-ski branch dec-thunk) the loop's statement is `nockdec
 #             emit-loop` and is measured, not proved (its 2^22-row memory
 #             table is past the memory budget; DECJET.md, Route B).
+#   loop      Route (B) proved: for each row of loops.txt (name, N),
+#             `nockdec emit-loop` writes the loop's statement with its heap
+#             shared (header `dectermS`, lean-ski's `sharedL`, master
+#             b9275ad: about 2,300 public cells instead of 2.33 million),
+#             at the heights `ski-air compd-measure` reports; `ski-air
+#             compd-prove` proves it and lean-ski's `composed check-dec-run`
+#             replays the run (results-loop.txt).  Nock2Ski/DecLoopSound's
+#             `nockloop_soundS` makes an accepted proof a Nock derivation
+#             of *[[N [0 0]] decLoopF] = [0 [0 0]].  loop_20 peaks under
+#             3 GB.
 #
-# Stages: `produce.sh [jetted unjetted probe layout norm]`, all by default.
+# Stages: `produce.sh [jetted unjetted probe layout norm loop]`, all by default.
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
 LEAN_SKI=${LEAN_SKI:-../lean-ski}
 D=release/nock/decloop
-STAGES=" ${*:-jetted unjetted probe layout norm} "
+STAGES=" ${*:-jetted unjetted probe layout norm loop} "
 want() { case "$STAGES" in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 for st in $STAGES; do
-    case " jetted unjetted probe layout norm " in *" $st "*) ;; *) echo "no stage $st" >&2; exit 2 ;; esac
+    case " jetted unjetted probe layout norm loop " in *" $st "*) ;; *) echo "no stage $st" >&2; exit 2 ;; esac
 done
 tmp=$(mktemp -d)
 trap '/bin/rm -rf "$tmp"' EXIT
@@ -124,4 +134,24 @@ echo "--- route (B): the loop with the normalised jet, on the heap machine"
 .lake/build/bin/nocknorm run 1 3 10 20 | tee "$D/results-norm.txt"
 (cd "$LEAN_SKI" && lake build Ski.DecInd > /dev/null) && echo "lean-ski Ski/DecInd.lean: built (decRowI_step, JStepsI.close_K)"
 lake build Nock2Ski.DecNorm > /dev/null && echo "Nock2Ski/DecNorm.lean: built (norm_enc, normJ_impl, normDec_enc)"
+fi
+
+if want loop; then
+echo "--- route (B) proved: the loop with the normalised jet, its statement shared"
+: > "$D/results-loop.txt"
+while IFS=$'\t' read -r name n; do
+    [ -n "$name" ] || continue
+    "$N" emit-loop "$tmp" "$name" "$n" 9 9 9 > /dev/null
+    m=$("$A" compd-measure "$tmp/$name.public.txt" "$tmp/$name.witness.txt" 2>&1 || true)
+    rows=$(echo "$m" | grep -o '[0-9]* rows' | head -1 | cut -d' ' -f1)
+    cells=$(echo "$m" | grep -o '[0-9]* memory cells' | cut -d' ' -f1)
+    jrows=$(echo "$m" | grep -o '[0-9]* jet rows' | cut -d' ' -f1)
+    "$N" emit-loop "$D" "$name" "$n" "$(lg "$rows")" "$(lg "$cells")" "$(lg "$jrows")" > /dev/null
+    /bin/mv "$D/$name.witness.txt" "$tmp/$name.witness.txt"
+    "$A" compd-prove "$D/$name.public.txt" "$tmp/$name.witness.txt" "$D/$name.proof" --table="$D/$name.run.txt" \
+        | sed "s/^dectermS [0-9]*:/$name (N = $n):/" | tee -a "$D/results-loop.txt"
+    (cd "$LEAN_SKI" && lake exe composed check-dec-run "$OLDPWD/$D/$name.public.txt" "$OLDPWD/$D/$name.run.txt") \
+        | grep -E '^(OK|REJECT|NOT|MALFORMED)' | sed "s/^/$name: /" | tee -a "$D/results-loop.txt"
+done < "$D/loops.txt"
+lake build Nock2Ski.DecLoopSound > /dev/null && echo "Nock2Ski/DecLoopSound.lean: built (nockloop_soundS)"
 fi

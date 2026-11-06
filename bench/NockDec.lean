@@ -64,9 +64,10 @@ def textOf (n : Nat) (lg : ComposedDText.DLogs) : String :=
 def loopS (n : Nat) : Noun := .cell (.atom n) (.cell (.atom 0) (.atom 0))
 def loopP : Noun := .cell (.atom 0) (.cell (.atom 0) (.atom 0))
 
-/-- Route (B): the normalised loop's statement. -/
+/-- Route (B): the normalised loop's statement, its heap shared (header
+    `dectermS`; `nockloop_soundS` is the theorem about an accepted proof). -/
 def loopTextOf (n : Nat) (lg : ComposedDText.DLogs) : String :=
-  DecTerm.publicTextDG [nockLoopV decLoopF (loopS n) loopP] regionW lg
+  DecTerm.publicTextDGS [nockLoopV decLoopF (loopS n) loopP] regionW lg
 
 def prefixOf (t : _root_.Term) : String := Id.run do
   let mut out : String := ""
@@ -197,13 +198,13 @@ def main (args : List String) : IO UInt32 := do
     pure 0
   | ["check-loop", name, n, path] =>
     let text ← IO.FS.readFile path
-    let some (Vs, W, lg) := DecTerm.statementOfTextDG text | die s!"{path}: not a decterm statement" 1
+    let some (Vs, W, lg) := DecTerm.statementOfTextDGS text | die s!"{path}: not a dectermS statement" 1
     let N := n.toNat!
     if W != regionW then die s!"{path}: region {W}, not {regionW}" 1
     else if text != loopTextOf N lg then die s!"{path}: not the normalised loop's statement at {N}" 1
     else if Vs.length != 1 then die s!"{path}: {Vs.length} verifiers" 1
     else
-      IO.println s!"{name}: ok, the decterm statement of *[[{N} [0 0]] decLoopF] = [0 [0 0]] with the word normalised (heights {lg.rows} {lg.mem} {lg.dec}), recomputed"
+      IO.println s!"{name}: ok, the dectermS statement of *[[{N} [0 0]] decLoopF] = [0 [0 0]] with the word normalised (heights {lg.rows} {lg.mem} {lg.dec}), recomputed"
       pure 0
   | ["loop-formula"] => IO.println (showNoun decLoopF); pure 0
   | ["probe", n] => probe n.toNat!

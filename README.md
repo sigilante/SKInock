@@ -1059,7 +1059,9 @@ site in `L`'s code and the codes of the pinned literal `L`'s `Form`s, of which o
 runs. By induction on `n` (`iter`, `normDec_enc` at each call), the replaced loop reaches an
 encoding of `[0 [0 r]]`. Church–Rosser and `eqn` then force `p = [0 [0 r]]`, and
 `decLoop_nock` gives the derivation (axioms `propext`, `Classical.choice`, `Quot.sound`). This
-closes lean-ski's `todo/dec-norm.md` item for this loop. Not done: the proofs, whose `2^22`-row memory table (the statement's heap is the program as a tree, 2.35
-million cells) is past the 4 GB budget (a first form of `loop_1` proved and verified at a
-13.5 GB peak). The released `dec_N` proofs are re-produced on the new DEC table (one DEC row
+closes lean-ski's `todo/dec-norm.md` item for this loop. The proofs are released (`release/nock/decloop/`, `loop_1`, `loop_3`, `loop_10`,
+`loop_20`): lean-ski's shared statement heap (master b9275ad, `dectermS`) stores the
+statement in about 2,300 cells instead of the program's 2.35 million as a tree, and
+`nockloop_soundS` is `nockloop_sound` through it. `loop_20` proves in 13.5 s at a 2.28 GB
+peak and verifies in 2.2 s (a 1.28 MB proof), where the tree form of `loop_1` needed 13.5 GB. The released `dec_N` proofs are re-produced on the new DEC table (one DEC row
 more per bit list; lean-ski `todo/dec-norm.md`).

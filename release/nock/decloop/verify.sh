@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Verify release/nock/decloop: the verifier's side of produce.sh.  Run from a
 # clean checkout of skinock with lean-ski beside it (LEAN_SKI, default
-# ../lean-ski) on its `dec-loop` branch, and lean-nock at ../../lean-nock.
+# ../lean-ski) on master (b9275ad or later), and lean-nock at ../../lean-nock.
 #
 #   1. The jetted statements: for each row of jetted.txt, Lean recomputes
 #      the `decterm` statement of *[[N 0] phi(dec)] = [N-1 0] at the heights
@@ -29,6 +29,14 @@
 #      with the normalised jet on the heap machine, lean-ski's
 #      DecJet.decRowI firing at every call), and lean-ski's Ski/DecInd.lean
 #      and Nock2Ski/DecNorm.lean build.
+#   6. The loop proofs: for each row of loops.txt, Lean recomputes the
+#      loop's shared statement (`dectermS`) at the heights the text names
+#      and compares it byte for byte (`nockdec check-loop`), refusing it as
+#      N + 1's; `ski-air compd-verify` checks NAME.proof against it (the
+#      AIRs `compDAirsGL sharedL`, whose soundness is
+#      `Circuit.dectermSExport_sound`; `nockloop_soundS` concludes the Nock
+#      claim) and refuses it with one byte changed; `composed
+#      check-dec-run` replays the run.
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
 LEAN_SKI=${LEAN_SKI:-../lean-ski}
@@ -91,4 +99,18 @@ echo "--- 5. the loop with the normalised jet"
 cmp "$tmp/results-norm.txt" "$D/results-norm.txt" && echo "results-norm.txt: recomputed"
 (cd "$LEAN_SKI" && lake build Ski.DecInd > /dev/null) && echo "lean-ski Ski/DecInd.lean: built"
 lake build Nock2Ski.DecNorm > /dev/null && echo "Nock2Ski/DecNorm.lean: built"
+echo "--- 6. the loop proofs"
+while IFS=$'\t' read -r name n; do
+    [ -n "$name" ] || continue
+    "$N" check-loop "$name" "$n" "$D/$name.public.txt"
+    if "$N" check-loop "$name" "$((n + 1))" "$D/$name.public.txt" > /dev/null 2>&1; then fail "$name: accepted as N + 1's"; fi
+    "$A" compd-verify "$D/$name.public.txt" "$D/$name.proof" | sed "s/^dectermS [0-9]*:/$name:/"
+    command cp -f "$D/$name.proof" "$tmp/bad.proof"
+    printf '\x01' | dd of="$tmp/bad.proof" bs=1 seek=200 conv=notrunc 2> /dev/null
+    if "$A" compd-verify "$D/$name.public.txt" "$tmp/bad.proof" > /dev/null 2>&1; then fail "$name: a changed proof verified"; fi
+    echo "$name: the proof with byte 200 changed is refused"
+    (cd "$LEAN_SKI" && lake exe composed check-dec-run "$OLDPWD/$D/$name.public.txt" "$OLDPWD/$D/$name.run.txt") \
+        | grep -E '^(OK|REJECT|NOT|MALFORMED)' | sed "s/^/$name: /"
+done < "$D/loops.txt"
+lake build Nock2Ski.DecLoopSound > /dev/null && echo "Nock2Ski/DecLoopSound.lean: built (nockloop_soundS)"
 echo "ALL CHECKS PASSED"

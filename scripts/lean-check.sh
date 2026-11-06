@@ -359,6 +359,7 @@ import Nock2Ski
 #print axioms Nock2Ski.checkN_close
 #print axioms Nock2Ski.nockLoopV_vsOK
 #print axioms Nock2Ski.nockloop_close
+#print axioms Nock2Ski.nockloop_closeS
 -- the normalised loop's statement read as a Nock claim (DecLoopSound)
 #print axioms Nock2Ski.DecLoopSound.W_shape
 #print axioms Nock2Ski.DecLoopSound.tsize_W
@@ -370,5 +371,6 @@ import Nock2Ski
 #print axioms Nock2Ski.DecLoopSound.check_eq
 #print axioms Nock2Ski.DecLoopSound.replaced_sound
 #print axioms Nock2Ski.nockloop_sound
+#print axioms Nock2Ski.nockloop_soundS
 LEAN
 lake env lean "$tmp/Axioms.lean"
