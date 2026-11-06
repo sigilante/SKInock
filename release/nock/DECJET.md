@@ -407,7 +407,9 @@ thunks (lean-ski branch `dec-thunk`); the loop is measured jetted on the circuit
   Every run replays in Lean (`composed check-dec-run`: each row a step or `DecJet.decRowI`), and
   `compd-verify` checks each proof against the statement alone and refuses it with a byte
   changed. `nockloop_soundS`: axioms `propext`, `Classical.choice`, `Quot.sound`, as
-  `nockloop_sound`. Proof bytes vary slightly between runs (1.12 vs 1.13 MB at `loop_1`).
+  `nockloop_sound`. Proof bytes vary slightly between runs (1.12 vs 1.13 MB at `loop_1`): `compd-prove`
+  draws a fresh seed per proof for the ZK blinding (lean-ski `bench/plonky3/src/seed.rs`), and
+  the serialization is likely varint-sized (zori; not measured). Each proof verifies on its own.
 
   The Nock claim is proved (`Nock2Ski/DecLoopSound.lean`; `propext`, `Classical.choice`,
   `Quot.sound`) for the loop's subjects `[n [0 r]]`:
