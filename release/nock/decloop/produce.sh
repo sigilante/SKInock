@@ -74,6 +74,23 @@ done
 tmp=$(mktemp -d)
 trap '/bin/rm -rf "$tmp"' EXIT
 A=$LEAN_SKI/bench/plonky3/target/release/ski-air
+
+# Every prover call goes through air: a release is never made with a fixed
+# test seed (lean-ski's --insecure-test-seed, which prints INSECURE-TEST-SEED
+# and makes proofs that do not hide).  Its output is passed on after the run.
+air() {
+    case " $* " in *insecure-test-seed*) echo "produce.sh: refused, --insecure-test-seed in a release run" >&2; exit 1 ;; esac
+    local o e rc
+    o=$(mktemp) e=$(mktemp)
+    set +e; "$A" "$@" > "$o" 2> "$e"; rc=$?; set -e
+    cat "$o"; cat "$e" >&2
+    if grep -q INSECURE-TEST-SEED "$o" "$e"; then
+        /bin/rm -f "$o" "$e"
+        echo "produce.sh: refused, a run printed INSECURE-TEST-SEED" >&2; exit 1
+    fi
+    /bin/rm -f "$o" "$e"
+    return $rc
+}
 (cd "$LEAN_SKI/bench/plonky3" && cargo build --release --locked --quiet)
 (cd "$LEAN_SKI" && lake build composed circuit aircheck > /dev/null)
 lake build nockdec nockstatement nocknorm > /dev/null
@@ -86,13 +103,13 @@ echo "--- the jetted check: decterm statements on lean-ski's circuit with the de
 while IFS=$'\t' read -r name n; do
     [ -n "$name" ] || continue
     "$N" emit "$tmp" "$name" "$n" 9 9 9 > /dev/null
-    m=$("$A" compd-measure "$tmp/$name.public.txt" "$tmp/$name.witness.txt" 2>&1 || true)
+    m=$(air compd-measure "$tmp/$name.public.txt" "$tmp/$name.witness.txt" 2>&1 || true)
     rows=$(echo "$m" | grep -o '[0-9]* rows' | head -1 | cut -d' ' -f1)
     cells=$(echo "$m" | grep -o '[0-9]* memory cells' | cut -d' ' -f1)
     jrows=$(echo "$m" | grep -o '[0-9]* jet rows' | cut -d' ' -f1)
     "$N" emit "$D" "$name" "$n" "$(lg "$rows")" "$(lg "$cells")" "$(lg "$jrows")" > /dev/null
     /bin/mv "$D/$name.witness.txt" "$tmp/$name.witness.txt"
-    "$A" compd-prove "$D/$name.public.txt" "$tmp/$name.witness.txt" "$D/$name.proof" --table="$D/$name.run.txt" \
+    air compd-prove "$D/$name.public.txt" "$tmp/$name.witness.txt" "$D/$name.proof" --table="$D/$name.run.txt" \
         | sed "s/^decterm [0-9]*:/$name (N = $n):/" | tee -a "$D/results.txt"
     (cd "$LEAN_SKI" && lake exe composed check-dec-run "$OLDPWD/$D/$name.public.txt" "$OLDPWD/$D/$name.run.txt") \
         | grep -E '^(OK|REJECT|NOT|MALFORMED)' | sed "s/^/$name: /" | tee -a "$D/results.txt"
@@ -112,7 +129,7 @@ while IFS=$'\t' read -r name kind n; do
     esac
 done < "$D/unjetted.txt"
 awk '{printf "%s %s contractions, %d bytes\n", $1, $2, length($3)}' "$D/corpus.txt"
-"$A" "$D/corpus.txt" "$tmp/out" | tee "$D/results-unjetted.txt"
+air "$D/corpus.txt" "$tmp/out" | tee "$D/results-unjetted.txt"
 for row in $(awk '{print $1}' "$D/corpus.txt"); do
     (cd "$LEAN_SKI" && lake exe aircheck "$tmp/out/$row.txt" | grep -E '^(ACCEPT|REJECT)')
 done
@@ -142,13 +159,13 @@ echo "--- route (B) proved: the loop with the normalised jet, its statement shar
 while IFS=$'\t' read -r name n; do
     [ -n "$name" ] || continue
     "$N" emit-loop "$tmp" "$name" "$n" 9 9 9 > /dev/null
-    m=$("$A" compd-measure "$tmp/$name.public.txt" "$tmp/$name.witness.txt" 2>&1 || true)
+    m=$(air compd-measure "$tmp/$name.public.txt" "$tmp/$name.witness.txt" 2>&1 || true)
     rows=$(echo "$m" | grep -o '[0-9]* rows' | head -1 | cut -d' ' -f1)
     cells=$(echo "$m" | grep -o '[0-9]* memory cells' | cut -d' ' -f1)
     jrows=$(echo "$m" | grep -o '[0-9]* jet rows' | cut -d' ' -f1)
     "$N" emit-loop "$D" "$name" "$n" "$(lg "$rows")" "$(lg "$cells")" "$(lg "$jrows")" > /dev/null
     /bin/mv "$D/$name.witness.txt" "$tmp/$name.witness.txt"
-    "$A" compd-prove "$D/$name.public.txt" "$tmp/$name.witness.txt" "$D/$name.proof" --table="$D/$name.run.txt" \
+    air compd-prove "$D/$name.public.txt" "$tmp/$name.witness.txt" "$D/$name.proof" --table="$D/$name.run.txt" \
         | sed "s/^dectermS [0-9]*:/$name (N = $n):/" | tee -a "$D/results-loop.txt"
     (cd "$LEAN_SKI" && lake exe composed check-dec-run "$OLDPWD/$D/$name.public.txt" "$OLDPWD/$D/$name.run.txt") \
         | grep -E '^(OK|REJECT|NOT|MALFORMED)' | sed "s/^/$name: /" | tee -a "$D/results-loop.txt"

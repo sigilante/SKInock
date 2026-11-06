@@ -102,6 +102,23 @@ trap '/bin/rm -rf "$tmp"' EXIT
 A=$LEAN_SKI/bench/plonky3/target/release/ski-air
 [ -x "$A" ] || (cd "$LEAN_SKI/bench/plonky3" && cargo build --release --locked --quiet)
 
+# Every prover call goes through air: a release is never made with a fixed
+# test seed (lean-ski's --insecure-test-seed, which prints INSECURE-TEST-SEED
+# and makes proofs that do not hide).  Its output is passed on after the run.
+air() {
+    case " $* " in *insecure-test-seed*) echo "produce.sh: refused, --insecure-test-seed in a release run" >&2; exit 1 ;; esac
+    local o e rc
+    o=$(mktemp) e=$(mktemp)
+    set +e; "$A" "$@" > "$o" 2> "$e"; rc=$?; set -e
+    cat "$o"; cat "$e" >&2
+    if grep -q INSECURE-TEST-SEED "$o" "$e"; then
+        /bin/rm -f "$o" "$e"
+        echo "produce.sh: refused, a run printed INSECURE-TEST-SEED" >&2; exit 1
+    fi
+    /bin/rm -f "$o" "$e"
+    return $rc
+}
+
 if want rows; then
 echo "--- Lean: the corpus rows (nockstatement)"
 lake build nockstatement > /dev/null
@@ -117,7 +134,7 @@ fi
 if want prove; then
 echo "--- ski-air: every row of corpus.txt proved and verified (the base circuit)"
 /bin/rm -rf "$R/out"
-"$A" "$R/corpus.txt" "$R/out" | tee "$R/results.txt"
+air "$R/corpus.txt" "$R/out" | tee "$R/results.txt"
 echo "--- Lean: each witness table accepted (aircheck)"
 (cd "$LEAN_SKI" && lake build aircheck > /dev/null)
 for row in $(awk '{print $1}' "$R/corpus.txt"); do
@@ -136,7 +153,7 @@ while IFS=$'\t' read -r name subject product skel logr logm formula; do
     lake exe nockpred --log "$logr" "$logm" "$name" "$formula" "$product" "$skel" > "$D/public.txt"
     # the witness: the prover's secret, never written under release/
     lake exe nockpred --witness "$name" "$subject" "$skel" > "$tmp/$name.witness"
-    "$A" composed-prove "$D/public.txt" "$tmp/$name.witness" "$D/$name.proof" | tee -a "$R/hidden/results.txt"
+    air composed-prove "$D/public.txt" "$tmp/$name.witness" "$D/$name.proof" | tee -a "$R/hidden/results.txt"
 done < "$R/hidden/programs.txt"
 fi
 
@@ -173,10 +190,10 @@ while IFS=$'\t' read -r name subject product form formula; do
     # jets plan tree …`), verified against the corpus row, the jet file and
     # the tree; the proof is kept
     # shellcheck disable=SC2046
-    "$A" probe-prove-table "$tmp/$name.term" "$P/$name.jets" "$P/out/$name.probe.table" "$P/$name.probe.proof" $(cat "$P/$name.tree") \
+    air probe-prove-table "$tmp/$name.term" "$P/$name.jets" "$P/out/$name.probe.table" "$P/$name.probe.proof" $(cat "$P/$name.tree") \
         | sed "s/^/$name: probe-prove-table: /" | tee -a "$P/results.txt"
     # shellcheck disable=SC2046
-    "$A" probe-verify "$R/corpus.txt" "$P" "$name" "$P/$name.probe.proof" $(cat "$P/$name.tree") \
+    air probe-verify "$R/corpus.txt" "$P" "$name" "$P/$name.probe.proof" $(cat "$P/$name.tree") \
         | sed "s/^/$name: probe-verify: /; s/ decodes to tree [0-9 ]*(/ decodes to the tree of $product (/" | tee -a "$P/results.txt"
 done < "$R/programs.txt"
 fi
@@ -195,7 +212,7 @@ while IFS=$'\t' read -r name subject product form formula; do
     echo "$name: jet file: $(sed 's/.*: //' "$tmp/jets.err")" | tee -a "$J/results.txt"
     # the jetted witness: ski-air's own run with the licensed roots instantiated;
     # it proves and verifies it in-process too, and prints the plain run beside it
-    "$A" jets-measure "$tmp/$name.term" "$J/$name.jets" "$tmp/$name.jetted.table" \
+    air jets-measure "$tmp/$name.term" "$J/$name.jets" "$tmp/$name.jetted.table" \
         | sed "s/^/$name: jets-measure: /" | tee -a "$J/results.txt"
     gzip -9 -c "$tmp/$name.jetted.table" > "$J/$name.jetted.table.gz"
     if [ -x "$AVON" ]; then
@@ -207,9 +224,9 @@ while IFS=$'\t' read -r name subject product form formula; do
         fi
     fi
     lake exe nockprobe check-jets "$R/corpus.txt" "$name" "$tmp/$name.jetted.table" | sed "s|$tmp/||" | tee -a "$J/results.txt"
-    "$A" jet-prove "$tmp/$name.term" "$J/$name.jets" "$tmp/$name.jetted.table" "$J/$name.jetted.proof" \
+    air jet-prove "$tmp/$name.term" "$J/$name.jets" "$tmp/$name.jetted.table" "$J/$name.jetted.proof" \
         | sed "s/^/$name: jet-prove: /" | tee -a "$J/results.txt"
-    "$A" jet-verify "$R/corpus.txt" "$J" "$name" "$J/$name.jetted.proof" \
+    air jet-verify "$R/corpus.txt" "$J" "$name" "$J/$name.jetted.proof" \
         | sed "s/^/$name: jet-verify: /" | tee -a "$J/results.txt"
 done < "$R/programs.txt"
 fi
